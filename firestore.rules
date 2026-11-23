@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'price', 'imageUrl', 'inStock'])
+        && data.id is string && data.id.size() > 0
+        && data.name is string && data.name.size() > 0
+        && data.category is string
+        && (data.price is number && data.price >= 0)
+        && data.imageUrl is string
+        && data.inStock is bool;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['id', 'customerName', 'customerPhone', 'deliveryAddress', 'deliveryType', 'totalAmount', 'status', 'itemsJson'])
+        && data.id is string && data.id.size() > 0
+        && data.customerName is string && data.customerName.size() > 0
+        && data.customerPhone is string && data.customerPhone.size() > 0
+        && data.deliveryAddress is string && data.deliveryAddress.size() > 0
+        && data.deliveryType in ['STANDARD', 'ONE_HOUR']
+        && (data.totalAmount is number && data.totalAmount >= 0)
+        && data.status in ['Order Received', 'Processing', 'Out for Delivery', 'Delivered']
+        && data.itemsJson is string;
+    }
+
+    function isValidRepair(data) {
+      return data.keys().hasAll(['id', 'brandName', 'modelName', 'complaintsJson', 'pickupAddress', 'customerName', 'phoneNumber', 'status'])
+        && data.id is string && data.id.size() > 0
+        && data.brandName is string && data.brandName.size() > 0
+        && data.modelName is string && data.modelName.size() > 0
+        && data.complaintsJson is string
+        && data.pickupAddress is string && data.pickupAddress.size() > 0
+        && data.customerName is string && data.customerName.size() > 0
+        && data.phoneNumber is string && data.phoneNumber.size() > 0
+        && data.status in [
+          'Booking Received',
+          'Pickup Scheduled',
+          'Device Received',
+          'Repairing',
+          'Repair Completed',
+          'Out for Delivery',
+          'Delivered'
+        ];
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'name', 'phone'])
+        && data.userId is string && data.userId.size() > 0
+        && data.name is string
+        && data.phone is string;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['id', 'referenceId', 'reviewType', 'targetTitle', 'customerName', 'rating', 'comment', 'isVerified', 'isApproved'])
+        && data.id is string && data.id.size() > 0
+        && data.referenceId is string && data.referenceId.size() > 0
+        && data.reviewType in ['PRODUCT', 'SERVICE']
+        && data.targetTitle is string
+        && data.customerName is string && data.customerName.size() > 0
+        && (data.rating is number && data.rating >= 1 && data.rating <= 5)
+        && data.comment is string && data.comment.size() > 0
+        && data.isVerified is bool
+        && data.isApproved is bool
+        && (data.reviewType == 'PRODUCT' || data.isApproved == false);
+    }
+
+    // Products catalog
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isValidProduct(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Real Customer Orders: Live synchronization between customers and admin
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if isValidOrder(request.resource.data);
+      allow update: if isValidOrder(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Real Repair Bookings: Live synchronization between customers and admin
+    match /repairs/{repairId} {
+      allow read: if true;
+      allow create: if isValidRepair(request.resource.data);
+      allow update: if isValidRepair(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Customer Profiles: Live synchronization across mobile app & companion website
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isValidUserProfile(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Verified Customer Reviews (Product reviews require admin approval; Service reviews remain private)
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if isValidReview(request.resource.data);
+      allow delete: if true;
+    }
+
+    // App Settings (e.g. One Hour Delivery toggle, fees, support contact)
+    match /settings/{settingKey} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

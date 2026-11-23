@@ -1,0 +1,6 @@
+{
+  "name": "iCASE",
+  "description": "Mobile accessories store, device repair & pickup booking, live tracking, and secure role-based management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Mobile case or accessory available in the iCASE store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique product ID" },
+        "name": { "type": "string", "description": "Product display title" },
+        "category": { "type": "string", "description": "Category name" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "price": { "type": "number", "description": "Current selling price in INR" },
+        "originalPrice": { "type": "number", "description": "Original retail price in INR" },
+        "imageUrl": { "type": "string", "description": "Product image URL" },
+        "inStock": { "type": "boolean", "description": "Stock availability flag" },
+        "stockCount": { "type": "integer", "description": "Available inventory units" },
+        "isOneHourEligible": { "type": "boolean", "description": "Eligible for 1-hour express delivery in Edappal" },
+        "isPopular": { "type": "boolean", "description": "Showcased in popular items" },
+        "popularityRank": { "type": "integer", "description": "Rank for sorting popular products" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["id", "name", "category", "price", "imageUrl", "inStock"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order containing purchased accessories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Order ID, e.g. ORD-10294" },
+        "customerName": { "type": "string", "description": "Customer full name" },
+        "customerPhone": { "type": "string", "description": "Contact phone number" },
+        "whatsappNumber": { "type": "string", "description": "Customer WhatsApp number" },
+        "deliveryAddress": { "type": "string", "description": "Delivery address" },
+        "deliveryType": { "type": "string", "enum": ["STANDARD", "ONE_HOUR"], "description": "Delivery speed" },
+        "deliveryFee": { "type": "number", "description": "Delivery fee amount in INR" },
+        "totalAmount": { "type": "number", "description": "Total order amount in INR" },
+        "status": {
+          "type": "string",
+          "enum": ["Order Received", "Processing", "Out for Delivery", "Delivered"],
+          "description": "Real-time order lifecycle status"
+        },
+        "statusNotes": { "type": "string", "description": "Status note or tracking update" },
+        "itemsJson": { "type": "string", "description": "Serialized list of ordered items" },
+        "userId": { "type": "string", "description": "Authenticated user UID or guest token" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when order was placed" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["id", "customerName", "customerPhone", "deliveryAddress", "deliveryType", "totalAmount", "status", "itemsJson"]
+    },
+    "RepairBooking": {
+      "title": "RepairBooking",
+      "description": "Combined device repair and doorstep pickup booking in Edappal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Repair Booking ID, e.g. REP-51829" },
+        "brandName": { "type": "string", "description": "Device brand name" },
+        "modelName": { "type": "string", "description": "Device model name" },
+        "complaintsJson": { "type": "string", "description": "Serialized array of selected issues" },
+        "description": { "type": "string", "description": "Detailed symptom description" },
+        "photoUrl": { "type": "string", "description": "Optional photo URL" },
+        "pickupAddress": { "type": "string", "description": "Doorstep pickup address in Edappal" },
+        "customerName": { "type": "string", "description": "Customer full name" },
+        "phoneNumber": { "type": "string", "description": "Customer contact phone" },
+        "whatsappNumber": { "type": "string", "description": "Customer WhatsApp number" },
+        "preferredDate": { "type": "string", "description": "Scheduled pickup date" },
+        "preferredTimeSlot": { "type": "string", "description": "Scheduled time slot" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Booking Received",
+            "Pickup Scheduled",
+            "Device Received",
+            "Repairing",
+            "Repair Completed",
+            "Out for Delivery",
+            "Delivered"
+          ],
+          "description": "Real-time repair lifecycle status"
+        },
+        "adminNotes": { "type": "string", "description": "Technician or admin note" },
+        "userId": { "type": "string", "description": "Customer UID or session ID" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when booked" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["id", "brandName", "modelName", "complaintsJson", "pickupAddress", "customerName", "phoneNumber", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Synchronized customer profile across mobile app and companion website",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Unique customer userId (Firebase UID or phone account ID)" },
+        "name": { "type": "string", "description": "Customer full name" },
+        "email": { "type": "string", "description": "Customer email address" },
+        "phone": { "type": "string", "description": "Normalized mobile number" },
+        "whatsapp": { "type": "string", "description": "WhatsApp contact number" },
+        "address": { "type": "string", "description": "Default delivery / pickup address" },
+        "isPhoneVerified": { "type": "boolean", "description": "Whether phone OTP verification succeeded" },
+        "isGoogleSignedIn": { "type": "boolean", "description": "Whether linked to Google Sign-In" },
+        "updatedAt": { "type": "number", "description": "Epoch millis of last profile sync" }
+      },
+      "required": ["userId", "name", "phone"]
+    },
+    "AppSetting": {
+      "title": "AppSetting",
+      "description": "Global store setting such as One Hour Delivery toggle",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "description": "Setting key identifier" },
+        "value": { "type": "string", "description": "Setting string value" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of update" }
+      },
+      "required": ["key", "value"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Verified customer review for a completed Product Order or private Repair Service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique review ID" },
+        "referenceId": { "type": "string", "description": "Completed Order ID or Repair Booking ID" },
+        "reviewType": { "type": "string", "enum": ["PRODUCT", "SERVICE"], "description": "PRODUCT (public when approved) or SERVICE (strictly private to admin)" },
+        "targetTitle": { "type": "string", "description": "Product name(s) or device model reviewed" },
+        "customerName": { "type": "string", "description": "Customer display name" },
+        "rating": { "type": "integer", "description": "Star rating from 1 to 5" },
+        "comment": { "type": "string", "description": "Customer feedback text" },
+        "isVerified": { "type": "boolean", "description": "Whether backed by a verified completed order or repair" },
+        "isApproved": { "type": "boolean", "description": "Admin approval flag for public PRODUCT reviews (always false for SERVICE)" },
+        "adminReply": { "type": "string", "description": "Optional reply from iCASE admin" },
+        "userId": { "type": "string", "description": "Customer userId" },
+        "createdAt": { "type": "number", "description": "Epoch millis created" },
+        "updatedAt": { "type": "number", "description": "Epoch millis updated" }
+      },
+      "required": ["id", "referenceId", "reviewType", "targetTitle", "customerName", "rating", "comment", "isVerified", "isApproved"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "Product" },
+      "description": "Store products catalog"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "Order" },
+      "description": "Customer product orders synchronized in real-time with the admin panel"
+    },
+    "/repairs/{repairId}": {
+      "schema": { "$ref": "RepairBooking" },
+      "description": "Doorstep repair bookings synchronized in real-time with the admin panel"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "Customer accounts synchronized in real time across Android and Web"
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "Review" },
+      "description": "Verified customer product reviews and private service feedback"
+    },
+    "/settings/{settingKey}": {
+      "schema": { "$ref": "AppSetting" },
+      "description": "Global application configuration settings"
+    }
+  }
+}

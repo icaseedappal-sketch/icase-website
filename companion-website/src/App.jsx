@@ -617,6 +617,10 @@ export default function App() {
               setGuardsFocusTarget('pouch');
               setActiveTab('guards');
             }}
+            onOpenGuardsSection={(target) => {
+              setGuardsFocusTarget(target || 'glass');
+              setActiveTab('guards');
+            }}
             onOpenReviewModal={(prefillId) =>
               setReviewModalState({ open: true, prefillId: prefillId || '' })
             }

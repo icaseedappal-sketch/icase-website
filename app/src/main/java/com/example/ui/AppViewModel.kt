@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 sealed class Screen {
     object Home : Screen()
     object Shop : Screen()
-    object ScreenGuards : Screen()
+    data class ScreenGuards(val initialSection: String = "") : Screen()
     data class ProductDetail(val product: ProductEntity) : Screen()
     object Cart : Screen()
     object RepairPickup : Screen()
@@ -175,6 +175,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         true
     )
 
+    val adminPin = repository.adminPin.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        "2026"
+    )
+
+    val adminRecoveryCode = repository.adminRecoveryCode.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        "ICASE2026"
+    )
+
     val screenGuardConfig = repository.screenGuardConfig.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -232,6 +244,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.saveScreenGuardConfig(config)
         }
+    }
+
+    fun buildDefaultCodeExport(): String {
+        return com.example.data.ScreenGuardCatalog.generateDefaultCodeExport(
+            products = allProducts.value,
+            config = screenGuardConfig.value,
+            storeName = storeName.value,
+            storePhone = storePhone.value,
+            storeWhatsapp = storeWhatsapp.value,
+            storeEmail = storeEmail.value,
+            storeAddress = storeAddress.value,
+            storeHours = storeHours.value,
+            isStoreOnline = isStoreOnline.value,
+            isOneHourEnabled = isOneHourDeliveryGloballyEnabled.value,
+            standardDeliveryFee = standardDeliveryFee.value,
+            expressDeliveryFee = expressDeliveryFee.value,
+            freeDeliveryThreshold = freeDeliveryThreshold.value,
+            adminPin = adminPin.value,
+            adminRecoveryCode = adminRecoveryCode.value
+        )
     }
 
     fun updateCartQuantity(productId: String, quantity: Int) {
@@ -351,6 +383,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val showAdminPasswordDialog = MutableStateFlow(false)
     val adminPasswordInput = MutableStateFlow("")
     val adminAuthError = MutableStateFlow<String?>(null)
+    val adminAuthSuccess = MutableStateFlow<String?>(null)
+    val adminForgotStep = MutableStateFlow("LOGIN") // LOGIN | VERIFY_RECOVERY | RESET_PIN
+    val recoveryCodeInput = MutableStateFlow("")
+    val newResetPinInput = MutableStateFlow("")
+    val confirmResetPinInput = MutableStateFlow("")
     val lockoutRemainingSeconds = MutableStateFlow(0)
     private var lockoutCountdownJob: Job? = null
 
@@ -365,6 +402,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             tapTimestamps.clear()
             adminPasswordInput.value = ""
             adminAuthError.value = null
+            adminAuthSuccess.value = null
+            adminForgotStep.value = "LOGIN"
+            recoveryCodeInput.value = ""
+            newResetPinInput.value = ""
+            confirmResetPinInput.value = ""
             checkLockoutStatus()
             showAdminPasswordDialog.value = true
         }
@@ -374,7 +416,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         val lockEnd = repository.lockoutEndTime.value
         if (lockEnd > now) {
-            startLockoutCountdown((lockEnd - now) / 1000)
+            startLockoutCountdown(((lockEnd - now) + 999L) / 1000L)
         } else {
             lockoutRemainingSeconds.value = 0
         }
@@ -383,7 +425,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun startLockoutCountdown(seconds: Long) {
         lockoutCountdownJob?.cancel()
         lockoutCountdownJob = viewModelScope.launch {
-            var s = seconds.toInt()
+            var s = seconds.toInt().coerceAtLeast(1)
             while (s > 0) {
                 lockoutRemainingSeconds.value = s
                 delay(1000)
@@ -394,7 +436,78 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun openForgotPasswordFlow() {
+        adminAuthError.value = null
+        adminAuthSuccess.value = null
+        recoveryCodeInput.value = ""
+        newResetPinInput.value = ""
+        confirmResetPinInput.value = ""
+        adminForgotStep.value = "VERIFY_RECOVERY"
+        checkLockoutStatus()
+    }
+
+    fun backToAdminLogin() {
+        adminAuthError.value = null
+        adminAuthSuccess.value = null
+        recoveryCodeInput.value = ""
+        newResetPinInput.value = ""
+        confirmResetPinInput.value = ""
+        adminForgotStep.value = "LOGIN"
+    }
+
+    fun submitRecoveryCode() {
+        checkLockoutStatus()
+        if (lockoutRemainingSeconds.value > 0) {
+            adminAuthError.value = "Too many failed attempts. Locked for ${lockoutRemainingSeconds.value}s."
+            return
+        }
+        val code = recoveryCodeInput.value.trim()
+        if (code.isBlank()) {
+            adminAuthError.value = "Please enter your Master Recovery Code."
+            return
+        }
+        viewModelScope.launch {
+            val verified = repository.verifyMasterRecoveryCode(code)
+            if (verified) {
+                adminAuthError.value = null
+                adminForgotStep.value = "RESET_PIN"
+            } else {
+                checkLockoutStatus()
+                if (lockoutRemainingSeconds.value > 0) {
+                    adminAuthError.value = "Incorrect code! 3 failed attempts. Account locked for 2 minutes."
+                } else {
+                    val remaining = 3 - repository.adminFailedAttempts.value
+                    adminAuthError.value = "Invalid Master Recovery Code. $remaining attempt(s) left."
+                }
+            }
+        }
+    }
+
+    fun submitNewPinReset() {
+        val pin = newResetPinInput.value.trim()
+        val confirm = confirmResetPinInput.value.trim()
+        if (pin.length < 4) {
+            adminAuthError.value = "New Password / PIN must be at least 4 characters."
+            return
+        }
+        if (pin != confirm) {
+            adminAuthError.value = "Passwords do not match. Please re-enter."
+            return
+        }
+        viewModelScope.launch {
+            repository.updateAdminPin(pin)
+            adminPasswordInput.value = ""
+            recoveryCodeInput.value = ""
+            newResetPinInput.value = ""
+            confirmResetPinInput.value = ""
+            adminAuthError.value = null
+            adminAuthSuccess.value = "New Admin Password / PIN saved! Enter it below to unlock."
+            adminForgotStep.value = "LOGIN"
+        }
+    }
+
     fun submitAdminPassword(onSuccess: () -> Unit) {
+        checkLockoutStatus()
         if (lockoutRemainingSeconds.value > 0) {
             adminAuthError.value = "Too many failed attempts. Locked for ${lockoutRemainingSeconds.value}s."
             return
@@ -406,12 +519,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 showAdminPasswordDialog.value = false
                 adminPasswordInput.value = ""
                 adminAuthError.value = null
+                adminAuthSuccess.value = null
+                adminForgotStep.value = "LOGIN"
                 navigateTo(Screen.AdminDashboard)
                 onSuccess()
             } else {
                 checkLockoutStatus()
                 if (lockoutRemainingSeconds.value > 0) {
-                    adminAuthError.value = "Incorrect password! 3 failed attempts. Account locked for 30 seconds."
+                    adminAuthError.value = "Incorrect password! 3 failed attempts. Account locked for 2 minutes."
                 } else {
                     val remaining = 3 - repository.adminFailedAttempts.value
                     adminAuthError.value = "Invalid Admin credentials. $remaining attempt(s) left."
@@ -424,6 +539,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         showAdminPasswordDialog.value = false
         adminPasswordInput.value = ""
         adminAuthError.value = null
+        adminAuthSuccess.value = null
+        adminForgotStep.value = "LOGIN"
+        recoveryCodeInput.value = ""
+        newResetPinInput.value = ""
+        confirmResetPinInput.value = ""
     }
 
     fun adminLogout() {
@@ -577,6 +697,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAdminPin(newPin: String) {
         viewModelScope.launch {
             repository.updateAdminPin(newPin)
+        }
+    }
+
+    fun updateAdminCredentials(newPin: String, newRecoveryCode: String) {
+        viewModelScope.launch {
+            repository.updateAdminCredentials(newPin, newRecoveryCode)
         }
     }
 

@@ -443,8 +443,22 @@ fun ConcealedAdminPasswordDialog(
 ) {
     val passwordInput by viewModel.adminPasswordInput.collectAsState()
     val authError by viewModel.adminAuthError.collectAsState()
+    val authSuccess by viewModel.adminAuthSuccess.collectAsState()
+    val forgotStep by viewModel.adminForgotStep.collectAsState()
+    val recoveryCodeInput by viewModel.recoveryCodeInput.collectAsState()
+    val newResetPinInput by viewModel.newResetPinInput.collectAsState()
+    val confirmResetPinInput by viewModel.confirmResetPinInput.collectAsState()
     val lockoutSeconds by viewModel.lockoutRemainingSeconds.collectAsState()
+
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var isRecoveryVisible by remember { mutableStateOf(false) }
+    var isResetPinVisible by remember { mutableStateOf(false) }
+
+    val formattedLockCountdown = remember(lockoutSeconds) {
+        val mins = lockoutSeconds / 60
+        val secs = lockoutSeconds % 60
+        if (mins > 0) "${mins}m ${secs.toString().padStart(2, '0')}s" else "${secs}s"
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -473,7 +487,11 @@ fun ConcealedAdminPasswordDialog(
                         color = iCaseNavy
                     )
                     Text(
-                        text = "Authorized Personnel Only",
+                        text = when (forgotStep) {
+                            "VERIFY_RECOVERY" -> "Master Recovery Verification"
+                            "RESET_PIN" -> "Set New Admin Password / PIN"
+                            else -> "Authorized Personnel Only"
+                        },
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
@@ -486,35 +504,163 @@ fun ConcealedAdminPasswordDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = "Please enter administrator credentials to access dashboard and management settings.",
-                    fontSize = 13.sp,
-                    color = Color.DarkGray
-                )
+                when (forgotStep) {
+                    "VERIFY_RECOVERY" -> {
+                        Text(
+                            text = "Enter your Master Recovery Code to verify ownership and set a new Admin Password / PIN.",
+                            fontSize = 13.sp,
+                            color = Color.DarkGray
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        OutlinedTextField(
+                            value = recoveryCodeInput,
+                            onValueChange = {
+                                viewModel.recoveryCodeInput.value = it
+                                viewModel.adminAuthError.value = null
+                            },
+                            label = { Text("Master Recovery Code") },
+                            placeholder = { Text("Enter Master Recovery Code") },
+                            singleLine = true,
+                            enabled = lockoutSeconds == 0,
+                            visualTransformation = if (isRecoveryVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { isRecoveryVisible = !isRecoveryVisible }) {
+                                    Icon(
+                                        imageVector = if (isRecoveryVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle recovery code visibility"
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_recovery_code_input")
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        TextButton(
+                            onClick = { viewModel.backToAdminLogin() },
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .testTag("admin_back_to_login_button")
+                        ) {
+                            Text("← Back to Admin Login", fontWeight = FontWeight.SemiBold, color = iCaseBlue)
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    "RESET_PIN" -> {
+                        Text(
+                            text = "Recovery verified! Choose a new Admin Password / PIN (minimum 4 characters).",
+                            fontSize = 13.sp,
+                            color = Color(0xFF15803D),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = newResetPinInput,
+                            onValueChange = {
+                                viewModel.newResetPinInput.value = it
+                                viewModel.adminAuthError.value = null
+                            },
+                            label = { Text("New Admin Password / PIN") },
+                            placeholder = { Text("Minimum 4 characters") },
+                            singleLine = true,
+                            visualTransformation = if (isResetPinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                IconButton(onClick = { isResetPinVisible = !isResetPinVisible }) {
+                                    Icon(
+                                        imageVector = if (isResetPinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle new password visibility"
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_reset_new_pin_input")
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = confirmResetPinInput,
+                            onValueChange = {
+                                viewModel.confirmResetPinInput.value = it
+                                viewModel.adminAuthError.value = null
+                            },
+                            label = { Text("Confirm New Password / PIN") },
+                            placeholder = { Text("Re-enter new password") },
+                            singleLine = true,
+                            visualTransformation = if (isResetPinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_reset_confirm_pin_input")
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        TextButton(
+                            onClick = { viewModel.backToAdminLogin() },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        ) {
+                            Text("Cancel & Back to Login", fontWeight = FontWeight.SemiBold, color = Color.Gray)
+                        }
+                    }
 
-                OutlinedTextField(
-                    value = passwordInput,
-                    onValueChange = { viewModel.adminPasswordInput.value = it },
-                    label = { Text("Admin Password / PIN") },
-                    placeholder = { Text("Enter admin password") },
-                    singleLine = true,
-                    enabled = lockoutSeconds == 0,
-                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                            Icon(
-                                imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Toggle password visibility"
+                    else -> {
+                        Text(
+                            text = "Please enter administrator credentials to access dashboard and management settings.",
+                            fontSize = 13.sp,
+                            color = Color.DarkGray
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = passwordInput,
+                            onValueChange = { viewModel.adminPasswordInput.value = it },
+                            label = { Text("Admin Password / PIN") },
+                            placeholder = { Text("Enter admin password") },
+                            singleLine = true,
+                            enabled = lockoutSeconds == 0,
+                            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle password visibility"
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_password_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        TextButton(
+                            onClick = { viewModel.openForgotPasswordFlow() },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .testTag("admin_forgot_password_button")
+                        ) {
+                            Text(
+                                text = "Forgot Password / PIN?",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = iCaseBlue
                             )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("admin_password_input")
-                )
+                    }
+                }
+
+                AnimatedVisibility(visible = authSuccess != null) {
+                    Text(
+                        text = authSuccess ?: "",
+                        color = Color(0xFF15803D),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
 
                 AnimatedVisibility(visible = authError != null) {
                     Text(
@@ -527,26 +673,65 @@ fun ConcealedAdminPasswordDialog(
                 }
 
                 if (lockoutSeconds > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "🔒 Attempt Lockout active: $lockoutSeconds s",
-                        color = iCaseRed,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFEF2F2))
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "🔒 Too many failed attempts. Locked for $formattedLockCountdown",
+                            color = iCaseRed,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.testTag("admin_lockout_timer_text")
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = { viewModel.submitAdminPassword {} },
-                enabled = lockoutSeconds == 0 && passwordInput.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("admin_login_button")
-            ) {
-                Text("Authenticate")
+            when (forgotStep) {
+                "VERIFY_RECOVERY" -> {
+                    Button(
+                        onClick = { viewModel.submitRecoveryCode() },
+                        enabled = lockoutSeconds == 0 && recoveryCodeInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("admin_verify_recovery_button")
+                    ) {
+                        Text("Verify Code")
+                    }
+                }
+
+                "RESET_PIN" -> {
+                    Button(
+                        onClick = { viewModel.submitNewPinReset() },
+                        enabled = newResetPinInput.trim().length >= 4 && confirmResetPinInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("admin_save_reset_pin_button")
+                    ) {
+                        Text("Save New PIN")
+                    }
+                }
+
+                else -> {
+                    Button(
+                        onClick = { viewModel.submitAdminPassword {} },
+                        enabled = lockoutSeconds == 0 && passwordInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("admin_login_button")
+                    ) {
+                        Text("Authenticate")
+                    }
+                }
             }
         },
         dismissButton = {
@@ -586,8 +771,8 @@ fun ProductCard(
                     .height(spec.productImageHeight)
                     .background(Color(0xFFF1F5F9))
             ) {
-                AsyncImage(
-                    model = product.imageUrl,
+                PouchThumbImage(
+                    imageUrl = product.imageUrl,
                     contentDescription = product.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

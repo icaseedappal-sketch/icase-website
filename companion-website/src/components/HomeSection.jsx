@@ -24,9 +24,14 @@ import {
   formatINR,
   formatTimestamp,
   getHomeFeaturedPouches,
+  getStartingCameraLensPrice,
+  getStartingTemperedGlassPrice,
+  isCameraLensSectionAvailable,
+  resolveCameraLensImageUrl,
   resolvePouchImageUrl,
   resolvePouchPrice,
-  resolvePouchSelectedColor
+  resolvePouchSelectedColor,
+  resolveTemperedGlassImageUrl
 } from '../data/constants';
 
 export default function HomeSection({
@@ -43,6 +48,7 @@ export default function HomeSection({
   onAddToCart,
   onOpenAccount,
   onOpenGuardsPouch,
+  onOpenGuardsSection,
   onOpenReviewModal
 }) {
   const [homeSearch, setHomeSearch] = useState('');
@@ -74,6 +80,27 @@ export default function HomeSection({
 
   const homeFeaturedPouches = useMemo(
     () => getHomeFeaturedPouches(screenGuardConfig),
+    [screenGuardConfig]
+  );
+
+  const glassStartingPrice = useMemo(
+    () => getStartingTemperedGlassPrice(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const cameraStartingPrice = useMemo(
+    () => getStartingCameraLensPrice(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const cameraSectionActive = useMemo(
+    () => isCameraLensSectionAvailable(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const temperedGlassSampleImg = useMemo(
+    () => resolveTemperedGlassImageUrl(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const cameraLensSampleImg = useMemo(
+    () => resolveCameraLensImageUrl(screenGuardConfig),
     [screenGuardConfig]
   );
 
@@ -376,6 +403,119 @@ export default function HomeSection({
               {cat}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Tempered Glass & Camera Lens Sample Cards */}
+      <section style={{ marginBottom: 30 }}>
+        <div className="section-header">
+          <div>
+            <h2 className="section-title">🛡️ Tempered Glass &amp; Camera Lens Protection</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              Tap a protection card to pick your exact phone model and order directly
+            </p>
+          </div>
+          <button
+            className="section-link"
+            onClick={() => {
+              if (onOpenGuardsSection) onOpenGuardsSection('glass');
+              else onNavigate('guards');
+            }}
+          >
+            Open Finder →
+          </button>
+        </div>
+
+        <div className="guard-sample-grid">
+          <button
+            type="button"
+            className="guard-sample-card"
+            onClick={() => {
+              if (onOpenGuardsSection) onOpenGuardsSection('glass');
+              else onNavigate('guards');
+            }}
+          >
+            <div className="guard-sample-thumb">
+              <img src={temperedGlassSampleImg} alt="Tempered Glass Protector" loading="lazy" />
+              <span className="discount-badge">Starting {formatINR(glassStartingPrice)}</span>
+            </div>
+            <div className="guard-sample-body">
+              <div>
+                <div className="compat-pill all" style={{ marginBottom: 6 }}>
+                  Available for iPhone &amp; All Android Models
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
+                  Tempered Glass
+                </div>
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  Privacy, Matte, Borderless, 360 Privacy &amp; 9H 5D full-coverage glass with free
+                  shop installation option.
+                </p>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 6
+                }}
+              >
+                <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
+                  From {formatINR(glassStartingPrice)}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
+                  Select Model →
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {cameraSectionActive && (
+            <button
+              type="button"
+              className="guard-sample-card"
+              onClick={() => {
+                if (onOpenGuardsSection) onOpenGuardsSection('camera');
+                else onNavigate('guards');
+              }}
+            >
+              <div className="guard-sample-thumb">
+                <img src={cameraLensSampleImg} alt="Camera Lens Protector" loading="lazy" />
+                <span className="discount-badge" style={{ background: 'var(--icase-navy)' }}>
+                  Starting {formatINR(cameraStartingPrice)}
+                </span>
+              </div>
+              <div className="guard-sample-body">
+                <div>
+                  <div className="compat-pill limited" style={{ marginBottom: 6 }}>
+                    iPhone &amp; Samsung S Series Only
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
+                    Camera Lens Protector
+                  </div>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                    9H Sapphire individual lens rings. Supports iPhone &amp; Samsung Galaxy S20–S25 /
+                    Ultra models only.
+                  </p>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 6
+                  }}
+                >
+                  <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
+                    From {formatINR(cameraStartingPrice)}
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
+                    Check Compatibility →
+                  </span>
+                </div>
+              </div>
+            </button>
+          )}
         </div>
       </section>
 

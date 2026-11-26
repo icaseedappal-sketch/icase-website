@@ -85,7 +85,7 @@ class AppRepository(
     private val _isAdminLoggedIn = MutableStateFlow(false)
     val isAdminLoggedIn: StateFlow<Boolean> = _isAdminLoggedIn.asStateFlow()
 
-    // Admin Attempt Lockout: 3 attempts -> 30 sec lockout
+    // Admin Attempt Lockout: 3 attempts -> 2 min (120 sec) lockout
     private val _adminFailedAttempts = MutableStateFlow(0)
     val adminFailedAttempts: StateFlow<Int> = _adminFailedAttempts.asStateFlow()
 
@@ -147,6 +147,12 @@ class AppRepository(
 
     val isStoreOnline: Flow<Boolean> = appDao.getSetting("store_online")
         .map { it?.value?.toBooleanStrictOrNull() ?: true }
+
+    val adminPin: Flow<String> = appDao.getSetting("admin_pin")
+        .map { it?.value?.takeIf { v -> v.isNotBlank() } ?: "2026" }
+
+    val adminRecoveryCode: Flow<String> = appDao.getSetting("admin_recovery_code")
+        .map { it?.value?.takeIf { v -> v.isNotBlank() } ?: "ICASE2026" }
 
     private val _latestGuardConfig = MutableStateFlow(loadCachedGuardConfig())
 
@@ -1302,14 +1308,14 @@ class AppRepository(
         }
     }
 
-    // Admin Authentication with Attempt Lockout Protection
+    // Admin Authentication with 2-minute (120s) Attempt Lockout Protection
     suspend fun verifyAdminPassword(password: String): Boolean {
         val now = System.currentTimeMillis()
         if (now < _lockoutEndTime.value) {
             return false
         }
 
-        val adminPinSetting = appDao.getSettingDirect("admin_pin")?.value ?: "2026"
+        val adminPinSetting = appDao.getSettingDirect("admin_pin")?.value?.takeIf { it.isNotBlank() } ?: "2026"
         val isCorrect = password.trim() == adminPinSetting || password.trim() == "icase@admin2026"
 
         if (isCorrect) {
@@ -1322,7 +1328,29 @@ class AppRepository(
             val attempts = _adminFailedAttempts.value + 1
             _adminFailedAttempts.value = attempts
             if (attempts >= 3) {
-                _lockoutEndTime.value = System.currentTimeMillis() + 30_000L
+                _lockoutEndTime.value = System.currentTimeMillis() + 120_000L
+                _adminFailedAttempts.value = 0
+            }
+            return false
+        }
+    }
+
+    suspend fun verifyMasterRecoveryCode(code: String): Boolean {
+        val now = System.currentTimeMillis()
+        if (now < _lockoutEndTime.value) {
+            return false
+        }
+        val expected = appDao.getSettingDirect("admin_recovery_code")?.value?.takeIf { it.isNotBlank() } ?: "ICASE2026"
+        val isMatch = code.trim() == expected
+        if (isMatch) {
+            _adminFailedAttempts.value = 0
+            _lockoutEndTime.value = 0L
+            return true
+        } else {
+            val attempts = _adminFailedAttempts.value + 1
+            _adminFailedAttempts.value = attempts
+            if (attempts >= 3) {
+                _lockoutEndTime.value = System.currentTimeMillis() + 120_000L
                 _adminFailedAttempts.value = 0
             }
             return false
@@ -1619,7 +1647,21 @@ class AppRepository(
     }
 
     suspend fun updateAdminPin(newPin: String) {
-        updateSetting("admin_pin", newPin.trim())
+        val cleaned = newPin.trim()
+        if (cleaned.length >= 4) {
+            updateSetting("admin_pin", cleaned)
+        }
+    }
+
+    suspend fun updateAdminCredentials(newPin: String, newRecoveryCode: String) {
+        val cleanPin = newPin.trim()
+        val cleanRecovery = newRecoveryCode.trim()
+        if (cleanPin.length >= 4) {
+            updateSetting("admin_pin", cleanPin)
+        }
+        if (cleanRecovery.length >= 4) {
+            updateSetting("admin_recovery_code", cleanRecovery)
+        }
     }
 
     suspend fun toggleOneHourDelivery(enabled: Boolean) {

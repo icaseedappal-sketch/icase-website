@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -155,7 +156,7 @@ fun HomeScreen(
             icon = Icons.Default.Shield,
             iconBgColor = Color(0xFFFFECEE),
             iconColor = iCaseRed,
-            onClick = { viewModel.navigateTo(Screen.ScreenGuards) }
+            onClick = { viewModel.navigateTo(Screen.ScreenGuards("TEMPERED_GLASS")) }
         ),
         QuickActionItem(
             title = "Track Order",
@@ -419,6 +420,140 @@ fun HomeScreen(
             }
         }
 
+        // Screen & Camera Protection Sample Cards (Tempered Glass & Camera Lens Protector)
+        item {
+            ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
+                val startingGlassPrice = remember(screenGuardConfig) {
+                    ScreenGuardCatalog.startingTemperedGlassPrice(screenGuardConfig).roundToInt()
+                }
+                val startingLensPrice = remember(screenGuardConfig) {
+                    ScreenGuardCatalog.startingCameraLensPrice(screenGuardConfig).roundToInt()
+                }
+                val camSectionActive = remember(screenGuardConfig) {
+                    ScreenGuardCatalog.isCameraLensSectionAvailable(screenGuardConfig)
+                }
+                val glassImg = remember(screenGuardConfig.temperedGlassImageUrl) {
+                    ScreenGuardCatalog.resolveTemperedGlassImageUrl(screenGuardConfig)
+                }
+                val camImg = remember(screenGuardConfig.cameraLensImageUrl) {
+                    ScreenGuardCatalog.resolveCameraLensImageUrl(screenGuardConfig)
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spec.horizontalPadding, vertical = 6.dp)
+                        .testTag("home_guard_sample_cards_section")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "🛡️ Screen & Camera Protection",
+                                fontSize = spec.sp(17),
+                                fontWeight = FontWeight.Bold,
+                                color = iCaseNavy,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Tap a card to choose your exact phone model",
+                                fontSize = spec.sp(11.5f),
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Explore All →",
+                            fontSize = spec.sp(13),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseRed,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier
+                                .clickable { viewModel.navigateTo(Screen.ScreenGuards()) }
+                                .padding(vertical = 4.dp)
+                        )
+                    }
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val stackCards = maxWidth < 340.dp
+                        if (stackCards) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                HomeGuardSampleCard(
+                                    title = "Tempered Glass",
+                                    imageUrl = glassImg,
+                                    priceLabel = "Starting ₹$startingGlassPrice",
+                                    compatibilityText = "Available for iPhone & All Android Models",
+                                    compatibilityBg = Color(0xFFE0F2FE),
+                                    compatibilityFg = Color(0xFF0369A1),
+                                    subtitle = "Privacy, Matte, Borderless, 360 & Normal 5D",
+                                    ctaLabel = "Select Model & Glass →",
+                                    onClick = { viewModel.navigateTo(Screen.ScreenGuards("TEMPERED_GLASS")) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("home_sample_card_tempered_glass")
+                                )
+                                HomeGuardSampleCard(
+                                    title = "Camera Lens Protector",
+                                    imageUrl = camImg,
+                                    priceLabel = if (camSectionActive) "Starting ₹$startingLensPrice" else "Paused",
+                                    compatibilityText = "iPhone & Samsung S Series Only",
+                                    compatibilityBg = Color(0xFFFEF3C7),
+                                    compatibilityFg = Color(0xFF92400E),
+                                    subtitle = "9H Sapphire Rings • Supported: iPhone & Galaxy S20–S25 / Ultra",
+                                    ctaLabel = "Select Model & Protect →",
+                                    onClick = { viewModel.navigateTo(Screen.ScreenGuards("CAMERA_LENS")) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("home_sample_card_camera_lens")
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                HomeGuardSampleCard(
+                                    title = "Tempered Glass",
+                                    imageUrl = glassImg,
+                                    priceLabel = "Starting ₹$startingGlassPrice",
+                                    compatibilityText = "Available for iPhone & All Android Models",
+                                    compatibilityBg = Color(0xFFE0F2FE),
+                                    compatibilityFg = Color(0xFF0369A1),
+                                    subtitle = "Privacy, Matte, Borderless, 360 & Normal 5D",
+                                    ctaLabel = "Select Glass →",
+                                    onClick = { viewModel.navigateTo(Screen.ScreenGuards("TEMPERED_GLASS")) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("home_sample_card_tempered_glass")
+                                )
+                                HomeGuardSampleCard(
+                                    title = "Camera Lens Protector",
+                                    imageUrl = camImg,
+                                    priceLabel = if (camSectionActive) "Starting ₹$startingLensPrice" else "Paused",
+                                    compatibilityText = "iPhone & Samsung S Series Only",
+                                    compatibilityBg = Color(0xFFFEF3C7),
+                                    compatibilityFg = Color(0xFF92400E),
+                                    subtitle = "9H Sapphire Rings • Galaxy S20–S25 & iPhone",
+                                    ctaLabel = "Select Lens →",
+                                    onClick = { viewModel.navigateTo(Screen.ScreenGuards("CAMERA_LENS")) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("home_sample_card_camera_lens")
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Popular Products Carousel
         item {
             ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
@@ -519,7 +654,7 @@ fun HomeScreen(
                                 maxLines = 1,
                                 softWrap = false,
                                 modifier = Modifier
-                                    .clickable { viewModel.navigateTo(Screen.ScreenGuards) }
+                                    .clickable { viewModel.navigateTo(Screen.ScreenGuards("POUCHES")) }
                                     .padding(vertical = 4.dp)
                                     .testTag("home_featured_pouches_view_all")
                             )
@@ -542,7 +677,7 @@ fun HomeScreen(
                                 Card(
                                     modifier = Modifier
                                         .width(spec.popularCardWidth.coerceAtLeast(188.dp))
-                                        .clickable { viewModel.navigateTo(Screen.ScreenGuards) }
+                                        .clickable { viewModel.navigateTo(Screen.ScreenGuards("POUCHES")) }
                                         .testTag("home_featured_pouch_${pouch.id}"),
                                     shape = RoundedCornerShape(14.dp),
                                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -655,7 +790,7 @@ fun HomeScreen(
                                                 }
                                             }
                                             Button(
-                                                onClick = { viewModel.navigateTo(Screen.ScreenGuards) },
+                                                onClick = { viewModel.navigateTo(Screen.ScreenGuards("POUCHES")) },
                                                 colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
                                                 shape = RoundedCornerShape(8.dp),
                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
@@ -920,5 +1055,121 @@ fun HomeScreen(
                 scope.launch { snackbarHostState.showSnackbar(msg) }
             }
         )
+    }
+}
+
+@Composable
+private fun HomeGuardSampleCard(
+    title: String,
+    imageUrl: String,
+    priceLabel: String,
+    compatibilityText: String,
+    compatibilityBg: Color,
+    compatibilityFg: Color,
+    subtitle: String,
+    ctaLabel: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val spec = LocalResponsiveSpec.current
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(118.dp)
+                    .background(Color(0xFFF1F5F9))
+            ) {
+                PouchThumbImage(
+                    imageUrl = imageUrl,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Surface(
+                    color = iCaseRed,
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = priceLabel,
+                        fontSize = spec.sp(10.5f),
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        maxLines = 1,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = spec.sp(14.5f),
+                    fontWeight = FontWeight.Bold,
+                    color = iCaseNavy,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Surface(
+                    color = compatibilityBg,
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = compatibilityText,
+                        fontSize = spec.sp(10f),
+                        fontWeight = FontWeight.Bold,
+                        color = compatibilityFg,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = spec.sp(13),
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                    )
+                }
+                Text(
+                    text = subtitle,
+                    fontSize = spec.sp(11),
+                    color = Color(0xFF475569),
+                    maxLines = 2,
+                    minLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = spec.sp(15)
+                )
+                Surface(
+                    color = iCaseNavy,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 38.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = ctaLabel,
+                            fontSize = spec.sp(11.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
     }
 }

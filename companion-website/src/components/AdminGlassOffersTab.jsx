@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Plus, Trash2, Upload, Camera, X, Image as ImageIcon } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Upload, Camera, X, Image as ImageIcon, Code2, RotateCcw } from 'lucide-react';
 import {
   DEFAULT_GLASS_TYPE_PRICES,
   POUCH_BRANDS,
@@ -17,15 +17,24 @@ import {
   guardModelKey,
   normalizeHexColor,
   parseScreenGuardConfig,
+  resolveCameraLensImageUrl,
   resolveCameraLensPrice,
   resolvePouchImageUrl,
   resolvePouchPrice,
+  resolveTemperedGlassImageUrl,
   resolveTemperedGlassPrice
 } from '../data/constants';
 
-export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConfig }) {
+export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConfig, onOpenExportCode }) {
   const cfg = screenGuardConfig || createDefaultScreenGuardConfig();
   const [toast, setToast] = useState('');
+  const [glassImgInput, setGlassImgInput] = useState(cfg.temperedGlassImageUrl || '');
+  const [camImgInput, setCamImgInput] = useState(cfg.cameraLensImageUrl || '');
+
+  useEffect(() => {
+    setGlassImgInput(cfg.temperedGlassImageUrl || '');
+    setCamImgInput(cfg.cameraLensImageUrl || '');
+  }, [cfg.temperedGlassImageUrl, cfg.cameraLensImageUrl]);
 
   // Glass types add
   const [addingGlassType, setAddingGlassType] = useState(false);
@@ -315,6 +324,207 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
           ✓ {toast}
         </div>
       )}
+
+      {/* 0. SAMPLE CARD & ITEM IMAGES + GITHUB CODE EXPORT */}
+      <section className="card">
+        <div className="section-header" style={{ marginBottom: 12 }}>
+          <div>
+            <h3 style={{ color: 'var(--icase-navy)', fontSize: 17, fontWeight: 900 }}>
+              Sample Card &amp; Item Images (Home &amp; Finder)
+            </h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+              Upload or paste custom photos for the Home Sample Cards, Finder headers, and Cart items.
+            </p>
+          </div>
+          {onOpenExportCode && (
+            <button type="button" className="btn btn-navy btn-sm" onClick={onOpenExportCode}>
+              <Code2 size={15} /> Export Default Code for GitHub
+            </button>
+          )}
+        </div>
+
+        <div className="form-grid">
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img
+                src={resolveTemperedGlassImageUrl(cfg)}
+                alt="Tempered Glass Sample"
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 12,
+                  objectFit: 'cover',
+                  border: '1px solid var(--border)',
+                  background: '#FFF'
+                }}
+              />
+              <div>
+                <div style={{ fontWeight: 900, color: 'var(--icase-navy)', fontSize: 14.5 }}>
+                  Tempered Glass Sample Image
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Shown on Home Card &amp; Tempered Glass orders
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                <Upload size={14} /> Upload Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    try {
+                      const dataUrl = await compressImageFileToDataUrl(f);
+                      setGlassImgInput(dataUrl);
+                      const next = parseScreenGuardConfig(cfg);
+                      next.temperedGlassImageUrl = dataUrl;
+                      await commitConfig(next, 'Tempered Glass sample image updated!');
+                    } catch (err) {
+                      setToast(err.message || 'Image upload failed');
+                    }
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={async () => {
+                  setGlassImgInput('');
+                  const next = parseScreenGuardConfig(cfg);
+                  next.temperedGlassImageUrl = '';
+                  await commitConfig(next, 'Tempered Glass image reset to default');
+                }}
+              >
+                <RotateCcw size={13} /> Reset
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                placeholder="Or paste Tempered Glass image URL..."
+                value={glassImgInput}
+                onChange={(e) => setGlassImgInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-navy btn-sm"
+                onClick={async () => {
+                  const next = parseScreenGuardConfig(cfg);
+                  next.temperedGlassImageUrl = glassImgInput.trim();
+                  await commitConfig(next, 'Tempered Glass image URL saved!');
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img
+                src={resolveCameraLensImageUrl(cfg)}
+                alt="Camera Lens Sample"
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 12,
+                  objectFit: 'cover',
+                  border: '1px solid var(--border)',
+                  background: '#FFF'
+                }}
+              />
+              <div>
+                <div style={{ fontWeight: 900, color: 'var(--icase-navy)', fontSize: 14.5 }}>
+                  Camera Lens Protector Image
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Shown on Home Card &amp; Camera Lens orders
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                <Upload size={14} /> Upload Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    try {
+                      const dataUrl = await compressImageFileToDataUrl(f);
+                      setCamImgInput(dataUrl);
+                      const next = parseScreenGuardConfig(cfg);
+                      next.cameraLensImageUrl = dataUrl;
+                      await commitConfig(next, 'Camera Lens sample image updated!');
+                    } catch (err) {
+                      setToast(err.message || 'Image upload failed');
+                    }
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={async () => {
+                  setCamImgInput('');
+                  const next = parseScreenGuardConfig(cfg);
+                  next.cameraLensImageUrl = '';
+                  await commitConfig(next, 'Camera Lens image reset to default');
+                }}
+              >
+                <RotateCcw size={13} /> Reset
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                placeholder="Or paste Camera Lens image URL..."
+                value={camImgInput}
+                onChange={(e) => setCamImgInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-navy btn-sm"
+                onClick={async () => {
+                  const next = parseScreenGuardConfig(cfg);
+                  next.cameraLensImageUrl = camImgInput.trim();
+                  await commitConfig(next, 'Camera Lens image URL saved!');
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* 1. TEMPERED GLASS TYPES */}
       <section className="card">

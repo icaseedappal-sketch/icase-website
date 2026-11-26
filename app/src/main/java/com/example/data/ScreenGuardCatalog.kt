@@ -284,7 +284,9 @@ data class ScreenGuardAdminConfig(
     val comboOffer: ScreenGuardOffer = defaultComboOffer(),
     val pouchItems: List<PouchAdminItem> = defaultPouchItems(),
     val pouchModelConfigs: Map<String, ModelAdminConfig> = emptyMap(),
-    val customPouchModelsByBrand: Map<String, List<String>> = emptyMap()
+    val customPouchModelsByBrand: Map<String, List<String>> = emptyMap(),
+    val temperedGlassImageUrl: String = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL,
+    val cameraLensImageUrl: String = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL
 ) {
     fun toJsonString(): String {
         val root = JSONObject()
@@ -323,6 +325,8 @@ data class ScreenGuardAdminConfig(
         }
         root.put("pouchModelConfigs", pouchModelObj)
         root.put("customPouchModelsByBrand", stringListMapToJson(customPouchModelsByBrand))
+        root.put("temperedGlassImageUrl", temperedGlassImageUrl)
+        root.put("cameraLensImageUrl", cameraLensImageUrl)
 
         return root.toString()
     }
@@ -475,6 +479,10 @@ data class ScreenGuardAdminConfig(
                     }
                 }
                 val customPouchModels = jsonToStringListMap(root.optJSONObject("customPouchModelsByBrand"))
+                val temperedGlassImg = root.optString("temperedGlassImageUrl", "").trim()
+                    .ifBlank { ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL }
+                val cameraLensImg = root.optString("cameraLensImageUrl", "").trim()
+                    .ifBlank { ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL }
 
                 ScreenGuardAdminConfig(
                     glassTypeConfigs = defaults,
@@ -487,7 +495,9 @@ data class ScreenGuardAdminConfig(
                     comboOffer = comboOffer,
                     pouchItems = pouches,
                     pouchModelConfigs = pouchModelMap,
-                    customPouchModelsByBrand = customPouchModels
+                    customPouchModelsByBrand = customPouchModels,
+                    temperedGlassImageUrl = temperedGlassImg,
+                    cameraLensImageUrl = cameraLensImg
                 )
             } catch (_: Exception) {
                 ScreenGuardAdminConfig()
@@ -985,6 +995,125 @@ object ScreenGuardCatalog {
         }
     }
 
+    private val popularGlassPresets: List<Pair<String, String>> = listOf(
+        "iPhone" to "iPhone 16 Pro Max",
+        "iPhone" to "iPhone 16 Pro",
+        "iPhone" to "iPhone 15 Pro",
+        "iPhone" to "iPhone 15",
+        "iPhone" to "iPhone 14",
+        "Samsung" to "Galaxy S25 Ultra",
+        "Samsung" to "Galaxy S24 Ultra",
+        "Samsung" to "Galaxy S24",
+        "Samsung" to "Galaxy A55 5G",
+        "Redmi/Xiaomi" to "Redmi Note 14 Pro 5G",
+        "Redmi/Xiaomi" to "Redmi Note 13 Pro 5G",
+        "Redmi/Xiaomi" to "Xiaomi 14",
+        "Oppo/Realme" to "Oppo Reno 12 Pro 5G",
+        "Oppo/Realme" to "Realme GT 6 / GT 6T",
+        "Vivo/iQOO" to "Vivo V40 Pro",
+        "Vivo/iQOO" to "iQOO 12 5G",
+        "OnePlus" to "OnePlus 13",
+        "OnePlus" to "OnePlus 12R",
+        "OnePlus" to "OnePlus Nord 4",
+        "Nothing" to "Nothing Phone (3a)",
+        "Nothing" to "Nothing Phone (2a)"
+    )
+
+    private val popularAllBrandGlassHighlight: List<Pair<String, String>> = listOf(
+        "iPhone" to "iPhone 16 Pro Max",
+        "iPhone" to "iPhone 15",
+        "Samsung" to "Galaxy S24 Ultra",
+        "Redmi/Xiaomi" to "Redmi Note 13 Pro 5G",
+        "OnePlus" to "OnePlus 12R",
+        "Nothing" to "Nothing Phone (2a)"
+    )
+
+    fun popularGlassModels(
+        brandFilter: String = "",
+        config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()
+    ): List<Pair<String, String>> {
+        val cleanBrand = brandFilter.trim()
+        val candidates = if (cleanBrand.isBlank()) {
+            popularAllBrandGlassHighlight
+        } else {
+            popularGlassPresets.filter { it.first.equals(cleanBrand, ignoreCase = true) }
+        }
+        return candidates.filter { (brand, model) ->
+            isTemperedGlassModelAvailable(brand, model, config) &&
+                modelsForBrand(brand, config).contains(model)
+        }.take(6)
+    }
+
+    private val popularCameraLensPresets: List<Pair<String, String>> = listOf(
+        "iPhone" to "iPhone 16 Pro Max",
+        "iPhone" to "iPhone 16 Pro",
+        "iPhone" to "iPhone 15 Pro",
+        "iPhone" to "iPhone 15",
+        "Samsung S Series" to "Galaxy S25 Ultra",
+        "Samsung S Series" to "Galaxy S24 Ultra",
+        "Samsung S Series" to "Galaxy S23 Ultra",
+        "Samsung S Series" to "Galaxy S24"
+    )
+
+    fun popularCameraLensModels(
+        brandFilter: String = "",
+        config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()
+    ): List<Pair<String, String>> {
+        val cleanBrand = brandFilter.trim()
+        val candidates = if (cleanBrand.isBlank()) {
+            listOf(
+                "iPhone" to "iPhone 16 Pro Max",
+                "iPhone" to "iPhone 15 Pro",
+                "iPhone" to "iPhone 15",
+                "Samsung S Series" to "Galaxy S25 Ultra",
+                "Samsung S Series" to "Galaxy S24 Ultra",
+                "Samsung S Series" to "Galaxy S23 Ultra"
+            )
+        } else {
+            popularCameraLensPresets.filter { it.first.equals(cleanBrand, ignoreCase = true) }
+        }
+        return candidates.filter { (brand, model) ->
+            isCameraLensModelAvailable(brand, model, config) &&
+                cameraLensModelsForBrand(brand, config).contains(model)
+        }.take(6)
+    }
+
+    fun buildTemperedGlassWhatsAppMessage(
+        brand: String,
+        model: String,
+        glassType: String,
+        finalPrice: Double,
+        installationOption: String = "Shop Installation"
+    ): String {
+        val brandLine = if (brand.isBlank() || brand.equals("CUSTOM", ignoreCase = true)) {
+            "Custom / Other Brand"
+        } else {
+            brand
+        }
+        return buildString {
+            append("Hi iCASE Edappal! I want to ask / order Tempered Glass:\n")
+            append("• Brand: $brandLine\n")
+            append("• Model: $model\n")
+            append("• Glass Type: $glassType\n")
+            append("• Price: ₹${finalPrice.roundToInt()}\n")
+            append("• Preference: $installationOption")
+        }
+    }
+
+    fun buildCameraLensWhatsAppMessage(
+        brand: String,
+        model: String,
+        finalPrice: Double,
+        installationOption: String = "Shop Installation"
+    ): String = buildString {
+        append("Hi iCASE Edappal! I want to ask / order Camera Lens Protection:\n")
+        append("• Brand: $brand\n")
+        append("• Model: $model\n")
+        append("• Product: 9H Sapphire Camera Lens Protection\n")
+        append("• Price: ₹${finalPrice.roundToInt()}\n")
+        append("• Preference: $installationOption")
+    }
+
     /**
      * Samsung (Flat S Series only):
      * Exclude curved-display models (S20 series, S21 Ultra, S22 Ultra, S23 Ultra).
@@ -1127,6 +1256,60 @@ object ScreenGuardCatalog {
         return pouch.colorOptions.firstOrNull()
     }
 
+    fun resolveTemperedGlassImageUrl(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): String {
+        return config.temperedGlassImageUrl.trim().ifBlank { TEMPERED_GLASS_IMAGE_URL }
+    }
+
+    fun resolveCameraLensImageUrl(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): String {
+        return config.cameraLensImageUrl.trim().ifBlank { CAMERA_LENS_IMAGE_URL }
+    }
+
+    fun startingTemperedGlassPrice(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): Double {
+        val activePrices = allGlassTypes(config)
+            .filter { isGlassTypeAvailable(it, config) }
+            .map { resolveTemperedGlassPrice("", "", it, config).finalPrice }
+        return activePrices.minOrNull() ?: 199.0
+    }
+
+    fun startingCameraLensPrice(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): Double {
+        val defaultPrice = resolveCameraLensPrice("", "", config).finalPrice
+        val activeCustomPrices = cameraLensBrands.flatMap { brand ->
+            cameraLensModelsForBrand(brand, config)
+                .filter { isCameraLensModelAvailable(brand, it, config) }
+                .map { resolveCameraLensPrice(brand, it, config).finalPrice }
+        }
+        return (activeCustomPrices + defaultPrice).minOrNull() ?: defaultPrice
+    }
+
+    fun isDeviceEligibleForCameraLens(
+        brand: String?,
+        model: String?,
+        config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()
+    ): Boolean {
+        if (!isCameraLensSectionAvailable(config)) return false
+        val cleanBrand = brand?.trim().orEmpty()
+        val cleanModel = model?.trim().orEmpty()
+        if (cleanModel.isBlank() || cleanModel == OTHER_MODEL_OPTION) return false
+        if (cleanBrand.equals("iPhone", ignoreCase = true)) {
+            return isCameraLensModelAvailable("iPhone", cleanModel, config) ||
+                cleanModel.contains("iphone", ignoreCase = true)
+        }
+        if (cleanBrand.equals("Samsung", ignoreCase = true)) {
+            val isSSeries = allSamsungSSeriesModels.any { it.equals(cleanModel, ignoreCase = true) } ||
+                Regex("""\b(?:galaxy\s+)?s2[0-5]\b""", RegexOption.IGNORE_CASE).containsMatchIn(cleanModel) ||
+                config.customCameraLensModelsByBrand["Samsung S Series"].orEmpty().any { it.equals(cleanModel, ignoreCase = true) }
+            if (!isSSeries) return false
+            val cfg = config.cameraLensModelConfigs[ScreenGuardAdminConfig.modelKey("Samsung S Series", cleanModel)]
+            return cfg == null || (!cfg.deleted && cfg.enabled)
+        }
+        if (cleanBrand.equals("Samsung S Series", ignoreCase = true)) {
+            return isCameraLensModelAvailable("Samsung S Series", cleanModel, config)
+        }
+        // Custom manual entry
+        val lower = cleanModel.lowercase()
+        return lower.contains("iphone") || Regex("""\b(?:galaxy\s+)?s2[0-5]\b""").containsMatchIn(lower)
+    }
+
     fun resolvePouchImageUrl(
         pouch: PouchAdminItem,
         selectedColor: String = ""
@@ -1175,7 +1358,7 @@ object ScreenGuardCatalog {
             description = "Precision $glassType Tempered Glass for ${if (cleanBrand == "CUSTOM") cleanModel else "$cleanBrand $cleanModel"}$installSuffix$offerSuffix",
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
-            imageUrl = TEMPERED_GLASS_IMAGE_URL,
+            imageUrl = resolveTemperedGlassImageUrl(config),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1203,7 +1386,7 @@ object ScreenGuardCatalog {
             description = "9H Sapphire Tempered Camera Lens Ring Protection for $cleanModel$installSuffix$offerSuffix",
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
-            imageUrl = CAMERA_LENS_IMAGE_URL,
+            imageUrl = resolveCameraLensImageUrl(config),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1236,7 +1419,7 @@ object ScreenGuardCatalog {
             description = "Tempered Glass ($cleanGModel • $glassType) + Camera Lens Protection ($cleanCModel)$installSuffix$offerSuffix",
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
-            imageUrl = TEMPERED_GLASS_IMAGE_URL,
+            imageUrl = resolveTemperedGlassImageUrl(config),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1349,5 +1532,84 @@ object ScreenGuardCatalog {
             return buildPouchCartProduct(brand, model, pouch, selectedColor)
         }
         return product
+    }
+
+    fun generateDefaultCodeExport(
+        products: List<ProductEntity>,
+        config: ScreenGuardAdminConfig,
+        storeName: String = "iCASE Mobile Accessories & Repair",
+        storePhone: String = "9961454059",
+        storeWhatsapp: String = "9961454059",
+        storeEmail: String = "icaseedappal@gmail.com",
+        storeAddress: String = "Main Road, Near Town Square, Edappal, Malappuram, Kerala",
+        storeHours: String = "9:00 AM - 10:00 PM (Daily)",
+        isStoreOnline: Boolean = true,
+        isOneHourEnabled: Boolean = true,
+        standardDeliveryFee: Double = 50.0,
+        expressDeliveryFee: Double = 80.0,
+        freeDeliveryThreshold: Double = 0.0,
+        adminPin: String = "2026",
+        adminRecoveryCode: String = "ICASE2026"
+    ): String {
+        val productsArr = JSONArray()
+        products.forEach { prod ->
+            val pObj = JSONObject()
+            pObj.put("id", prod.id)
+            pObj.put("name", prod.name)
+            pObj.put("category", prod.category)
+            pObj.put("description", prod.description)
+            pObj.put("price", prod.price)
+            pObj.put("originalPrice", prod.originalPrice)
+            pObj.put("imageUrl", prod.imageUrl)
+            pObj.put("inStock", prod.inStock)
+            pObj.put("stockCount", prod.stockCount)
+            pObj.put("isOneHourEligible", prod.isOneHourEligible)
+            pObj.put("isPopular", prod.isPopular)
+            pObj.put("popularityRank", prod.popularityRank)
+            val colorArr = JSONArray()
+            JsonHelper.parseColorOptions(prod.colorOptionsJson).forEach { opt ->
+                val cObj = JSONObject()
+                cObj.put("name", opt.name)
+                cObj.put("hex", opt.hex)
+                colorArr.put(cObj)
+            }
+            pObj.put("colorOptions", colorArr)
+            productsArr.put(pObj)
+        }
+
+        val settingsObj = JSONObject()
+        settingsObj.put("storeName", storeName)
+        settingsObj.put("storePhone", storePhone)
+        settingsObj.put("storeWhatsapp", storeWhatsapp)
+        settingsObj.put("storeEmail", storeEmail)
+        settingsObj.put("storeAddress", storeAddress)
+        settingsObj.put("storeHours", storeHours)
+        settingsObj.put("isStoreOnline", isStoreOnline)
+        settingsObj.put("isOneHourEnabled", isOneHourEnabled)
+        settingsObj.put("standardDeliveryFee", standardDeliveryFee)
+        settingsObj.put("expressDeliveryFee", expressDeliveryFee)
+        settingsObj.put("freeDeliveryThreshold", freeDeliveryThreshold)
+        settingsObj.put("adminPin", adminPin.ifBlank { "2026" })
+        settingsObj.put("adminRecoveryCode", adminRecoveryCode.ifBlank { "ICASE2026" })
+
+        val guardObj = JSONObject(config.toJsonString())
+
+        return buildString {
+            append("// ============================================================\n")
+            append("// iCASE DEFAULT CATALOG & CONFIG EXPORT (NO-DB LIVE SITE SYNC)\n")
+            append("// Paste INITIAL_PRODUCTS, DEFAULT_SETTINGS & BAKED_SCREEN_GUARD_CONFIG\n")
+            append("// into companion-website/src/data/constants.js and public/js/data.js,\n")
+            append("// then commit & push to GitHub.\n")
+            append("// ============================================================\n\n")
+            append("export const INITIAL_PRODUCTS = ")
+            append(productsArr.toString(2))
+            append(";\n\n")
+            append("export const DEFAULT_SETTINGS = ")
+            append(settingsObj.toString(2))
+            append(";\n\n")
+            append("export const BAKED_SCREEN_GUARD_CONFIG = ")
+            append(guardObj.toString(2))
+            append(";\n")
+        }
     }
 }

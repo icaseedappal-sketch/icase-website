@@ -112,8 +112,11 @@ fun TemperedGlassFinderCard(
     config: ScreenGuardAdminConfig,
     onAddToCart: (brand: String, model: String, glassType: String) -> Unit,
     modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    installationOption: String = "Shop Installation",
     onSelectionChanged: (brand: String, model: String, glassType: String) -> Unit = { _, _, _ -> },
-    onWhatsAppUvEnquiry: () -> Unit = {}
+    onWhatsAppUvEnquiry: () -> Unit = {},
+    onWhatsAppOrder: (String) -> Unit = {}
 ) {
     val spec = LocalResponsiveSpec.current
 
@@ -157,34 +160,33 @@ fun TemperedGlassFinderCard(
         }
     }
 
+    val cardImage = remember(config.temperedGlassImageUrl) {
+        ScreenGuardCatalog.resolveTemperedGlassImageUrl(config)
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .testTag("tempered_glass_finder_card"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, BorderLight)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isHighlighted) 5.dp else 2.dp),
+        border = BorderStroke(if (isHighlighted) 2.dp else 1.dp, if (isHighlighted) iCaseBlue else BorderLight)
     ) {
         Column(modifier = Modifier.padding(spec.cardPadding)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                PouchThumbImage(
+                    imageUrl = cardImage,
+                    contentDescription = "Tempered Glass",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(iCaseLightBlue),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Tempered Glass",
-                        tint = iCaseBlue,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iCaseLightBlue)
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -198,6 +200,19 @@ fun TemperedGlassFinderCard(
                         fontSize = spec.sp(12),
                         color = Color(0xFF64748B)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = Color(0xFFE0F2FE),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "Available for iPhone & All Android Models",
+                            fontSize = spec.sp(10.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0369A1),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
 
@@ -216,17 +231,41 @@ fun TemperedGlassFinderCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                val allSelected = selectedBrand.isBlank()
+                FilterChip(
+                    selected = allSelected,
+                    onClick = {
+                        selectedBrand = ""
+                        selectedModel = ""
+                        manualModelInput = ""
+                        searchQuery = ""
+                        validationMessage = null
+                        showModelDialog = true
+                    },
+                    label = {
+                        Text(
+                            text = "All Brands",
+                            fontSize = spec.sp(12),
+                            fontWeight = if (allSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = iCaseRed,
+                        selectedLabelColor = Color.White,
+                        containerColor = BackgroundLight,
+                        labelColor = iCaseNavy
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.testTag("glass_brand_chip_all")
+                )
                 activeBrands.forEach { brand ->
                     val isSelected = selectedBrand.equals(brand, ignoreCase = true)
                     FilterChip(
                         selected = isSelected,
                         onClick = {
-                            if (!isSelected) {
-                                selectedBrand = brand
-                                if (selectedModel != ScreenGuardCatalog.OTHER_MODEL_OPTION) {
-                                    selectedModel = ""
-                                }
-                            }
+                            selectedBrand = brand
+                            selectedModel = ""
+                            manualModelInput = ""
                             searchQuery = ""
                             validationMessage = null
                             showModelDialog = true
@@ -568,40 +607,86 @@ fun TemperedGlassFinderCard(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        val effectiveModel = if (isManualMode) manualModelInput.trim() else selectedModel
-                        if (effectiveModel.isBlank()) {
-                            validationMessage = "Please enter your exact device model name first."
-                            return@Button
-                        }
-                        validationMessage = null
-                        onAddToCart(
-                            if (isManualMode) "CUSTOM" else selectedBrand,
-                            effectiveModel,
-                            selectedGlassType
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val effectiveModel = if (isManualMode) manualModelInput.trim() else selectedModel
+                            if (effectiveModel.isBlank()) {
+                                validationMessage = "Please enter your exact device model name first."
+                                return@Button
+                            }
+                            validationMessage = null
+                            onAddToCart(
+                                if (isManualMode) "CUSTOM" else selectedBrand,
+                                effectiveModel,
+                                selectedGlassType
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("glass_add_to_cart_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
                         )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .testTag("glass_add_to_cart_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingCart,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Add to Cart • ₹${resolvedPricing.finalPrice.roundToInt()}",
-                        fontSize = spec.sp(13.5f),
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Add to Cart • ₹${resolvedPricing.finalPrice.roundToInt()}",
+                            fontSize = spec.sp(13.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            val effectiveModel = if (isManualMode) manualModelInput.trim() else selectedModel
+                            if (effectiveModel.isBlank()) {
+                                validationMessage = "Please enter your exact device model name first."
+                                return@OutlinedButton
+                            }
+                            validationMessage = null
+                            onWhatsAppOrder(
+                                ScreenGuardCatalog.buildTemperedGlassWhatsAppMessage(
+                                    brand = if (isManualMode) "CUSTOM" else selectedBrand,
+                                    model = effectiveModel,
+                                    glassType = selectedGlassType,
+                                    finalPrice = resolvedPricing.finalPrice,
+                                    installationOption = installationOption
+                                )
+                            )
+                        },
+                        border = BorderStroke(1.2.dp, Color(0xFF16A34A)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFFF0FDF4),
+                            contentColor = Color(0xFF15803D)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("glass_whatsapp_order_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "Ask or Order on WhatsApp",
+                            tint = Color(0xFF15803D),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Ask / Order on WhatsApp",
+                            fontSize = spec.sp(13.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF15803D)
+                        )
+                    }
                 }
             }
         }
@@ -612,7 +697,10 @@ fun TemperedGlassFinderCard(
         val groupedModels = remember(modalBrandFilter, searchQuery, config) {
             ScreenGuardCatalog.searchGroupedModels(modalBrandFilter, searchQuery, config)
         }
-        val listMaxHeight = (spec.availableHeight * 0.42f).coerceIn(180.dp, 340.dp)
+        val popularQuickModels = remember(modalBrandFilter, config) {
+            ScreenGuardCatalog.popularGlassModels(modalBrandFilter, config)
+        }
+        val listMaxHeight = (spec.availableHeight * 0.40f).coerceIn(170.dp, 320.dp)
 
         AlertDialog(
             onDismissRequest = { showModelDialog = false },
@@ -652,7 +740,15 @@ fun TemperedGlassFinderCard(
                     ) {
                         FilterChip(
                             selected = modalBrandFilter.isBlank(),
-                            onClick = { modalBrandFilter = "" },
+                            onClick = {
+                                modalBrandFilter = ""
+                                if (selectedBrand.isNotBlank()) {
+                                    selectedBrand = ""
+                                    selectedModel = ""
+                                    manualModelInput = ""
+                                    validationMessage = null
+                                }
+                            },
                             label = { Text("All Brands", fontSize = spec.sp(11)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = iCaseRed,
@@ -662,7 +758,15 @@ fun TemperedGlassFinderCard(
                         activeBrands.forEach { brand ->
                             FilterChip(
                                 selected = modalBrandFilter.equals(brand, ignoreCase = true),
-                                onClick = { modalBrandFilter = brand },
+                                onClick = {
+                                    modalBrandFilter = brand
+                                    if (!selectedBrand.equals(brand, ignoreCase = true)) {
+                                        selectedBrand = brand
+                                        selectedModel = ""
+                                        manualModelInput = ""
+                                        validationMessage = null
+                                    }
+                                },
                                 label = { Text(brand, fontSize = spec.sp(11)) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = iCaseNavy,
@@ -698,6 +802,55 @@ fun TemperedGlassFinderCard(
                             .fillMaxWidth()
                             .testTag("glass_model_search_input")
                     )
+
+                    if (popularQuickModels.isNotEmpty() && searchQuery.isBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Popular Models (Quick Select)",
+                            fontSize = spec.sp(11),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF475569)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            popularQuickModels.forEach { (brandName, modelName) ->
+                                val isCurrent = selectedBrand == brandName && selectedModel == modelName
+                                FilterChip(
+                                    selected = isCurrent,
+                                    onClick = {
+                                        selectedBrand = brandName
+                                        selectedModel = modelName
+                                        manualModelInput = ""
+                                        validationMessage = null
+                                        showModelDialog = false
+                                    },
+                                    label = {
+                                        Text(
+                                            text = modelName,
+                                            fontSize = spec.sp(11),
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = iCaseNavy,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0xFFF1F5F9),
+                                        labelColor = iCaseNavy
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.testTag(
+                                        "glass_quick_chip_${modelName.lowercase().replace(" ", "_")}"
+                                    )
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -836,8 +989,12 @@ fun CameraLensProtectionCard(
     config: ScreenGuardAdminConfig,
     onAddToCart: (brand: String, model: String) -> Unit,
     modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    installationOption: String = "Shop Installation",
     selectedGlassSelection: Triple<String, String, String>? = null,
-    onAddComboToCart: (gBrand: String, gModel: String, gType: String, cBrand: String, cModel: String) -> Unit = { _, _, _, _, _ -> }
+    selectedGlassDevice: Pair<String, String>? = null,
+    onAddComboToCart: (gBrand: String, gModel: String, gType: String, cBrand: String, cModel: String) -> Unit = { _, _, _, _, _ -> },
+    onWhatsAppOrder: (String) -> Unit = {}
 ) {
     val spec = LocalResponsiveSpec.current
 
@@ -859,34 +1016,43 @@ fun CameraLensProtectionCard(
         }
     }
 
+    val camCardImage = remember(config.cameraLensImageUrl) {
+        ScreenGuardCatalog.resolveCameraLensImageUrl(config)
+    }
+    val selectedDeviceUnsupported = remember(selectedGlassDevice, config) {
+        val dev = selectedGlassDevice
+        if (dev == null || dev.second.isBlank()) {
+            null
+        } else if (!ScreenGuardCatalog.isDeviceEligibleForCameraLens(dev.first, dev.second, config)) {
+            dev.second
+        } else {
+            null
+        }
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .testTag("camera_lens_protection_card"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, BorderLight)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isHighlighted) 5.dp else 2.dp),
+        border = BorderStroke(if (isHighlighted) 2.dp else 1.dp, if (isHighlighted) iCaseRed else BorderLight)
     ) {
         Column(modifier = Modifier.padding(spec.cardPadding)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                PouchThumbImage(
+                    imageUrl = camCardImage,
+                    contentDescription = "Camera Lens Protection",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFFFECEE)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Camera Lens Protection",
-                        tint = iCaseRed,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFFECEE))
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -900,10 +1066,61 @@ fun CameraLensProtectionCard(
                         fontSize = spec.sp(12),
                         color = Color(0xFF64748B)
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "Supported: iPhone & Samsung S Series Only (S20–S25 / Ultra)",
+                            fontSize = spec.sp(10f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF92400E),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (selectedDeviceUnsupported != null && selectedModel.isBlank()) {
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFFEF2F2))
+                        .border(1.dp, Color(0xFFFECACA), RoundedCornerShape(10.dp))
+                        .padding(10.dp)
+                        .testTag("camera_lens_unsupported_notice")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = iCaseRed,
+                        modifier = Modifier
+                            .padding(top = 1.dp)
+                            .size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Not available for $selectedDeviceUnsupported",
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseRed
+                        )
+                        Text(
+                            text = "Camera Lens Protector is not available for $selectedDeviceUnsupported. Available exclusively for iPhone & Samsung S Series models (S20 – S25 & Ultra).",
+                            fontSize = spec.sp(11),
+                            color = Color(0xFF7F1D1D),
+                            lineHeight = spec.sp(15)
+                        )
+                    }
+                }
+            }
 
             if (!sectionAvailable || activeCameraBrands.isEmpty()) {
                 Box(
@@ -926,15 +1143,38 @@ fun CameraLensProtectionCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    val allCamSelected = selectedBrand.isBlank()
+                    FilterChip(
+                        selected = allCamSelected,
+                        onClick = {
+                            selectedBrand = ""
+                            selectedModel = ""
+                            searchQuery = ""
+                            showModelDialog = true
+                        },
+                        label = {
+                            Text(
+                                text = "All Eligible",
+                                fontSize = spec.sp(12),
+                                fontWeight = if (allCamSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = iCaseRed,
+                            selectedLabelColor = Color.White,
+                            containerColor = BackgroundLight,
+                            labelColor = iCaseNavy
+                        ),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.testTag("camera_lens_brand_all")
+                    )
                     activeCameraBrands.forEach { brand ->
                         val active = selectedBrand.equals(brand, ignoreCase = true)
                         FilterChip(
                             selected = active,
                             onClick = {
-                                if (!active) {
-                                    selectedBrand = brand
-                                    selectedModel = ""
-                                }
+                                selectedBrand = brand
+                                selectedModel = ""
                                 searchQuery = ""
                                 showModelDialog = true
                             },
@@ -1098,28 +1338,67 @@ fun CameraLensProtectionCard(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { onAddToCart(selectedBrand, selectedModel) },
-                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .testTag("camera_lens_add_to_cart_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Add to Cart • ₹${camPricing.finalPrice.roundToInt()}",
-                            fontSize = spec.sp(13.5f),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onAddToCart(selectedBrand, selectedModel) },
+                            colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("camera_lens_add_to_cart_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Add to Cart • ₹${camPricing.finalPrice.roundToInt()}",
+                                fontSize = spec.sp(13.5f),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onWhatsAppOrder(
+                                    ScreenGuardCatalog.buildCameraLensWhatsAppMessage(
+                                        brand = selectedBrand,
+                                        model = selectedModel,
+                                        finalPrice = camPricing.finalPrice,
+                                        installationOption = installationOption
+                                    )
+                                )
+                            },
+                            border = BorderStroke(1.2.dp, Color(0xFF16A34A)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFFF0FDF4),
+                                contentColor = Color(0xFF15803D)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("camera_lens_whatsapp_order_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Chat,
+                                contentDescription = "Ask or Order on WhatsApp",
+                                tint = Color(0xFF15803D),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Ask / Order on WhatsApp",
+                                fontSize = spec.sp(13.5f),
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF15803D)
+                            )
+                        }
                     }
 
                     if (selectedGlassSelection != null && config.comboEnabled) {
@@ -1229,7 +1508,10 @@ fun CameraLensProtectionCard(
         val groupedModels = remember(modalBrandFilter, searchQuery, config) {
             ScreenGuardCatalog.searchCameraLensModels(modalBrandFilter, searchQuery, config)
         }
-        val listMaxHeight = (spec.availableHeight * 0.42f).coerceIn(180.dp, 340.dp)
+        val popularQuickCameraModels = remember(modalBrandFilter, config) {
+            ScreenGuardCatalog.popularCameraLensModels(modalBrandFilter, config)
+        }
+        val listMaxHeight = (spec.availableHeight * 0.40f).coerceIn(170.dp, 320.dp)
 
         AlertDialog(
             onDismissRequest = { showModelDialog = false },
@@ -1267,7 +1549,13 @@ fun CameraLensProtectionCard(
                     ) {
                         FilterChip(
                             selected = modalBrandFilter.isBlank(),
-                            onClick = { modalBrandFilter = "" },
+                            onClick = {
+                                modalBrandFilter = ""
+                                if (selectedBrand.isNotBlank()) {
+                                    selectedBrand = ""
+                                    selectedModel = ""
+                                }
+                            },
                             label = { Text("All Eligible", fontSize = spec.sp(11)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = iCaseRed,
@@ -1277,7 +1565,13 @@ fun CameraLensProtectionCard(
                         activeCameraBrands.forEach { brand ->
                             FilterChip(
                                 selected = modalBrandFilter.equals(brand, ignoreCase = true),
-                                onClick = { modalBrandFilter = brand },
+                                onClick = {
+                                    modalBrandFilter = brand
+                                    if (!selectedBrand.equals(brand, ignoreCase = true)) {
+                                        selectedBrand = brand
+                                        selectedModel = ""
+                                    }
+                                },
                                 label = { Text(brand, fontSize = spec.sp(11)) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = iCaseNavy,
@@ -1314,6 +1608,53 @@ fun CameraLensProtectionCard(
                             .testTag("camera_lens_search_input")
                     )
 
+                    if (popularQuickCameraModels.isNotEmpty() && searchQuery.isBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Popular Models (Quick Select)",
+                            fontSize = spec.sp(11),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF475569)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            popularQuickCameraModels.forEach { (brandName, modelName) ->
+                                val isCurrent = selectedBrand == brandName && selectedModel == modelName
+                                FilterChip(
+                                    selected = isCurrent,
+                                    onClick = {
+                                        selectedBrand = brandName
+                                        selectedModel = modelName
+                                        showModelDialog = false
+                                    },
+                                    label = {
+                                        Text(
+                                            text = modelName,
+                                            fontSize = spec.sp(11),
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = iCaseNavy,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0xFFF1F5F9),
+                                        labelColor = iCaseNavy
+                                    ),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.testTag(
+                                        "camera_quick_chip_${modelName.lowercase().replace(" ", "_")}"
+                                    )
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(10.dp))
 
                     LazyColumn(
@@ -1323,12 +1664,30 @@ fun CameraLensProtectionCard(
                     ) {
                         if (groupedModels.isEmpty()) {
                             item {
-                                Text(
-                                    text = "Camera Lens Protection is available only for active iPhone and Samsung S Series models.",
-                                    fontSize = spec.sp(12.5f),
-                                    color = Color(0xFF64748B),
-                                    modifier = Modifier.padding(vertical = 10.dp)
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFFEF2F2))
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = if (searchQuery.isNotBlank()) {
+                                            "Camera Lens Protector is not available for \"${searchQuery.trim()}\"."
+                                        } else {
+                                            "No Camera Lens models matched."
+                                        },
+                                        fontSize = spec.sp(12.5f),
+                                        fontWeight = FontWeight.Bold,
+                                        color = iCaseRed
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Camera Lens Protection is available exclusively for iPhone and Samsung S Series models (S20 – S25 & Ultra).",
+                                        fontSize = spec.sp(11.5f),
+                                        color = Color(0xFF7F1D1D)
+                                    )
+                                }
                             }
                         } else {
                             groupedModels.forEach { (brandName, models) ->

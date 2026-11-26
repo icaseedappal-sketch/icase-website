@@ -54,6 +54,7 @@ export const DEFAULT_SETTINGS = {
   delivery_fee_express: '80.00',
   free_delivery_threshold: '0.00',
   admin_pin: '2026',
+  admin_recovery_code: 'ICASE2026',
   store_name: 'iCASE Mobile Accessories & Repair',
   store_phone: '9961454059',
   store_whatsapp: '9961454059',
@@ -611,7 +612,9 @@ function normalizePouchItem(raw) {
   };
 }
 
-export function createDefaultScreenGuardConfig() {
+export const BAKED_SCREEN_GUARD_CONFIG = null;
+
+function createBaseDefaultScreenGuardConfig() {
   const glassTypeConfigs = {};
   for (const [glassType, basePrice] of Object.entries(DEFAULT_GLASS_TYPE_PRICES)) {
     glassTypeConfigs[glassType] = {
@@ -638,12 +641,22 @@ export function createDefaultScreenGuardConfig() {
     comboOffer: createDefaultComboOffer(),
     pouchItems: createDefaultPouchItems(),
     pouchModelConfigs: {},
-    customPouchModelsByBrand: {}
+    customPouchModelsByBrand: {},
+    temperedGlassImageUrl: '',
+    cameraLensImageUrl: ''
   };
 }
 
-export function parseScreenGuardConfig(raw) {
-  const base = createDefaultScreenGuardConfig();
+export function createDefaultScreenGuardConfig() {
+  const base = createBaseDefaultScreenGuardConfig();
+  if (BAKED_SCREEN_GUARD_CONFIG) {
+    return parseScreenGuardConfig(BAKED_SCREEN_GUARD_CONFIG, base);
+  }
+  return base;
+}
+
+export function parseScreenGuardConfig(raw, baseOverride = null) {
+  const base = baseOverride || createBaseDefaultScreenGuardConfig();
   if (!raw) return base;
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -726,6 +739,8 @@ export function parseScreenGuardConfig(raw) {
     }
 
     base.customPouchModelsByBrand = normalizeStringListMap(parsed.customPouchModelsByBrand);
+    base.temperedGlassImageUrl = String(parsed.temperedGlassImageUrl || '').trim();
+    base.cameraLensImageUrl = String(parsed.cameraLensImageUrl || '').trim();
     return base;
   } catch {
     return base;
@@ -859,6 +874,122 @@ export function getActivePouchesForBrand(brand = '', config = createDefaultScree
 export function getHomeFeaturedPouches(config = createDefaultScreenGuardConfig()) {
   const items = Array.isArray(config?.pouchItems) ? config.pouchItems : [];
   return items.filter((item) => item && item.showOnHomePage === true && !item.deleted && item.enabled !== false);
+}
+
+const POPULAR_GLASS_PRESETS = [
+  { brand: 'iPhone', model: 'iPhone 16 Pro Max' },
+  { brand: 'iPhone', model: 'iPhone 16 Pro' },
+  { brand: 'iPhone', model: 'iPhone 15 Pro' },
+  { brand: 'iPhone', model: 'iPhone 15' },
+  { brand: 'iPhone', model: 'iPhone 14' },
+  { brand: 'Samsung', model: 'Galaxy S25 Ultra' },
+  { brand: 'Samsung', model: 'Galaxy S24 Ultra' },
+  { brand: 'Samsung', model: 'Galaxy S24' },
+  { brand: 'Samsung', model: 'Galaxy A55 5G' },
+  { brand: 'Redmi/Xiaomi', model: 'Redmi Note 14 Pro 5G' },
+  { brand: 'Redmi/Xiaomi', model: 'Redmi Note 13 Pro 5G' },
+  { brand: 'Redmi/Xiaomi', model: 'Xiaomi 14' },
+  { brand: 'Oppo/Realme', model: 'Oppo Reno 12 Pro 5G' },
+  { brand: 'Oppo/Realme', model: 'Realme GT 6 / GT 6T' },
+  { brand: 'Vivo/iQOO', model: 'Vivo V40 Pro' },
+  { brand: 'Vivo/iQOO', model: 'iQOO 12 5G' },
+  { brand: 'OnePlus', model: 'OnePlus 13' },
+  { brand: 'OnePlus', model: 'OnePlus 12R' },
+  { brand: 'OnePlus', model: 'OnePlus Nord 4' },
+  { brand: 'Nothing', model: 'Nothing Phone (3a)' },
+  { brand: 'Nothing', model: 'Nothing Phone (2a)' }
+];
+
+const POPULAR_ALL_BRAND_GLASS_HIGHLIGHT = [
+  { brand: 'iPhone', model: 'iPhone 16 Pro Max' },
+  { brand: 'iPhone', model: 'iPhone 15' },
+  { brand: 'Samsung', model: 'Galaxy S24 Ultra' },
+  { brand: 'Redmi/Xiaomi', model: 'Redmi Note 13 Pro 5G' },
+  { brand: 'OnePlus', model: 'OnePlus 12R' },
+  { brand: 'Nothing', model: 'Nothing Phone (2a)' }
+];
+
+export function getPopularGlassModels(brandFilter = '', config = createDefaultScreenGuardConfig()) {
+  const cleanBrand = String(brandFilter || '').trim().toLowerCase();
+  const candidates = cleanBrand
+    ? POPULAR_GLASS_PRESETS.filter((p) => p.brand.toLowerCase() === cleanBrand)
+    : POPULAR_ALL_BRAND_GLASS_HIGHLIGHT;
+  return candidates
+    .filter(
+      (p) =>
+        isTemperedGlassModelAvailable(p.brand, p.model, config) &&
+        getModelsForBrand(p.brand, config).includes(p.model)
+    )
+    .slice(0, 6);
+}
+
+const POPULAR_CAMERA_LENS_PRESETS = [
+  { brand: 'iPhone', model: 'iPhone 16 Pro Max' },
+  { brand: 'iPhone', model: 'iPhone 16 Pro' },
+  { brand: 'iPhone', model: 'iPhone 15 Pro' },
+  { brand: 'iPhone', model: 'iPhone 15' },
+  { brand: 'Samsung S Series', model: 'Galaxy S25 Ultra' },
+  { brand: 'Samsung S Series', model: 'Galaxy S24 Ultra' },
+  { brand: 'Samsung S Series', model: 'Galaxy S23 Ultra' },
+  { brand: 'Samsung S Series', model: 'Galaxy S24' }
+];
+
+export function getPopularCameraLensModels(brandFilter = '', config = createDefaultScreenGuardConfig()) {
+  const cleanBrand = String(brandFilter || '').trim().toLowerCase();
+  const candidates = cleanBrand
+    ? POPULAR_CAMERA_LENS_PRESETS.filter((p) => p.brand.toLowerCase() === cleanBrand)
+    : [
+        { brand: 'iPhone', model: 'iPhone 16 Pro Max' },
+        { brand: 'iPhone', model: 'iPhone 15 Pro' },
+        { brand: 'iPhone', model: 'iPhone 15' },
+        { brand: 'Samsung S Series', model: 'Galaxy S25 Ultra' },
+        { brand: 'Samsung S Series', model: 'Galaxy S24 Ultra' },
+        { brand: 'Samsung S Series', model: 'Galaxy S23 Ultra' }
+      ];
+  return candidates
+    .filter(
+      (p) =>
+        isCameraLensModelAvailable(p.brand, p.model, config) &&
+        getCameraLensModelsForBrand(p.brand, config).includes(p.model)
+    )
+    .slice(0, 6);
+}
+
+export function buildTemperedGlassWhatsAppMessage({
+  brand = '',
+  model = '',
+  glassType = 'Normal 5D',
+  finalPrice = 0,
+  installationOption = 'Shop Installation'
+} = {}) {
+  const brandLabel =
+    !brand || String(brand).trim().toUpperCase() === 'CUSTOM'
+      ? 'Custom / Other Brand'
+      : String(brand).trim();
+  return [
+    'Hi iCASE Edappal! I want to ask / order Tempered Glass:',
+    `• Brand: ${brandLabel}`,
+    `• Model: ${model}`,
+    `• Glass Type: ${glassType}`,
+    `• Price: ₹${Math.round(Number(finalPrice || 0))}`,
+    `• Preference: ${installationOption}`
+  ].join('\n');
+}
+
+export function buildCameraLensWhatsAppMessage({
+  brand = '',
+  model = '',
+  finalPrice = 0,
+  installationOption = 'Shop Installation'
+} = {}) {
+  return [
+    'Hi iCASE Edappal! I want to ask / order Camera Lens Protection:',
+    `• Brand: ${brand}`,
+    `• Model: ${model}`,
+    '• Product: 9H Sapphire Camera Lens Protection',
+    `• Price: ₹${Math.round(Number(finalPrice || 0))}`,
+    `• Preference: ${installationOption}`
+  ].join('\n');
 }
 
 export function getMatchingProductReviews(reviews = [], product = null) {
@@ -1109,6 +1240,50 @@ function extractInstallationOption(description = '') {
   return (nextBullet >= 0 ? after.slice(0, nextBullet) : after).trim();
 }
 
+export function resolveTemperedGlassImageUrl(config = createDefaultScreenGuardConfig()) {
+  const custom = String(config?.temperedGlassImageUrl || '').trim();
+  return custom || TEMPERED_GLASS_IMAGE_URL;
+}
+
+export function resolveCameraLensImageUrl(config = createDefaultScreenGuardConfig()) {
+  const custom = String(config?.cameraLensImageUrl || '').trim();
+  return custom || CAMERA_LENS_IMAGE_URL;
+}
+
+export function getStartingTemperedGlassPrice(config = createDefaultScreenGuardConfig()) {
+  const activeTypes = getAllGlassTypes(config).filter((gt) => isGlassTypeAvailable(gt, config));
+  const candidates = activeTypes.length > 0 ? activeTypes : ALL_GLASS_TYPES;
+  const cleanCfg = { ...config, modelConfigs: {} };
+  const prices = candidates
+    .map((gt) => resolveTemperedGlassPrice('iPhone', '__default__', gt, cleanCfg).finalPrice)
+    .filter((p) => Number.isFinite(p) && p > 0);
+  return prices.length > 0 ? Math.min(...prices) : 199;
+}
+
+export function getStartingCameraLensPrice(config = createDefaultScreenGuardConfig()) {
+  if (!isCameraLensSectionAvailable(config)) return DEFAULT_CAMERA_LENS_PRICE;
+  const cleanCfg = { ...config, cameraLensModelConfigs: {} };
+  return resolveCameraLensPrice('iPhone', '__default__', cleanCfg).finalPrice;
+}
+
+export function isDeviceEligibleForCameraLens(
+  brand = '',
+  model = '',
+  config = createDefaultScreenGuardConfig()
+) {
+  if (!isCameraLensSectionAvailable(config)) return false;
+  const b = String(brand || '').trim().toLowerCase();
+  const cleanModel = String(model || '').trim();
+  const m = cleanModel.toLowerCase();
+  if (!m || cleanModel === OTHER_MODEL_OPTION) return false;
+  if (b === 'iphone' || m.includes('iphone')) return true;
+  if (b === 'samsung s series') return true;
+  if (b === 'samsung' || m.includes('galaxy') || /\bs2[0-5]\b/.test(m)) {
+    return /\b(?:galaxy\s+)?s2[0-5](?:\+|\b|\s+(?:ultra|fe))/i.test(m);
+  }
+  return false;
+}
+
 export function buildTemperedGlassCartProduct(
   brand = '',
   model = '',
@@ -1128,7 +1303,7 @@ export function buildTemperedGlassCartProduct(
     description: `Precision ${glassType} Tempered Glass for ${cleanBrand === 'CUSTOM' ? cleanModel : `${cleanBrand} ${cleanModel}`}${installSuffix}${offerSuffix}`,
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
-    imageUrl: TEMPERED_GLASS_IMAGE_URL,
+    imageUrl: resolveTemperedGlassImageUrl(config),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1156,7 +1331,7 @@ export function buildCameraLensCartProduct(
     description: `9H Sapphire Tempered Camera Lens Ring Protection for ${cleanModel}${installSuffix}${offerSuffix}`,
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
-    imageUrl: CAMERA_LENS_IMAGE_URL,
+    imageUrl: resolveCameraLensImageUrl(config),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1189,7 +1364,7 @@ export function buildComboCartProduct(
     description: `Tempered Glass (${cleanGModel} • ${glassType}) + Camera Lens Protection (${cleanCModel})${installSuffix}${offerSuffix}`,
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
-    imageUrl: TEMPERED_GLASS_IMAGE_URL,
+    imageUrl: resolveTemperedGlassImageUrl(config),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1429,3 +1604,28 @@ export function compressImageFileToDataUrl(file, maxDimension = 420, quality = 0
     reader.readAsDataURL(file);
   });
 }
+
+export function generateDefaultCodeExport({
+  products = INITIAL_PRODUCTS,
+  settings = DEFAULT_SETTINGS,
+  screenGuardConfig = createDefaultScreenGuardConfig()
+} = {}) {
+  const cleanSettings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  delete cleanSettings[SCREEN_GUARD_CONFIG_KEY];
+  const cleanProducts = Array.isArray(products) ? products : INITIAL_PRODUCTS;
+  const cleanGuard = parseScreenGuardConfig(screenGuardConfig);
+  return [
+    '// === iCASE Default Data Export ===',
+    '// Replace DEFAULT_SETTINGS, INITIAL_PRODUCTS, and BAKED_SCREEN_GUARD_CONFIG',
+    '// inside companion-website/src/data/constants.js AND public/js/data.js,',
+    '// then commit & push to GitHub so the live site shows all updates without any database.',
+    '',
+    `export const DEFAULT_SETTINGS = ${JSON.stringify(cleanSettings, null, 2)};`,
+    '',
+    `export const INITIAL_PRODUCTS = ${JSON.stringify(cleanProducts, null, 2)};`,
+    '',
+    `export const BAKED_SCREEN_GUARD_CONFIG = ${JSON.stringify(cleanGuard, null, 2)};`,
+    ''
+  ].join('\n');
+}
+

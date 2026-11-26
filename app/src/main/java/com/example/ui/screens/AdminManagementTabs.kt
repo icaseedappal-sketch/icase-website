@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,21 +34,29 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -52,17 +65,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.ui.components.PouchImageHelper
+import com.example.ui.components.PouchThumbImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import coil.compose.AsyncImage
 import com.example.data.InitialData
 import com.example.data.JsonHelper
@@ -538,7 +561,8 @@ fun AdminRepairsTab(
 fun AdminProductsTab(
     products: List<ProductEntity>,
     onEdit: (ProductEntity) -> Unit,
-    onDelete: (ProductEntity) -> Unit
+    onDelete: (ProductEntity) -> Unit,
+    onOpenExportCode: () -> Unit = {}
 ) {
     val spec = LocalResponsiveSpec.current
     var searchQuery by remember { mutableStateOf("") }
@@ -587,6 +611,26 @@ fun AdminProductsTab(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedButton(
+                        onClick = onOpenExportCode,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 42.dp)
+                            .testTag("admin_products_export_code_button")
+                    ) {
+                        Icon(Icons.Default.Code, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Export Default Code for GitHub (No-DB Live Site)",
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -609,8 +653,8 @@ fun AdminProductsTab(
                                 .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            AsyncImage(
-                                model = product.imageUrl,
+                            PouchThumbImage(
+                                imageUrl = product.imageUrl,
                                 contentDescription = product.name,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -931,13 +975,19 @@ fun AddEditProductDialog(
     onSave: (ProductEntity) -> Unit
 ) {
     val spec = LocalResponsiveSpec.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val categoryPresets = InitialData.categories.filter { it != "All" }
+    val defaultProductImageUrl = "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500"
     var name by remember { mutableStateOf(product?.name ?: "") }
     var category by remember { mutableStateOf(product?.category ?: "Cases") }
     var description by remember { mutableStateOf(product?.description ?: "") }
     var priceStr by remember { mutableStateOf(product?.price?.toInt()?.toString() ?: "499") }
     var originalPriceStr by remember { mutableStateOf(product?.originalPrice?.toInt()?.toString() ?: "799") }
-    var imageUrl by remember { mutableStateOf(product?.imageUrl ?: "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500") }
+    var imageUrl by remember { mutableStateOf(product?.imageUrl ?: defaultProductImageUrl) }
+    var isProcessingPhoto by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var photoError by remember { mutableStateOf<String?>(null) }
     var inStock by remember { mutableStateOf(product?.inStock ?: true) }
     var stockCountStr by remember { mutableStateOf(product?.stockCount?.toString() ?: "25") }
     var isOneHourEligible by remember { mutableStateOf(product?.isOneHourEligible ?: true) }
@@ -950,6 +1000,35 @@ fun AddEditProductDialog(
     var editingColorIndex by remember { mutableStateOf<Int?>(null) }
     var colorNameInput by remember { mutableStateOf("") }
     var colorHexInput by remember { mutableStateOf("#1B2A4A") }
+
+    fun applyCompressedPhoto(uri: Uri) {
+        scope.launch {
+            isProcessingPhoto = true
+            photoError = null
+            val dataUri = withContext(Dispatchers.IO) {
+                PouchImageHelper.compressImageUriToDataUrl(context, uri)
+            }
+            if (dataUri != null) {
+                imageUrl = dataUri
+            } else {
+                photoError = "Could not process selected image."
+            }
+            isProcessingPhoto = false
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) applyCompressedPhoto(uri)
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) applyCompressedPhoto(uri)
+    }
 
     val maxDialogBodyHeight = (spec.availableHeight * 0.62f).coerceIn(240.dp, 540.dp)
 
@@ -1043,13 +1122,110 @@ fun AddEditProductDialog(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedTextField(
-                        value = imageUrl,
-                        onValueChange = { imageUrl = it },
-                        label = { Text("Image URL") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF8FAFC))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                            .testTag("admin_product_image_upload_box")
+                    ) {
+                        Text(
+                            text = "Product Image Upload / URL",
+                            fontSize = spec.sp(12.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.White)
+                                    .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isProcessingPhoto) {
+                                    CircularProgressIndicator(color = iCaseNavy, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                                } else if (imageUrl.isNotBlank()) {
+                                    PouchThumbImage(
+                                        imageUrl = imageUrl,
+                                        contentDescription = "Product Preview",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(Icons.Default.ShoppingBag, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(26.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            FlowRow(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier
+                                        .heightIn(min = 40.dp)
+                                        .testTag("admin_product_gallery_button")
+                                ) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Gallery", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        try {
+                                            val uri = PouchImageHelper.createCameraTempUri(context)
+                                            pendingCameraUri = uri
+                                            cameraLauncher.launch(uri)
+                                        } catch (_: Exception) {
+                                            photoError = "Camera unavailable. Use Gallery or Image URL."
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier
+                                        .heightIn(min = 40.dp)
+                                        .testTag("admin_product_camera_button")
+                                ) {
+                                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Camera", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                                }
+                                if (imageUrl != defaultProductImageUrl) {
+                                    TextButton(
+                                        onClick = { imageUrl = defaultProductImageUrl },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 40.dp)
+                                    ) {
+                                        Text("Reset", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseRed)
+                                    }
+                                }
+                            }
+                        }
+                        if (photoError != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(photoError!!, color = iCaseRed, fontSize = spec.sp(11), fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = if (imageUrl.startsWith("data:image", ignoreCase = true)) "" else imageUrl,
+                            onValueChange = { imageUrl = it },
+                            label = { Text("Or Paste Image URL") },
+                            placeholder = { Text("https://...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1357,6 +1533,108 @@ fun AddEditProductDialog(
         dismissButton = {
             TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ExportDefaultCodeDialog(
+    exportCode: String,
+    onDismiss: () -> Unit,
+    onCopied: () -> Unit
+) {
+    val spec = LocalResponsiveSpec.current
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Export Default Code for GitHub",
+                fontWeight = FontWeight.Bold,
+                fontSize = spec.sp(16),
+                color = iCaseNavy
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = (spec.availableHeight * 0.58f).coerceIn(240.dp, 460.dp))
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    color = iCaseLightBlue,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "1. Copy this code or Share it to your PC/repo.\n2. Replace INITIAL_PRODUCTS, DEFAULT_SETTINGS & BAKED_SCREEN_GUARD_CONFIG in companion-website/src/data/constants.js and public/js/data.js.\n3. Commit & push to GitHub — your live site will show all updated images, prices, offers & items without a database!",
+                        fontSize = spec.sp(11.5f),
+                        color = iCaseNavy,
+                        lineHeight = spec.sp(16),
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 140.dp, max = 240.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF0F172A))
+                        .padding(10.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = exportCode,
+                        fontSize = spec.sp(10.5f),
+                        fontFamily = FontFamily.Monospace,
+                        color = Color(0xFFE2E8F0)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "iCASE default-data-export.js")
+                                putExtra(Intent.EXTRA_TEXT, exportCode)
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Share Export Code"))
+                        } catch (_: Exception) {}
+                    },
+                    modifier = Modifier.heightIn(min = 44.dp)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share")
+                }
+                Button(
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(exportCode))
+                        onCopied()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                    modifier = Modifier
+                        .heightIn(min = 44.dp)
+                        .testTag("export_copy_code_button")
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Copy Code")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 44.dp)) {
+                Text("Close")
             }
         }
     )

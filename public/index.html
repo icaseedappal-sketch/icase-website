@@ -297,6 +297,9 @@
         <div id="home-category-chips" class="flex flex-wrap gap-2"></div>
       </div>
 
+      <!-- Tempered Glass & Camera Lens Sample Cards -->
+      <div id="home-guard-sample-cards"></div>
+
       <!-- Popular Products Showcase -->
       <div>
         <div class="flex items-center justify-between gap-2 mb-4">
@@ -636,14 +639,42 @@
       <div id="admin-lock-card" class="max-w-md mx-auto bg-white rounded-3xl border border-slate-200 p-7 text-center shadow-sm space-y-4">
         <div class="w-14 h-14 rounded-2xl bg-icase-navy text-white flex items-center justify-center mx-auto text-2xl">🔒</div>
         <div>
-          <h2 class="text-xl font-extrabold text-icase-navy">iCASE Admin Console</h2>
-          <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage orders, repairs, product catalog &amp; live app settings synced with the Android App.</p>
+          <h2 class="text-xl font-extrabold text-icase-navy">iCASE Management</h2>
+          <p id="admin-lock-subtitle" class="text-xs sm:text-sm text-slate-500 mt-1">Manage orders, repairs, product catalog &amp; live app settings synced with the Android App.</p>
         </div>
+
+        <div id="admin-pin-success" class="hidden text-xs font-bold text-icase-green bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5"></div>
+        <div id="admin-pin-error" class="hidden text-xs font-bold text-icase-red"></div>
+        <div id="admin-lockout-banner" class="hidden text-xs font-extrabold text-icase-red bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5"></div>
+
         <form id="admin-login-form" class="space-y-3">
-          <input id="admin-pin-input" type="password" placeholder="Enter Admin PIN (default: 2026)" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-icase-blue focus:outline-none text-sm font-bold text-center" />
-          <div id="admin-pin-error" class="hidden text-xs font-bold text-icase-red"></div>
-          <button type="submit" class="w-full py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white font-bold text-sm transition min-h-[46px]">
+          <input id="admin-pin-input" type="password" placeholder="Enter Admin Password / PIN" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-icase-blue focus:outline-none text-sm font-bold text-center" />
+          <button id="admin-unlock-btn" type="submit" class="w-full py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white font-bold text-sm transition min-h-[46px]">
             Unlock Admin Dashboard
+          </button>
+          <button id="btn-admin-forgot" type="button" class="inline-flex items-center justify-center px-3 py-2 text-xs font-extrabold text-icase-blue hover:underline min-h-[44px]">
+            Forgot Password / PIN?
+          </button>
+        </form>
+
+        <form id="admin-recovery-form" class="hidden space-y-3">
+          <input id="admin-recovery-input" type="password" placeholder="Enter Master Recovery Code" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-icase-blue focus:outline-none text-sm font-bold text-center" />
+          <button id="admin-verify-recovery-btn" type="submit" class="w-full py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white font-bold text-sm transition min-h-[46px]">
+            Verify Master Recovery Code
+          </button>
+          <button id="btn-admin-back-login-1" type="button" class="inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-slate-600 hover:text-icase-navy min-h-[44px]">
+            ← Back to Admin Login
+          </button>
+        </form>
+
+        <form id="admin-reset-pin-form" class="hidden space-y-3">
+          <input id="admin-reset-new-pin" type="password" placeholder="New Admin Password / PIN (min 4 chars)" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-icase-blue focus:outline-none text-sm font-bold text-center" />
+          <input id="admin-reset-confirm-pin" type="password" placeholder="Confirm New Password / PIN" class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-icase-blue focus:outline-none text-sm font-bold text-center" />
+          <button id="admin-save-reset-pin-btn" type="submit" class="w-full py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white font-bold text-sm transition min-h-[46px]">
+            Save New Admin Password / PIN
+          </button>
+          <button id="btn-admin-back-login-2" type="button" class="inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-slate-600 hover:text-icase-navy min-h-[44px]">
+            Cancel &amp; Back to Login
           </button>
         </form>
       </div>
@@ -658,9 +689,14 @@
             </div>
             <p class="text-xs text-slate-300 mt-0.5">Changes immediately update both Web Storefront and Android App.</p>
           </div>
-          <button id="btn-admin-logout" type="button" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition">
-            Lock Admin
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="btn-admin-open-export" type="button" data-open-export-code="true" class="px-3.5 py-2 rounded-xl bg-icase-blue hover:bg-blue-700 text-xs font-extrabold text-white transition">
+              Export Default Code
+            </button>
+            <button id="btn-admin-logout" type="button" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition">
+              Lock Admin
+            </button>
+          </div>
         </div>
 
         <!-- Admin KPI Cards -->
@@ -786,6 +822,30 @@
         <button id="review-modal-close" type="button" class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-bold">✕</button>
       </div>
       <div id="review-modal-body" class="p-5 sm:p-6 overflow-y-auto space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ==================== EXPORT DEFAULT CODE MODAL ==================== -->
+  <div id="export-code-modal" class="hidden fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      <div class="bg-icase-navy text-white px-5 py-4 flex items-center justify-between shrink-0">
+        <strong class="text-base font-extrabold">Export Default Code for GitHub (No-DB Live Site)</strong>
+        <button id="export-code-close" type="button" class="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-bold">✕</button>
+      </div>
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-4">
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          Copy or download this code snapshot containing all current products, images, sample cards, offers, and store settings. Paste <code>DEFAULT_SETTINGS</code>, <code>INITIAL_PRODUCTS</code>, and <code>BAKED_SCREEN_GUARD_CONFIG</code> into <code>companion-website/src/data/constants.js</code> and <code>public/js/data.js</code>, then push to GitHub so your live site shows the exact same content without any database or localStorage.
+        </p>
+        <div class="flex flex-wrap gap-2.5">
+          <button id="btn-copy-export-code" type="button" class="px-4 py-2.5 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition">
+            Copy Code to Clipboard
+          </button>
+          <button id="btn-download-export-code" type="button" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-icase-navy text-xs sm:text-sm font-extrabold transition">
+            Download default-data-export.js
+          </button>
+        </div>
+        <pre id="export-code-pre" class="bg-slate-950 text-slate-100 rounded-2xl p-4 text-[11px] leading-relaxed font-mono max-h-[50vh] overflow-auto whitespace-pre-wrap break-all"></pre>
+      </div>
     </div>
   </div>
 

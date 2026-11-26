@@ -117,9 +117,62 @@ private sealed class GlassAdminDeleteTarget {
 @Composable
 fun AdminGlassOffersTab(
     config: ScreenGuardAdminConfig,
-    onSaveConfig: (ScreenGuardAdminConfig, String) -> Unit
+    onSaveConfig: (ScreenGuardAdminConfig, String) -> Unit,
+    onOpenExportCode: () -> Unit = {}
 ) {
     val spec = LocalResponsiveSpec.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingImageTarget by remember { mutableStateOf("") } // "GLASS" or "CAMERA"
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var isProcessingSamplePhoto by remember { mutableStateOf(false) }
+
+    var glassUrlInput by remember(config.temperedGlassImageUrl) {
+        mutableStateOf(
+            if (config.temperedGlassImageUrl.startsWith("data:image", ignoreCase = true)) "" else config.temperedGlassImageUrl
+        )
+    }
+    var cameraUrlInput by remember(config.cameraLensImageUrl) {
+        mutableStateOf(
+            if (config.cameraLensImageUrl.startsWith("data:image", ignoreCase = true)) "" else config.cameraLensImageUrl
+        )
+    }
+
+    fun applySampleCardUri(uri: Uri, target: String) {
+        scope.launch {
+            isProcessingSamplePhoto = true
+            val dataUri = withContext(Dispatchers.IO) {
+                PouchImageHelper.compressImageUriToDataUrl(context, uri)
+            }
+            if (dataUri != null) {
+                if (target == "CAMERA") {
+                    onSaveConfig(
+                        config.copy(cameraLensImageUrl = dataUri),
+                        "Camera Lens card image updated"
+                    )
+                } else {
+                    onSaveConfig(
+                        config.copy(temperedGlassImageUrl = dataUri),
+                        "Tempered Glass card image updated"
+                    )
+                }
+            }
+            isProcessingSamplePhoto = false
+        }
+    }
+
+    val sampleGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) applySampleCardUri(uri, pendingImageTarget)
+    }
+
+    val sampleCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) applySampleCardUri(uri, pendingImageTarget)
+    }
 
     var editingGlassType by remember { mutableStateOf<String?>(null) }
     var showAddGlassTypeDialog by remember { mutableStateOf(false) }
@@ -187,6 +240,242 @@ fun AdminGlassOffersTab(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(start = spec.horizontalPadding, end = spec.horizontalPadding, top = 14.dp, bottom = 96.dp)
     ) {
+        // 0. Home Sample Card & Item Images + Export Default Code
+        item {
+            ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, BorderLight)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(spec.cardPadding),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Sample Card & Item Images",
+                                    fontSize = spec.sp(15),
+                                    fontWeight = FontWeight.Bold,
+                                    color = iCaseNavy
+                                )
+                                Text(
+                                    text = "Update photos shown on Home cards, Screen Guard page & Cart.",
+                                    fontSize = spec.sp(11.5f),
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                            if (isProcessingSamplePhoto) {
+                                CircularProgressIndicator(color = iCaseNavy, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            }
+                        }
+
+                        // Tempered Glass Sample Image Row
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF8FAFC))
+                                .padding(10.dp)
+                        ) {
+                            Text("Tempered Glass Image", fontSize = spec.sp(12.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                PouchThumbImage(
+                                    imageUrl = ScreenGuardCatalog.resolveTemperedGlassImageUrl(config),
+                                    contentDescription = "Tempered Glass Sample",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                FlowRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            pendingImageTarget = "GLASS"
+                                            sampleGalleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Upload", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                pendingImageTarget = "GLASS"
+                                                val uri = PouchImageHelper.createCameraTempUri(context)
+                                                pendingCameraUri = uri
+                                                sampleCameraLauncher.launch(uri)
+                                            } catch (_: Exception) {}
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Camera", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            glassUrlInput = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL
+                                            onSaveConfig(
+                                                config.copy(temperedGlassImageUrl = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL),
+                                                "Reset Tempered Glass image to default"
+                                            )
+                                        },
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Text("Reset", fontSize = spec.sp(11), color = iCaseRed, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    value = glassUrlInput,
+                                    onValueChange = { glassUrlInput = it },
+                                    label = { Text("Image URL") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        val clean = glassUrlInput.trim().ifBlank { ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL }
+                                        onSaveConfig(config.copy(temperedGlassImageUrl = clean), "Tempered Glass image saved")
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                                    modifier = Modifier.heightIn(min = 46.dp)
+                                ) {
+                                    Text("Save", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // Camera Lens Sample Image Row
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF8FAFC))
+                                .padding(10.dp)
+                        ) {
+                            Text("Camera Lens Protector Image", fontSize = spec.sp(12.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                PouchThumbImage(
+                                    imageUrl = ScreenGuardCatalog.resolveCameraLensImageUrl(config),
+                                    contentDescription = "Camera Lens Sample",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                FlowRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            pendingImageTarget = "CAMERA"
+                                            sampleGalleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Upload", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                pendingImageTarget = "CAMERA"
+                                                val uri = PouchImageHelper.createCameraTempUri(context)
+                                                pendingCameraUri = uri
+                                                sampleCameraLauncher.launch(uri)
+                                            } catch (_: Exception) {}
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Camera", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            cameraUrlInput = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL
+                                            onSaveConfig(
+                                                config.copy(cameraLensImageUrl = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL),
+                                                "Reset Camera Lens image to default"
+                                            )
+                                        },
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Text("Reset", fontSize = spec.sp(11), color = iCaseRed, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    value = cameraUrlInput,
+                                    onValueChange = { cameraUrlInput = it },
+                                    label = { Text("Image URL") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        val clean = cameraUrlInput.trim().ifBlank { ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL }
+                                        onSaveConfig(config.copy(cameraLensImageUrl = clean), "Camera Lens image saved")
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                                    modifier = Modifier.heightIn(min = 46.dp)
+                                ) {
+                                    Text("Save", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenExportCode,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
+                                .testTag("admin_glass_export_code_button")
+                        ) {
+                            Text(
+                                text = "Export Default Code for GitHub (No-DB Live Site)",
+                                fontSize = spec.sp(12),
+                                fontWeight = FontWeight.Bold,
+                                color = iCaseNavy
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // 1. Tempered Glass Type Rates, Helper Notes & Offers
         item {
             ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {

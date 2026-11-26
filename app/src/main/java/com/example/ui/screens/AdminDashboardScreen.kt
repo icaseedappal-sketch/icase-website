@@ -123,6 +123,7 @@ fun AdminDashboardScreen(
     val storeEmail by viewModel.storeEmail.collectAsState()
     val storeAddress by viewModel.storeAddress.collectAsState()
     val storeHours by viewModel.storeHours.collectAsState()
+    val adminRecoveryCode by viewModel.adminRecoveryCode.collectAsState()
     val screenGuardConfig by viewModel.screenGuardConfig.collectAsState()
 
     var selectedAdminTab by remember { mutableIntStateOf(0) } // 0: Overview, 1: Orders, 2: Repairs, 3: Products, 4: Delivery & Settings, 5: Reviews, 6: Glass & Offers
@@ -136,6 +137,7 @@ fun AdminDashboardScreen(
     var repairToUpdate by remember { mutableStateOf<RepairBookingEntity?>(null) }
     var repairToReschedule by remember { mutableStateOf<RepairBookingEntity?>(null) }
     var repairToDelete by remember { mutableStateOf<RepairBookingEntity?>(null) }
+    var showExportCodeDialog by remember { mutableStateOf(false) }
 
     fun notify(msg: String) {
         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -329,7 +331,8 @@ fun AdminDashboardScreen(
                 3 -> AdminProductsTab(
                     products = allProducts,
                     onEdit = { productToEdit = it },
-                    onDelete = { productToDelete = it }
+                    onDelete = { productToDelete = it },
+                    onOpenExportCode = { showExportCodeDialog = true }
                 )
                 4 -> AdminSettingsAndPopularTab(
                     popularProducts = popularProducts,
@@ -345,6 +348,7 @@ fun AdminDashboardScreen(
                     storeEmail = storeEmail,
                     storeAddress = storeAddress,
                     storeHours = storeHours,
+                    adminRecoveryCode = adminRecoveryCode,
                     onSaveDeliverySettings = { std, exp, freeMin, oneHour ->
                         viewModel.updateDeliverySettings(std, exp, freeMin, oneHour)
                         notify("Delivery charges & express settings saved")
@@ -356,9 +360,9 @@ fun AdminDashboardScreen(
                     onUpdatePopular = { prod, isPop, rank ->
                         viewModel.setProductPopular(prod.id, isPop, rank)
                     },
-                    onChangePin = { newPin ->
-                        viewModel.updateAdminPin(newPin)
-                        notify("Admin credentials updated")
+                    onSaveSecurityCredentials = { newPin, newRecovery ->
+                        viewModel.updateAdminCredentials(newPin, newRecovery)
+                        notify("Admin password & recovery code updated")
                     }
                 )
                 5 -> AdminReviewsTab(
@@ -408,7 +412,8 @@ fun AdminDashboardScreen(
                     onSaveConfig = { updatedCfg, msg ->
                         viewModel.saveScreenGuardConfig(updatedCfg)
                         notify(msg)
-                    }
+                    },
+                    onOpenExportCode = { showExportCodeDialog = true }
                 )
             }
         }
@@ -582,6 +587,17 @@ fun AdminDashboardScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+
+    if (showExportCodeDialog) {
+        val exportText = remember(allProducts, screenGuardConfig, storeName, storePhone, storeWhatsapp, storeEmail, storeAddress, storeHours, isStoreOnline, isOneHourGloballyEnabled, standardDeliveryFee, expressDeliveryFee, freeDeliveryThreshold) {
+            viewModel.buildDefaultCodeExport()
+        }
+        ExportDefaultCodeDialog(
+            exportCode = exportText,
+            onDismiss = { showExportCodeDialog = false },
+            onCopied = { notify("Default code copied to clipboard!") }
         )
     }
 }
@@ -879,10 +895,11 @@ fun AdminSettingsAndPopularTab(
     storeEmail: String,
     storeAddress: String,
     storeHours: String,
+    adminRecoveryCode: String,
     onSaveDeliverySettings: (standardFee: Double, expressFee: Double, freeThreshold: Double, oneHourEnabled: Boolean) -> Unit,
     onSaveStoreSettings: (name: String, phone: String, whatsapp: String, email: String, address: String, hours: String, online: Boolean) -> Unit,
     onUpdatePopular: (ProductEntity, Boolean, Int) -> Unit,
-    onChangePin: (String) -> Unit
+    onSaveSecurityCredentials: (newPin: String, newRecoveryCode: String) -> Unit
 ) {
     val spec = LocalResponsiveSpec.current
     var stdFeeStr by remember(standardDeliveryFee) { mutableStateOf(standardDeliveryFee.toInt().toString()) }
@@ -899,7 +916,9 @@ fun AdminSettingsAndPopularTab(
     var editStoreHours by remember(storeHours) { mutableStateOf(storeHours) }
 
     var newPinInput by remember { mutableStateOf("") }
+    var recoveryCodeInput by remember(adminRecoveryCode) { mutableStateOf(adminRecoveryCode) }
     var pinMessage by remember { mutableStateOf<String?>(null) }
+    var pinError by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1229,7 +1248,7 @@ fun AdminSettingsAndPopularTab(
             }
         }
 
-        // 4. Change Admin PIN / Password
+        // 4. Change Admin Password & Recovery Code
         item {
             ResponsiveCenteredBox(maxWidth = spec.formMaxWidth) {
                 Card(
@@ -1238,40 +1257,94 @@ fun AdminSettingsAndPopularTab(
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Column(modifier = Modifier.padding(spec.cardPadding)) {
-                        Text("Change Admin Credentials", fontSize = spec.sp(15), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                        Text(
+                            text = "Change Admin Password & Recovery Code",
+                            fontSize = spec.sp(15),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Update the concealed password required after 5 logo taps.", fontSize = spec.sp(12), color = Color.Gray)
+                        Text(
+                            text = "Update the admin login PIN/password and the Master Recovery Code used for Forgot Password reset.",
+                            fontSize = spec.sp(12),
+                            color = Color.Gray
+                        )
 
                         Spacer(modifier = Modifier.height(10.dp))
 
                         OutlinedTextField(
                             value = newPinInput,
-                            onValueChange = { newPinInput = it },
-                            label = { Text("New Admin Password or PIN") },
+                            onValueChange = {
+                                newPinInput = it
+                                pinError = null
+                                pinMessage = null
+                            },
+                            label = { Text("New Admin Password / PIN (leave blank to keep current)") },
+                            placeholder = { Text("Minimum 4 characters") },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_settings_new_pin_input")
                         )
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = recoveryCodeInput,
+                            onValueChange = {
+                                recoveryCodeInput = it
+                                pinError = null
+                                pinMessage = null
+                            },
+                            label = { Text("Master Recovery Code (for Forgot Password)") },
+                            placeholder = { Text("Default: ICASE2026") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("admin_settings_recovery_code_input")
+                        )
+
+                        if (pinError != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(pinError!!, color = iCaseRed, fontSize = spec.sp(12), fontWeight = FontWeight.Bold)
+                        }
+
                         if (pinMessage != null) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(pinMessage!!, color = iCaseGreen, fontSize = spec.sp(12), fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Button(
                             onClick = {
-                                if (newPinInput.isNotBlank()) {
-                                    onChangePin(newPinInput.trim())
-                                    pinMessage = "Admin credential successfully updated."
-                                    newPinInput = ""
+                                val cleanPin = newPinInput.trim()
+                                val cleanRec = recoveryCodeInput.trim()
+                                if (cleanPin.isNotEmpty() && cleanPin.length < 4) {
+                                    pinError = "New Admin Password / PIN must be at least 4 characters."
+                                    return@Button
                                 }
+                                if (cleanRec.isNotEmpty() && cleanRec.length < 4) {
+                                    pinError = "Master Recovery Code must be at least 4 characters."
+                                    return@Button
+                                }
+                                if (cleanPin.isEmpty() && cleanRec == adminRecoveryCode) {
+                                    pinError = "Enter a new Password / PIN or update the Master Recovery Code."
+                                    return@Button
+                                }
+                                onSaveSecurityCredentials(cleanPin, cleanRec)
+                                pinError = null
+                                pinMessage = "Admin password & recovery code updated!"
+                                newPinInput = ""
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.heightIn(min = 48.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .testTag("admin_save_security_credentials_button")
                         ) {
-                            Text("Save New Password")
+                            Text("Save Password & Recovery Code", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

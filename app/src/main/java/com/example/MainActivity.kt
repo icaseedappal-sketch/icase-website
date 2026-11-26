@@ -226,13 +226,14 @@ fun MainApp(viewModel: AppViewModel = viewModel()) {
                         onBack = { viewModel.navigateBack() },
                         onCartClick = { viewModel.navigateTo(Screen.Cart) },
                         onProductClick = { product -> viewModel.navigateTo(Screen.ProductDetail(product)) },
-                        onOpenScreenGuards = { viewModel.navigateTo(Screen.ScreenGuards) },
+                        onOpenScreenGuards = { viewModel.navigateTo(Screen.ScreenGuards()) },
                         snackbarHostState = snackbarHostState
                     )
                 }
                 is Screen.ScreenGuards -> {
                     ScreenGuardsScreen(
                         viewModel = viewModel,
+                        initialSection = screen.initialSection,
                         onBack = { viewModel.navigateBack() },
                         onCartClick = { viewModel.navigateTo(Screen.Cart) }
                     )

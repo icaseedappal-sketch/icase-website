@@ -27,15 +27,18 @@ import {
   TIME_SLOTS,
   TOP_BRANDS,
   buildCameraLensCartProduct,
+  buildCameraLensWhatsAppMessage,
   buildComboCartProduct,
   buildPouchCartProduct,
   buildTemperedGlassCartProduct,
+  buildTemperedGlassWhatsAppMessage,
   computeProductRatingSummary,
   createDefaultScreenGuardConfig,
   detectCurrentLocation,
   escapeHtml,
   formatINR,
   formatTimestamp,
+  generateDefaultCodeExport,
   getActiveCameraLensBrands,
   getActivePouchesForBrand,
   getActiveScreenGuardBrands,
@@ -46,9 +49,14 @@ import {
   getHomeFeaturedPouches,
   getMatchingProductReviews,
   getModelsForBrand,
+  getPopularCameraLensModels,
+  getPopularGlassModels,
   getPouchModelsForBrand,
+  getStartingCameraLensPrice,
+  getStartingTemperedGlassPrice,
   guardModelKey,
   isCameraLensSectionAvailable,
+  isDeviceEligibleForCameraLens,
   isOrderCompleted,
   isRepairCompleted,
   normalizeHexColor,
@@ -59,11 +67,13 @@ import {
   parseOrderItems,
   parseScreenGuardConfig,
   repriceOrNullCartProduct,
+  resolveCameraLensImageUrl,
   resolveCameraLensPrice,
   resolveComboPrice,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolvePouchSelectedColor,
+  resolveTemperedGlassImageUrl,
   resolveTemperedGlassPrice,
   searchCameraLensCatalog,
   searchDeviceCatalog,
@@ -108,6 +118,7 @@ const STORAGE_CATALOG_SEEDED_KEY = 'icase_web_catalog_seeded_v1';
 const STORAGE_DELETED_PRODUCTS_KEY = 'icase_web_deleted_products_v1';
 const STORAGE_GUARD_CONFIG_KEY = 'icase_web_guard_config_v1';
 const STORAGE_SETTINGS_KEY = 'icase_web_settings_v1';
+const STORAGE_ADMIN_LOCK_KEY = 'icase_admin_lock_until_v1';
 
 const EMPTY_PROFILE = {
   userId: '',
@@ -206,6 +217,7 @@ const initialGuardConfig = parseScreenGuardConfig(
 
 const state = {
   activeTab: 'home',
+  guardsFocusTarget: '',
   homeSearch: '',
   selectedCategory: 'All',
   selectedCatalogBrand: '',
@@ -299,7 +311,12 @@ const state = {
   // Admin
   isAdminUnlocked: false,
   adminFailedAttempts: 0,
-  adminLockUntil: 0,
+  adminLockUntil: (() => {
+    const saved = Number(safeStorageGetItem(STORAGE_ADMIN_LOCK_KEY) || 0);
+    return saved > Date.now() ? saved : 0;
+  })(),
+  adminLockTimerId: null,
+  adminForgotStep: 'LOGIN', // 'LOGIN' | 'VERIFY_RECOVERY' | 'RESET_PIN'
   adminTab: 'ORDERS',
   adminSearch: '',
   adminOrders: [],
@@ -392,8 +409,9 @@ function showToast(msg) {
 }
 
 // ==================== NAVIGATION ====================
-function setActiveTab(tab) {
+function setActiveTab(tab, focusTarget = '') {
   state.activeTab = tab;
+  state.guardsFocusTarget = tab === 'guards' ? String(focusTarget || '') : '';
   const sections = ['home', 'guards', 'catalog', 'repair', 'track', 'admin'];
   sections.forEach((s) => {
     const el = document.getElementById(`section-${s}`);
@@ -419,6 +437,20 @@ function setActiveTab(tab) {
     renderCameraLensFinder();
     renderPouchesFinder();
     renderGuardInstallationOption();
+    if (state.guardsFocusTarget) {
+      const targetMap = {
+        glass: 'tempered-glass-wrapper',
+        camera: 'camera-lens-wrapper',
+        pouch: 'pouch-wrapper'
+      };
+      const elId = targetMap[state.guardsFocusTarget];
+      if (elId) {
+        requestAnimationFrame(() => {
+          document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        return;
+      }
+    }
   }
   if (tab === 'catalog') {
     renderCatalog();
@@ -593,6 +625,74 @@ function renderProductCardHtml(product) {
   `;
 }
 
+function renderHomeGuardSampleCards() {
+  const host = document.getElementById('home-guard-sample-cards');
+  if (!host) return;
+  const config = state.screenGuardConfig || createDefaultScreenGuardConfig();
+  const startingGlass = getStartingTemperedGlassPrice(config);
+  const startingLens = getStartingCameraLensPrice(config);
+  const glassImg = resolveTemperedGlassImageUrl(config);
+  const lensImg = resolveCameraLensImageUrl(config);
+  const camEnabled = isCameraLensSectionAvailable(config);
+
+  host.innerHTML = `
+    <div class="space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 class="text-xl font-extrabold text-icase-navy">Tempered Glass &amp; Camera Lens Protection</h2>
+          <p class="text-xs text-slate-500">Tap a sample card to pick your exact phone model &amp; glass type</p>
+        </div>
+        <button type="button" data-nav="guards" class="text-sm font-bold text-icase-blue hover:underline shrink-0">Open Finder →</button>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <button type="button" data-home-guard-card="glass" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col sm:flex-row transition">
+          <div class="w-full sm:w-40 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
+            <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+          </div>
+          <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
+              </div>
+              <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Tempered Glass</h3>
+              <p class="text-xs text-slate-600">Privacy, Matte, Borderless, 360 Privacy &amp; Normal 5D edge-to-edge guards with shop installation.</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span class="text-sm sm:text-base font-black text-icase-navy">Starting ${formatINR(startingGlass)}</span>
+              <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
+            </div>
+          </div>
+        </button>
+
+        ${
+          camEnabled
+            ? `
+          <button type="button" data-home-guard-card="camera" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col sm:flex-row transition">
+            <div class="w-full sm:w-40 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
+              <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            </div>
+            <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
+              <div class="space-y-1.5">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="px-2.5 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
+                </div>
+                <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Camera Lens Protector</h3>
+                <p class="text-xs text-slate-600">9H Sapphire metal ring lens guard for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span class="text-sm sm:text-base font-black text-icase-navy">Starting ${formatINR(startingLens)}</span>
+                <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
+              </div>
+            </div>
+          </button>
+        `
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
 function renderHome() {
   applySettingsToDom();
 
@@ -606,6 +706,8 @@ function renderHome() {
     `
     ).join('');
   }
+
+  renderHomeGuardSampleCards();
 
   const popular = state.products
     .filter((p) => p.isPopular)
@@ -818,11 +920,24 @@ function renderTemperedGlassFinder() {
     'Hi iCASE Edappal! I have a curved-display Samsung S series phone (S20 / S21 Ultra / S22 Ultra / S23 Ultra). Please share UV tempered glass options & pricing.'
   );
 
+  const glassImgUrl = resolveTemperedGlassImageUrl(config);
+  const glassFocused = state.guardsFocusTarget === 'glass';
+
+  const popularGlassModels = getPopularGlassModels(state.glassBrand, config);
+
   container.innerHTML = `
-    <div id="tempered-glass-wrapper" class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
-      <div>
-        <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Tempered Glass</h2>
-        <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Select your brand &amp; model for exact tempered glass</p>
+    <div id="tempered-glass-wrapper" class="bg-white rounded-2xl border ${
+      glassFocused ? 'border-icase-navy ring-2 ring-icase-navy/25' : 'border-slate-200'
+    } p-5 sm:p-6 shadow-sm space-y-4">
+      <div class="flex items-start gap-3.5">
+        <img src="${escapeHtml(glassImgUrl)}" alt="Tempered Glass Sample" class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0" />
+        <div class="min-w-0 flex-1 space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Tempered Glass</h2>
+            <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600">Select your brand &amp; model for exact tempered glass (Samsung curved S20 / S21–S23 Ultra UV glass via WhatsApp).</p>
+        </div>
       </div>
 
       <div class="flex flex-wrap gap-2">
@@ -861,6 +976,25 @@ function renderTemperedGlassFinder() {
         </div>
 
         <div id="glass-dropdown-menu" class="${state.glassDropdownOpen ? '' : 'hidden '}absolute left-0 right-0 mt-1.5 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl z-30">
+          ${
+            popularGlassModels.length > 0 && !state.glassSearch.trim()
+              ? `
+            <div class="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200">
+              <div class="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Popular Models (Quick Select)</div>
+              <div class="flex flex-wrap gap-1.5">
+                ${popularGlassModels
+                  .map((item) => {
+                    const active = state.glassBrand === item.brand && state.glassModel === item.model;
+                    return `<button type="button" data-pick-glass-brand="${escapeHtml(item.brand)}" data-pick-glass-model="${escapeHtml(item.model)}" class="px-2.5 py-1.5 rounded-full text-xs font-bold border transition ${
+                      active ? 'bg-icase-navy text-white border-icase-navy' : 'bg-white text-icase-navy border-slate-300 hover:border-icase-navy'
+                    }">${escapeHtml(item.model)}</button>`;
+                  })
+                  .join('')}
+              </div>
+            </div>
+          `
+              : ''
+          }
           ${
             grouped.length === 0
               ? `<div class="p-4 text-xs text-slate-500">No preset model matched "${escapeHtml(state.glassSearch)}". Choose <strong>${escapeHtml(OTHER_MODEL_OPTION)}</strong> below.</div>`
@@ -976,9 +1110,24 @@ function renderTemperedGlassFinder() {
       ${
         state.glassModel && pricing
           ? `
-        <button id="btn-glass-add-cart" type="button" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition shadow-sm min-h-[46px]">
-          Add to Cart • ${formatINR(pricing.finalPrice)}
-        </button>
+        <div class="grid sm:grid-cols-2 gap-2.5">
+          <button id="btn-glass-add-cart" type="button" class="w-full px-5 py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition shadow-sm min-h-[46px]">
+            Add to Cart • ${formatINR(pricing.finalPrice)}
+          </button>
+          <a id="btn-glass-whatsapp-order" href="${escapeHtml(
+            getStoreWaUrl(
+              buildTemperedGlassWhatsAppMessage({
+                brand: isManual ? 'CUSTOM' : state.glassBrand,
+                model: isManual ? state.glassManualModel.trim() || OTHER_MODEL_OPTION : state.glassModel,
+                glassType: state.glassType,
+                finalPrice: pricing.finalPrice,
+                installationOption: state.glassInstallationOption
+              })
+            )
+          )}" target="_blank" rel="noreferrer" class="w-full px-5 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-icase-green border border-emerald-500 text-xs sm:text-sm font-extrabold transition inline-flex items-center justify-center gap-2 min-h-[46px]">
+            💬 Ask / Order on WhatsApp
+          </a>
+        </div>
       `
           : ''
       }
@@ -1016,6 +1165,7 @@ function renderTemperedGlassFinder() {
   document.getElementById('glass-manual-input')?.addEventListener('input', (e) => {
     state.glassManualModel = e.target.value;
     state.glassError = '';
+    renderCameraLensFinder();
   });
 
   document.getElementById('btn-glass-add-cart')?.addEventListener('click', () => {
@@ -1071,12 +1221,53 @@ function renderCameraLensFinder() {
         )
       : null;
 
+  const camImgUrl = resolveCameraLensImageUrl(config);
+  const camFocused = state.guardsFocusTarget === 'camera';
+  const popularCameraModels = getPopularCameraLensModels(state.cameraBrand, config);
+  const effectiveGlassModel =
+    state.glassModel === OTHER_MODEL_OPTION ? state.glassManualModel.trim() : state.glassModel;
+  const effectiveGlassBrand =
+    state.glassModel === OTHER_MODEL_OPTION ? 'CUSTOM' : state.glassBrand;
+  const selectedGlassUnsupported =
+    Boolean(effectiveGlassModel) &&
+    !isDeviceEligibleForCameraLens(effectiveGlassBrand, effectiveGlassModel, config);
+  const searchUnsupported = Boolean(state.cameraSearch.trim()) && grouped.length === 0;
+
   container.innerHTML = `
-    <div id="camera-lens-wrapper" class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
-      <div>
-        <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Camera Lens Protection</h2>
-        <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Available exclusively for iPhone &amp; Samsung S Series models (including S20–S25 &amp; Ultra models)</p>
+    <div id="camera-lens-wrapper" class="bg-white rounded-2xl border ${
+      camFocused ? 'border-icase-navy ring-2 ring-icase-navy/25' : 'border-slate-200'
+    } p-5 sm:p-6 shadow-sm space-y-4">
+      <div class="flex items-start gap-3.5">
+        <img src="${escapeHtml(camImgUrl)}" alt="Camera Lens Protector Sample" class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0" />
+        <div class="min-w-0 flex-1 space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Camera Lens Protection</h2>
+            <span class="px-2.5 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600">Supported exclusively for iPhone &amp; Samsung Galaxy S Series (S20–S25 / Ultra). Not stocked for Redmi, Oppo, Realme, Vivo, OnePlus, Nothing, or Galaxy A/M series.</p>
+        </div>
       </div>
+
+      ${
+        selectedGlassUnsupported || searchUnsupported
+          ? `
+        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-1">
+          <div class="font-extrabold">Camera Lens Protector Not Available for This Model</div>
+          <p>${
+            selectedGlassUnsupported
+              ? `Your selected Tempered Glass device (<strong>${escapeHtml(
+                  state.glassModel === OTHER_MODEL_OPTION
+                    ? effectiveGlassModel
+                    : `${state.glassBrand} ${effectiveGlassModel}`.trim()
+                )}</strong>) does not have a Camera Lens Protector in stock. Camera Lens Protection is available only for <strong>iPhone</strong> and <strong>Samsung S Series</strong>.`
+              : `No matching Camera Lens Protector for "<strong>${escapeHtml(
+                  state.cameraSearch.trim()
+                )}</strong>". Camera Lens Protection is stocked strictly for <strong>iPhone</strong> and <strong>Samsung S Series</strong> models.`
+          }</p>
+        </div>
+      `
+          : ''
+      }
 
       <div class="flex flex-wrap gap-2">
         <button type="button" data-camera-brand="" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ${
@@ -1112,6 +1303,25 @@ function renderCameraLensFinder() {
         </div>
 
         <div id="camera-dropdown-menu" class="${state.cameraDropdownOpen ? '' : 'hidden '}absolute left-0 right-0 mt-1.5 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl z-30">
+          ${
+            popularCameraModels.length > 0 && !state.cameraSearch.trim()
+              ? `
+            <div class="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200">
+              <div class="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Popular Models (Quick Select)</div>
+              <div class="flex flex-wrap gap-1.5">
+                ${popularCameraModels
+                  .map((item) => {
+                    const active = state.cameraBrand === item.brand && state.cameraModel === item.model;
+                    return `<button type="button" data-pick-camera-brand="${escapeHtml(item.brand)}" data-pick-camera-model="${escapeHtml(item.model)}" class="px-2.5 py-1.5 rounded-full text-xs font-bold border transition ${
+                      active ? 'bg-icase-navy text-white border-icase-navy' : 'bg-white text-icase-navy border-slate-300 hover:border-icase-navy'
+                    }">${escapeHtml(item.model)}</button>`;
+                  })
+                  .join('')}
+              </div>
+            </div>
+          `
+              : ''
+          }
           ${
             grouped.length === 0
               ? `<div class="p-4 text-xs text-slate-500">Camera Lens Protection is available only for active iPhone and Samsung S Series models.</div>`
@@ -1152,9 +1362,23 @@ function renderCameraLensFinder() {
             ${pricing.offerBadge ? `<span class="px-2 py-0.5 rounded-full bg-icase-red text-white text-[10px] font-extrabold">${escapeHtml(pricing.offerBadge)}</span>` : ''}
           </div>
         </div>
-        <button id="btn-camera-add-cart" type="button" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition shadow-sm min-h-[46px]">
-          Add to Cart • ${formatINR(pricing.finalPrice)}
-        </button>
+        <div class="grid sm:grid-cols-2 gap-2.5">
+          <button id="btn-camera-add-cart" type="button" class="w-full px-5 py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition shadow-sm min-h-[46px]">
+            Add to Cart • ${formatINR(pricing.finalPrice)}
+          </button>
+          <a id="btn-camera-whatsapp-order" href="${escapeHtml(
+            getStoreWaUrl(
+              buildCameraLensWhatsAppMessage({
+                brand: state.cameraBrand,
+                model: state.cameraModel,
+                finalPrice: pricing.finalPrice,
+                installationOption: state.glassInstallationOption
+              })
+            )
+          )}" target="_blank" rel="noreferrer" class="w-full px-5 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-icase-green border border-emerald-500 text-xs sm:text-sm font-extrabold transition inline-flex items-center justify-center gap-2 min-h-[46px]">
+            💬 Ask / Order on WhatsApp
+          </a>
+        </div>
       `
           : ''
       }
@@ -3440,6 +3664,77 @@ function renderAccountModal() {
   );
 }
 
+function formatAdminLockRemaining(secs) {
+  const mins = Math.floor(secs / 60);
+  const rem = secs % 60;
+  return mins > 0 ? `${mins}m ${String(rem).padStart(2, '0')}s` : `${rem}s`;
+}
+
+function syncAdminLockCardUi() {
+  const subtitle = document.getElementById('admin-lock-subtitle');
+  const loginForm = document.getElementById('admin-login-form');
+  const recoveryForm = document.getElementById('admin-recovery-form');
+  const resetForm = document.getElementById('admin-reset-pin-form');
+  const lockBanner = document.getElementById('admin-lockout-banner');
+  const pinInput = document.getElementById('admin-pin-input');
+  const unlockBtn = document.getElementById('admin-unlock-btn');
+  const recInput = document.getElementById('admin-recovery-input');
+  const recBtn = document.getElementById('admin-verify-recovery-btn');
+
+  if (subtitle) {
+    if (state.adminForgotStep === 'VERIFY_RECOVERY') {
+      subtitle.textContent = 'Enter your Master Recovery Code to reset the Admin Password / PIN.';
+    } else if (state.adminForgotStep === 'RESET_PIN') {
+      subtitle.textContent = 'Master Recovery Code verified. Set a new Admin Password / PIN.';
+    } else {
+      subtitle.textContent =
+        'Manage orders, repairs, product catalog & live app settings synced with the Android App.';
+    }
+  }
+
+  loginForm?.classList.toggle('hidden', state.adminForgotStep !== 'LOGIN');
+  recoveryForm?.classList.toggle('hidden', state.adminForgotStep !== 'VERIFY_RECOVERY');
+  resetForm?.classList.toggle('hidden', state.adminForgotStep !== 'RESET_PIN');
+
+  const now = Date.now();
+  const remSec = state.adminLockUntil > now ? Math.ceil((state.adminLockUntil - now) / 1000) : 0;
+  const locked = remSec > 0;
+
+  if (lockBanner) {
+    if (locked) {
+      lockBanner.textContent = `🔒 Too many failed attempts. Locked for ${formatAdminLockRemaining(remSec)}`;
+      lockBanner.classList.remove('hidden');
+    } else {
+      lockBanner.classList.add('hidden');
+      if (state.adminLockUntil > 0) {
+        state.adminLockUntil = 0;
+        safeStorageSetItem(STORAGE_ADMIN_LOCK_KEY, '0');
+        document.getElementById('admin-pin-error')?.classList.add('hidden');
+      }
+      if (state.adminLockTimerId) {
+        clearInterval(state.adminLockTimerId);
+        state.adminLockTimerId = null;
+      }
+    }
+  }
+
+  if (pinInput) pinInput.disabled = locked;
+  if (unlockBtn) unlockBtn.disabled = locked;
+  if (recInput) recInput.disabled = locked;
+  if (recBtn) recBtn.disabled = locked;
+}
+
+function startAdminLockoutTimer(durationMs = 120000) {
+  state.adminLockUntil = Date.now() + durationMs;
+  state.adminFailedAttempts = 0;
+  safeStorageSetItem(STORAGE_ADMIN_LOCK_KEY, String(state.adminLockUntil));
+  if (state.adminLockTimerId) clearInterval(state.adminLockTimerId);
+  syncAdminLockCardUi();
+  state.adminLockTimerId = setInterval(() => {
+    syncAdminLockCardUi();
+  }, 1000);
+}
+
 // ==================== ADMIN DASHBOARD ====================
 function renderAdminSection() {
   const lockCard = document.getElementById('admin-lock-card');
@@ -3450,6 +3745,10 @@ function renderAdminSection() {
   if (!state.isAdminUnlocked) {
     lockCard?.classList.remove('hidden');
     consoleEl?.classList.add('hidden');
+    syncAdminLockCardUi();
+    if (state.adminLockUntil > Date.now() && !state.adminLockTimerId) {
+      state.adminLockTimerId = setInterval(() => syncAdminLockCardUi(), 1000);
+    }
     return;
   }
 
@@ -3613,9 +3912,12 @@ function renderAdminSection() {
 
     content.innerHTML = `
       <div class="space-y-4">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-2">
           <h3 class="font-extrabold text-icase-navy text-base">Manage Products &amp; Color Variants</h3>
-          <button id="admin-new-prod-btn" type="button" class="px-4 py-2 rounded-xl bg-icase-red text-white text-xs font-bold">+ Add New Product</button>
+          <div class="flex items-center gap-2">
+            <button type="button" data-open-export-code="true" class="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-icase-navy text-xs font-bold">Export Default Code</button>
+            <button id="admin-new-prod-btn" type="button" class="px-4 py-2 rounded-xl bg-icase-red text-white text-xs font-bold">+ Add New Product</button>
+          </div>
         </div>
 
         ${
@@ -3660,9 +3962,19 @@ function renderAdminSection() {
                 <label class="block text-xs font-bold text-slate-600 mb-1">Stock Count</label>
                 <input id="ap-stock" type="number" value="${escapeHtml(editingProd.stockCount ?? 25)}" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
               </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-600 mb-1">Image URL</label>
-                <input id="ap-img" type="url" value="${escapeHtml(editingProd.imageUrl)}" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Product Image (Upload Photo or Paste URL)</label>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center gap-3">
+                  <img id="ap-img-preview" src="${escapeHtml(editingProd.imageUrl || '')}" alt="Preview" class="w-16 h-16 rounded-xl object-cover border border-slate-300 bg-white shrink-0" />
+                  <div class="flex-1 min-w-[200px] space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label for="ap-img-file" class="px-3 py-1.5 rounded-lg bg-icase-navy hover:bg-icase-dark text-white text-xs font-bold cursor-pointer">Upload Image</label>
+                      <input id="ap-img-file" type="file" accept="image/*" class="hidden" />
+                      <button id="ap-img-reset" type="button" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100">Reset Default</button>
+                    </div>
+                    <input id="ap-img" type="text" value="${escapeHtml(editingProd.imageUrl || '')}" placeholder="https://... or uploaded image data" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm" />
+                  </div>
+                </div>
               </div>
             </div>
             <div>
@@ -3754,6 +4066,32 @@ function renderAdminSection() {
     document.getElementById('admin-cancel-prod')?.addEventListener('click', () => {
       state.editingProductId = null;
       renderAdminSection();
+    });
+    document.getElementById('ap-img')?.addEventListener('input', (e) => {
+      const prev = document.getElementById('ap-img-preview');
+      if (prev) prev.src = e.target.value.trim();
+    });
+    document.getElementById('ap-img-reset')?.addEventListener('click', () => {
+      const fallbackImg = 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&auto=format&fit=crop&q=80';
+      const inp = document.getElementById('ap-img');
+      const prev = document.getElementById('ap-img-preview');
+      if (inp) inp.value = fallbackImg;
+      if (prev) prev.src = fallbackImg;
+    });
+    document.getElementById('ap-img-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file);
+        const inp = document.getElementById('ap-img');
+        const prev = document.getElementById('ap-img-preview');
+        if (inp) inp.value = dataUrl;
+        if (prev) prev.src = dataUrl;
+        showToast('Product image uploaded! Click Save & Sync Product.');
+      } catch (err) {
+        showToast(err?.message || 'Unable to process selected image');
+      }
+      e.target.value = '';
     });
     content.querySelectorAll('[data-quick-discount]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -3895,6 +4233,50 @@ function renderAdminSection() {
 
     content.innerHTML = `
       <div class="space-y-6">
+        <!-- 0. Sample Card & Item Images (Home & Finder) -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="font-extrabold text-icase-navy text-base">Sample Card &amp; Item Images (Home &amp; Finder)</h3>
+              <p class="text-xs text-slate-500">Upload or paste custom images for the Tempered Glass &amp; Camera Lens Protector sample cards, finder headers, and cart items.</p>
+            </div>
+            <button type="button" data-open-export-code="true" class="px-3.5 py-2 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs font-extrabold transition">Export Default Code for GitHub</button>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div class="text-xs font-extrabold text-icase-navy">Tempered Glass Image</div>
+              <div class="flex items-center gap-3">
+                <img id="adm-tg-img-preview" src="${escapeHtml(resolveTemperedGlassImageUrl(cfg))}" alt="Tempered Glass Preview" class="w-16 h-16 rounded-xl object-cover border border-slate-300 bg-white shrink-0" />
+                <div class="flex flex-wrap gap-1.5">
+                  <label for="adm-tg-img-file" class="px-3 py-1.5 rounded-lg bg-icase-navy hover:bg-icase-dark text-white text-xs font-bold cursor-pointer">Upload Photo</label>
+                  <input id="adm-tg-img-file" type="file" accept="image/*" class="hidden" />
+                  <button id="adm-tg-img-reset" type="button" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100">Reset Default</button>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <input id="adm-tg-img-url" type="text" value="${escapeHtml(cfg.temperedGlassImageUrl || '')}" placeholder="Custom Image URL (blank = default)" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs" />
+                <button id="adm-tg-img-save" type="button" class="px-3.5 py-1.5 rounded-xl bg-icase-blue text-white text-xs font-bold shrink-0">Save</button>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div class="text-xs font-extrabold text-icase-navy">Camera Lens Protector Image</div>
+              <div class="flex items-center gap-3">
+                <img id="adm-cl-img-preview" src="${escapeHtml(resolveCameraLensImageUrl(cfg))}" alt="Camera Lens Preview" class="w-16 h-16 rounded-xl object-cover border border-slate-300 bg-white shrink-0" />
+                <div class="flex flex-wrap gap-1.5">
+                  <label for="adm-cl-img-file" class="px-3 py-1.5 rounded-lg bg-icase-navy hover:bg-icase-dark text-white text-xs font-bold cursor-pointer">Upload Photo</label>
+                  <input id="adm-cl-img-file" type="file" accept="image/*" class="hidden" />
+                  <button id="adm-cl-img-reset" type="button" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100">Reset Default</button>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <input id="adm-cl-img-url" type="text" value="${escapeHtml(cfg.cameraLensImageUrl || '')}" placeholder="Custom Image URL (blank = default)" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs" />
+                <button id="adm-cl-img-save" type="button" class="px-3.5 py-1.5 rounded-xl bg-icase-blue text-white text-xs font-bold shrink-0">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 1. Glass Type Rates, Helper Notes, Offers & Add/Delete -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -4640,6 +5022,54 @@ function renderAdminSection() {
         </div>
       </div>
     `;
+
+    // 0. Sample Card & Item Images Events
+    document.getElementById('adm-tg-img-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file);
+        const next = parseScreenGuardConfig(cfg);
+        next.temperedGlassImageUrl = dataUrl;
+        saveGuardConfig(next, 'Tempered Glass sample image updated!');
+      } catch (err) {
+        showToast(err?.message || 'Unable to process image');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-tg-img-save')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.temperedGlassImageUrl = document.getElementById('adm-tg-img-url')?.value?.trim() || '';
+      saveGuardConfig(next, 'Tempered Glass image saved!');
+    });
+    document.getElementById('adm-tg-img-reset')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.temperedGlassImageUrl = '';
+      saveGuardConfig(next, 'Tempered Glass image reset to default');
+    });
+    document.getElementById('adm-cl-img-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file);
+        const next = parseScreenGuardConfig(cfg);
+        next.cameraLensImageUrl = dataUrl;
+        saveGuardConfig(next, 'Camera Lens sample image updated!');
+      } catch (err) {
+        showToast(err?.message || 'Unable to process image');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-cl-img-save')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.cameraLensImageUrl = document.getElementById('adm-cl-img-url')?.value?.trim() || '';
+      saveGuardConfig(next, 'Camera Lens image saved!');
+    });
+    document.getElementById('adm-cl-img-reset')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.cameraLensImageUrl = '';
+      saveGuardConfig(next, 'Camera Lens image reset to default');
+    });
 
     // 1. Glass Type Events (Add + Save + Toggle + Delete + Restore)
     document.getElementById('btn-adm-toggle-add-gt')?.addEventListener('click', () => {
@@ -5435,28 +5865,73 @@ function renderAdminSection() {
           <label class="block text-xs font-bold text-slate-600 mb-1">Store Address</label>
           <input id="as-addr" type="text" value="${escapeHtml(s.store_address || '')}" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
         </div>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <div class="text-sm font-extrabold text-icase-navy">Change Admin Password &amp; Recovery Code</div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">New Admin Password / PIN (Optional, 4+ chars)</label>
+              <input id="as-admin-pin" type="password" placeholder="Leave blank to keep current PIN" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Master Recovery Code (Default: ICASE2026)</label>
+              <input id="as-recovery-code" type="text" value="${escapeHtml(s.admin_recovery_code || 'ICASE2026')}" placeholder="Minimum 4 characters" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white" />
+            </div>
+          </div>
+          <div id="as-sec-error" class="hidden text-xs font-bold text-icase-red"></div>
+        </div>
         <div class="flex flex-wrap gap-5 text-xs font-bold text-icase-navy">
           <label class="flex items-center gap-2"><input id="as-onehr" type="checkbox" ${s.one_hour_delivery_enabled !== 'false' ? 'checked' : ''} /> Enable 1-Hour Express Delivery</label>
           <label class="flex items-center gap-2"><input id="as-online" type="checkbox" ${s.store_online !== 'false' ? 'checked' : ''} /> Store Online (Accept Orders)</label>
         </div>
-        <button type="submit" class="px-5 py-2.5 rounded-xl bg-icase-navy text-white text-sm font-bold">Save &amp; Sync Settings</button>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-icase-navy text-white text-sm font-bold">Save &amp; Sync Settings</button>
+          <button type="button" data-open-export-code="true" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-icase-navy text-sm font-bold">Export Default Code for GitHub</button>
+        </div>
       </form>
     `;
 
     document.getElementById('admin-settings-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      await Promise.all([
-        saveSettingInCloud('delivery_fee_standard', Number(document.getElementById('as-std')?.value || 50).toFixed(2)),
-        saveSettingInCloud('delivery_fee_express', Number(document.getElementById('as-exp')?.value || 80).toFixed(2)),
-        saveSettingInCloud('free_delivery_threshold', Number(document.getElementById('as-free')?.value || 0).toFixed(2)),
-        saveSettingInCloud('store_phone', document.getElementById('as-phone')?.value?.trim() || '9961454059'),
-        saveSettingInCloud('store_whatsapp', document.getElementById('as-phone')?.value?.trim() || '9961454059'),
-        saveSettingInCloud('store_email', document.getElementById('as-email')?.value?.trim() || 'icaseedappal@gmail.com'),
-        saveSettingInCloud('store_address', document.getElementById('as-addr')?.value?.trim() || ''),
-        saveSettingInCloud('one_hour_delivery_enabled', document.getElementById('as-onehr')?.checked ? 'true' : 'false'),
-        saveSettingInCloud('store_online', document.getElementById('as-online')?.checked ? 'true' : 'false')
-      ]);
-      showToast('Store & delivery settings synced live!');
+      const newPin = document.getElementById('as-admin-pin')?.value?.trim() || '';
+      const newRecovery = document.getElementById('as-recovery-code')?.value?.trim() || '';
+      const secErr = document.getElementById('as-sec-error');
+      if (newPin && newPin.length < 4) {
+        if (secErr) {
+          secErr.textContent = 'New Admin Password / PIN must be at least 4 characters.';
+          secErr.classList.remove('hidden');
+        }
+        return;
+      }
+      if (newRecovery && newRecovery.length < 4) {
+        if (secErr) {
+          secErr.textContent = 'Master Recovery Code must be at least 4 characters.';
+          secErr.classList.remove('hidden');
+        }
+        return;
+      }
+      secErr?.classList.add('hidden');
+
+      const updates = {
+        delivery_fee_standard: Number(document.getElementById('as-std')?.value || 50).toFixed(2),
+        delivery_fee_express: Number(document.getElementById('as-exp')?.value || 80).toFixed(2),
+        free_delivery_threshold: Number(document.getElementById('as-free')?.value || 0).toFixed(2),
+        store_phone: document.getElementById('as-phone')?.value?.trim() || '9961454059',
+        store_whatsapp: document.getElementById('as-phone')?.value?.trim() || '9961454059',
+        store_email: document.getElementById('as-email')?.value?.trim() || 'icaseedappal@gmail.com',
+        store_address: document.getElementById('as-addr')?.value?.trim() || '',
+        one_hour_delivery_enabled: document.getElementById('as-onehr')?.checked ? 'true' : 'false',
+        store_online: document.getElementById('as-online')?.checked ? 'true' : 'false',
+        ...(newPin.length >= 4 ? { admin_pin: newPin } : {}),
+        ...(newRecovery.length >= 4 ? { admin_recovery_code: newRecovery } : {})
+      };
+
+      state.settings = { ...state.settings, ...updates };
+      saveJsonStorage(STORAGE_SETTINGS_KEY, state.settings);
+
+      await Promise.all(Object.entries(updates).map(([k, v]) => saveSettingInCloud(k, v)));
+      const pinField = document.getElementById('as-admin-pin');
+      if (pinField) pinField.value = '';
+      showToast('Store & security settings synced live!');
     });
   } else if (state.adminTab === 'REVIEWS') {
     const filtered = state.adminReviews.filter((r) => {
@@ -5760,9 +6235,38 @@ function renderAdminSection() {
   }
 }
 
+// ==================== EXPORT DEFAULT CODE MODAL ====================
+function openExportCodeModal() {
+  const modal = document.getElementById('export-code-modal');
+  const pre = document.getElementById('export-code-pre');
+  if (!modal || !pre) return;
+  pre.textContent = generateDefaultCodeExport({
+    products: state.products,
+    settings: state.settings,
+    screenGuardConfig: state.screenGuardConfig
+  });
+  modal.classList.remove('hidden');
+}
+
+function closeExportCodeModal() {
+  document.getElementById('export-code-modal')?.classList.add('hidden');
+}
+
 // ==================== GLOBAL EVENT DELEGATION & INIT ====================
 function bindGlobalEvents() {
   document.addEventListener('click', (e) => {
+    const guardSampleBtn = e.target.closest('[data-home-guard-card]');
+    if (guardSampleBtn) {
+      setActiveTab('guards', guardSampleBtn.dataset.homeGuardCard);
+      return;
+    }
+
+    const exportCodeBtn = e.target.closest('[data-open-export-code]');
+    if (exportCodeBtn) {
+      openExportCodeModal();
+      return;
+    }
+
     const navTarget = e.target.closest('[data-nav]');
     if (navTarget) {
       setActiveTab(navTarget.dataset.nav);
@@ -5886,9 +6390,8 @@ function bindGlobalEvents() {
     const gBrand = e.target.closest('[data-glass-brand]');
     if (gBrand) {
       state.glassBrand = gBrand.dataset.glassBrand;
-      if (state.glassModel !== OTHER_MODEL_OPTION) {
-        state.glassModel = '';
-      }
+      state.glassModel = '';
+      state.glassManualModel = '';
       state.glassSearch = '';
       state.glassError = '';
       state.glassDropdownOpen = true;
@@ -6130,21 +6633,109 @@ function bindGlobalEvents() {
     if (e.target.id === 'review-modal-overlay') closeReviewModal();
   });
 
-  document.getElementById('admin-login-form')?.addEventListener('submit', (e) => {
+  document.getElementById('btn-admin-forgot')?.addEventListener('click', () => {
+    state.adminForgotStep = 'VERIFY_RECOVERY';
+    document.getElementById('admin-pin-error')?.classList.add('hidden');
+    document.getElementById('admin-pin-success')?.classList.add('hidden');
+    const recInput = document.getElementById('admin-recovery-input');
+    if (recInput) recInput.value = '';
+    syncAdminLockCardUi();
+  });
+
+  const backToAdminLoginHandler = () => {
+    state.adminForgotStep = 'LOGIN';
+    document.getElementById('admin-pin-error')?.classList.add('hidden');
+    syncAdminLockCardUi();
+  };
+  document.getElementById('btn-admin-back-login-1')?.addEventListener('click', backToAdminLoginHandler);
+  document.getElementById('btn-admin-back-login-2')?.addEventListener('click', backToAdminLoginHandler);
+
+  document.getElementById('admin-recovery-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const errEl = document.getElementById('admin-pin-error');
     const now = Date.now();
     if (now < state.adminLockUntil) {
       const rem = Math.ceil((state.adminLockUntil - now) / 1000);
-      errEl.textContent = `Locked for ${rem}s due to invalid attempts.`;
+      errEl.textContent = `Locked for ${formatAdminLockRemaining(rem)} due to invalid attempts.`;
+      errEl.classList.remove('hidden');
+      syncAdminLockCardUi();
+      return;
+    }
+    const entered = document.getElementById('admin-recovery-input')?.value?.trim() || '';
+    const expected = String(state.settings.admin_recovery_code || 'ICASE2026').trim();
+    if (entered && entered === expected) {
+      state.adminFailedAttempts = 0;
+      state.adminLockUntil = 0;
+      safeStorageSetItem(STORAGE_ADMIN_LOCK_KEY, '0');
+      errEl?.classList.add('hidden');
+      state.adminForgotStep = 'RESET_PIN';
+      const newPinEl = document.getElementById('admin-reset-new-pin');
+      const confPinEl = document.getElementById('admin-reset-confirm-pin');
+      if (newPinEl) newPinEl.value = '';
+      if (confPinEl) confPinEl.value = '';
+      syncAdminLockCardUi();
+    } else {
+      state.adminFailedAttempts += 1;
+      if (state.adminFailedAttempts >= 3) {
+        startAdminLockoutTimer(120000);
+        errEl.textContent = 'Invalid Master Recovery Code. Locked for 2 minutes.';
+      } else {
+        errEl.textContent = `Invalid Master Recovery Code. ${3 - state.adminFailedAttempts} attempt(s) left.`;
+      }
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('admin-reset-pin-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('admin-pin-error');
+    const succEl = document.getElementById('admin-pin-success');
+    const newPin = document.getElementById('admin-reset-new-pin')?.value?.trim() || '';
+    const confPin = document.getElementById('admin-reset-confirm-pin')?.value?.trim() || '';
+    if (newPin.length < 4) {
+      errEl.textContent = 'New Admin Password / PIN must be at least 4 characters.';
       errEl.classList.remove('hidden');
       return;
     }
+    if (newPin !== confPin) {
+      errEl.textContent = 'Passwords do not match. Please re-enter.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    errEl?.classList.add('hidden');
+    state.settings = { ...state.settings, admin_pin: newPin };
+    saveJsonStorage(STORAGE_SETTINGS_KEY, state.settings);
+    await saveSettingInCloud('admin_pin', newPin);
+    const pinInput = document.getElementById('admin-pin-input');
+    if (pinInput) pinInput.value = '';
+    state.adminForgotStep = 'LOGIN';
+    if (succEl) {
+      succEl.textContent = 'New Admin Password / PIN saved! Enter it below to unlock.';
+      succEl.classList.remove('hidden');
+    }
+    syncAdminLockCardUi();
+  });
+
+  document.getElementById('admin-login-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('admin-pin-error');
+    const succEl = document.getElementById('admin-pin-success');
+    succEl?.classList.add('hidden');
+    const now = Date.now();
+    if (now < state.adminLockUntil) {
+      const rem = Math.ceil((state.adminLockUntil - now) / 1000);
+      errEl.textContent = `Locked for ${formatAdminLockRemaining(rem)} due to invalid attempts.`;
+      errEl.classList.remove('hidden');
+      syncAdminLockCardUi();
+      return;
+    }
     const pin = document.getElementById('admin-pin-input')?.value?.trim() || '';
-    const expected = state.settings.admin_pin || '2026';
+    const expected = String(state.settings.admin_pin || '2026').trim();
     if (pin === expected || pin === 'icase@admin2026') {
       state.isAdminUnlocked = true;
       state.adminFailedAttempts = 0;
+      state.adminLockUntil = 0;
+      safeStorageSetItem(STORAGE_ADMIN_LOCK_KEY, '0');
       errEl.classList.add('hidden');
       document.getElementById('admin-pin-input').value = '';
       state.unsubAdmin?.();
@@ -6166,9 +6757,8 @@ function bindGlobalEvents() {
     } else {
       state.adminFailedAttempts += 1;
       if (state.adminFailedAttempts >= 3) {
-        state.adminLockUntil = now + 30000;
-        state.adminFailedAttempts = 0;
-        errEl.textContent = '3 failed attempts. Locked for 30 seconds.';
+        startAdminLockoutTimer(120000);
+        errEl.textContent = '3 failed attempts. Locked for 2 minutes.';
       } else {
         errEl.textContent = `Invalid PIN. ${3 - state.adminFailedAttempts} attempt(s) left.`;
       }
@@ -6182,6 +6772,35 @@ function bindGlobalEvents() {
     state.unsubAdmin?.();
     state.unsubAdmin = null;
     renderAdminSection();
+  });
+
+  document.getElementById('export-code-close')?.addEventListener('click', closeExportCodeModal);
+  document.getElementById('export-code-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'export-code-modal') closeExportCodeModal();
+  });
+  document.getElementById('btn-copy-export-code')?.addEventListener('click', async () => {
+    const code = document.getElementById('export-code-pre')?.textContent || '';
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast('Default code copied to clipboard!');
+    } catch {
+      showToast('Select & copy from code preview');
+    }
+  });
+  document.getElementById('btn-download-export-code')?.addEventListener('click', () => {
+    const code = document.getElementById('export-code-pre')?.textContent || '';
+    if (!code) return;
+    const blob = new Blob([code], { type: 'application/javascript;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'default-data-export.js';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Downloaded default-data-export.js!');
   });
 }
 

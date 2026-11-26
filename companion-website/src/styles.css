@@ -1326,3 +1326,109 @@ textarea {
     padding-bottom: 94px;
   }
 }
+
+/* Home Sample Cards & Compatibility Badges */
+.guard-sample-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.guard-sample-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  text-align: left;
+  padding: 0;
+}
+
+.guard-sample-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--icase-navy);
+}
+
+.guard-sample-thumb {
+  width: 126px;
+  min-height: 136px;
+  flex-shrink: 0;
+  background: #F1F5F9;
+  position: relative;
+  overflow: hidden;
+}
+
+.guard-sample-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.guard-sample-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  flex: 1;
+}
+
+.compat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  width: fit-content;
+}
+
+.compat-pill.all {
+  background: #E8FDF2;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.compat-pill.limited {
+  background: #EAF2FF;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
+
+.compat-warning-box {
+  background: #FFF7ED;
+  border: 1.5px solid #FDBA74;
+  color: #9A3412;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.section-focus-ring {
+  border-color: var(--icase-navy) !important;
+  box-shadow: 0 0 0 3px rgba(11, 23, 40, 0.14), var(--shadow-md) !important;
+}
+
+.code-export-pre {
+  background: #0B1728;
+  color: #E2E8F0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 14px;
+  border-radius: 12px;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre;
+}

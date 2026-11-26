@@ -7,7 +7,8 @@ import {
   Play,
   X,
   MessageCircle,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import {
   OTHER_ANDROID_POUCHES_OPTION,
@@ -15,9 +16,11 @@ import {
   POUCH_BRANDS,
   SAMPLE_GUARD_VIDEO_URL,
   buildCameraLensCartProduct,
+  buildCameraLensWhatsAppMessage,
   buildComboCartProduct,
   buildPouchCartProduct,
   buildTemperedGlassCartProduct,
+  buildTemperedGlassWhatsAppMessage,
   createDefaultScreenGuardConfig,
   formatINR,
   getActiveCameraLensBrands,
@@ -25,11 +28,16 @@ import {
   getActiveScreenGuardBrands,
   getGlassTypeHelperNote,
   getGlassTypesForDevice,
+  getPopularCameraLensModels,
+  getPopularGlassModels,
+  isDeviceEligibleForCameraLens,
+  resolveCameraLensImageUrl,
   resolveCameraLensPrice,
   resolveComboPrice,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolvePouchSelectedColor,
+  resolveTemperedGlassImageUrl,
   resolveTemperedGlassPrice,
   searchCameraLensCatalog,
   searchPouchCatalog,
@@ -75,11 +83,23 @@ export default function ScreenGuardsSection({
   const glassDropRef = useRef(null);
   const cameraDropRef = useRef(null);
   const pouchDropRef = useRef(null);
+  const glassSectionRef = useRef(null);
+  const cameraSectionRef = useRef(null);
   const pouchSectionRef = useRef(null);
 
   useEffect(() => {
-    if (initialFocus === 'pouch' && pouchSectionRef.current) {
-      pouchSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const targetRef =
+      initialFocus === 'camera'
+        ? cameraSectionRef
+        : initialFocus === 'pouch'
+          ? pouchSectionRef
+          : initialFocus === 'glass'
+            ? glassSectionRef
+            : null;
+    if (targetRef?.current) {
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
     }
   }, [initialFocus]);
 
@@ -136,6 +156,11 @@ export default function ScreenGuardsSection({
     [glassBrand, glassSearch, config]
   );
 
+  const popularGlassModels = useMemo(
+    () => getPopularGlassModels(glassBrand, config),
+    [glassBrand, config]
+  );
+
   const glassPricing = useMemo(() => {
     if (!glassModel || availableGlassTypes.length === 0) return null;
     return resolveTemperedGlassPrice(
@@ -162,6 +187,11 @@ export default function ScreenGuardsSection({
   const groupedCamera = useMemo(
     () => searchCameraLensCatalog(cameraBrand, cameraSearch, config),
     [cameraBrand, cameraSearch, config]
+  );
+
+  const popularCameraModels = useMemo(
+    () => getPopularCameraLensModels(cameraBrand, config),
+    [cameraBrand, config]
   );
 
   const cameraPricing = useMemo(() => {
@@ -253,6 +283,18 @@ export default function ScreenGuardsSection({
   }
 
   const showCameraCard = activeCameraBrands.length > 0;
+  const temperedGlassSampleImg = resolveTemperedGlassImageUrl(config);
+  const cameraLensSampleImg = resolveCameraLensImageUrl(config);
+
+  const selectedGlassDeviceName = isManualGlass ? glassManualModel.trim() : glassModel;
+  const selectedGlassDeviceUnsupportedForCamera = useMemo(() => {
+    if (!selectedGlassDeviceName) return false;
+    return !isDeviceEligibleForCameraLens(
+      isManualGlass ? 'CUSTOM' : glassBrand,
+      selectedGlassDeviceName,
+      config
+    );
+  }, [selectedGlassDeviceName, isManualGlass, glassBrand, config]);
 
   return (
     <div className="guards-stack">
@@ -269,14 +311,36 @@ export default function ScreenGuardsSection({
       </div>
 
       {/* 1. TEMPERED GLASS CARD */}
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <h2 style={{ color: 'var(--icase-navy)', fontSize: 20, fontWeight: 900 }}>
-            Tempered Glass
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
-            Select your brand &amp; model for exact tempered glass
-          </p>
+      <section
+        id="tempered-glass-wrapper"
+        ref={glassSectionRef}
+        className={`card ${initialFocus === 'glass' ? 'section-focus-ring' : ''}`}
+        style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <img
+            src={temperedGlassSampleImg}
+            alt="Tempered Glass Sample"
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 12,
+              objectFit: 'cover',
+              border: '1px solid var(--border)',
+              flexShrink: 0
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+              <h2 style={{ color: 'var(--icase-navy)', fontSize: 20, fontWeight: 900 }}>
+                Tempered Glass
+              </h2>
+              <span className="compat-pill all">Available for iPhone &amp; All Android Models</span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
+              Select your brand &amp; model for exact tempered glass
+            </p>
+          </div>
         </div>
 
         <div className="category-chips">
@@ -286,6 +350,7 @@ export default function ScreenGuardsSection({
             onClick={() => {
               setGlassBrand('');
               setGlassModel('');
+              setGlassManualModel('');
               setGlassSearch('');
               setGlassError('');
               setGlassDropdownOpen(true);
@@ -301,6 +366,7 @@ export default function ScreenGuardsSection({
               onClick={() => {
                 setGlassBrand(brand);
                 setGlassModel('');
+                setGlassManualModel('');
                 setGlassSearch('');
                 setGlassError('');
                 setGlassDropdownOpen(true);
@@ -364,6 +430,60 @@ export default function ScreenGuardsSection({
 
           {glassDropdownOpen && (
             <div className="searchable-dropdown-menu">
+              {popularGlassModels.length > 0 && !glassSearch.trim() && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderBottom: '1px solid #E2E8F0',
+                    background: '#F8FAFC'
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 900,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#475569',
+                      marginBottom: 6
+                    }}
+                  >
+                    Popular Models (Quick Select)
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {popularGlassModels.map((item) => {
+                      const active = glassBrand === item.brand && glassModel === item.model;
+                      return (
+                        <button
+                          key={`pop-glass-${item.brand}-${item.model}`}
+                          type="button"
+                          onClick={() => {
+                            setGlassBrand(item.brand);
+                            setGlassModel(item.model);
+                            setGlassManualModel('');
+                            setGlassSearch('');
+                            setGlassError('');
+                            setGlassDropdownOpen(false);
+                          }}
+                          style={{
+                            padding: '6px 11px',
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            border: active ? '1px solid #0B1728' : '1px solid #CBD5E1',
+                            background: active ? '#0B1728' : '#FFFFFF',
+                            color: active ? '#FFFFFF' : '#0B1728',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {item.model}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {groupedGlass.length === 0 ? (
                 <div style={{ padding: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
                   No preset model matched &ldquo;{glassSearch}&rdquo;. Choose{' '}
@@ -383,6 +503,7 @@ export default function ScreenGuardsSection({
                           onClick={() => {
                             setGlassBrand(grp.brand);
                             setGlassModel(m);
+                            setGlassManualModel('');
                             setGlassSearch('');
                             setGlassError('');
                             setGlassDropdownOpen(false);
@@ -549,35 +670,113 @@ export default function ScreenGuardsSection({
         )}
 
         {glassModel && glassPricing && (
-          <div>
-            <button type="button" className="btn btn-navy" onClick={handleAddGlassToCart}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <button
+              type="button"
+              className="btn btn-navy"
+              style={{ flex: '1 1 220px', minHeight: 46 }}
+              onClick={handleAddGlassToCart}
+            >
               Add to Cart • {formatINR(glassPricing.finalPrice)}
             </button>
+            <a
+              href={buildWaUrl(
+                buildTemperedGlassWhatsAppMessage({
+                  brand: isManualGlass ? 'CUSTOM' : glassBrand,
+                  model: isManualGlass ? glassManualModel.trim() || OTHER_MODEL_OPTION : glassModel,
+                  glassType,
+                  finalPrice: glassPricing.finalPrice,
+                  installationOption
+                })
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="btn"
+              style={{
+                flex: '1 1 220px',
+                minHeight: 46,
+                background: '#F0FDF4',
+                color: '#15803D',
+                border: '1.5px solid #16A34A',
+                fontWeight: 800,
+                textDecoration: 'none'
+              }}
+              onClick={(e) => {
+                if (isManualGlass && !glassManualModel.trim()) {
+                  e.preventDefault();
+                  setGlassError('Please enter your exact device model name first.');
+                }
+              }}
+            >
+              <MessageCircle size={17} /> Ask / Order on WhatsApp
+            </a>
           </div>
         )}
       </section>
 
       {/* 2. CAMERA LENS PROTECTION CARD */}
       {showCameraCard && (
-        <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <h2
+        <section
+          id="camera-lens-wrapper"
+          ref={cameraSectionRef}
+          className={`card ${initialFocus === 'camera' ? 'section-focus-ring' : ''}`}
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <img
+              src={cameraLensSampleImg}
+              alt="Camera Lens Protector Sample"
               style={{
-                color: 'var(--icase-navy)',
-                fontSize: 20,
-                fontWeight: 900,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
+                width: 60,
+                height: 60,
+                borderRadius: 12,
+                objectFit: 'cover',
+                border: '1px solid var(--border)',
+                flexShrink: 0
               }}
-            >
-              <Camera size={20} color="#E50914" /> Camera Lens Protection
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
-              Available exclusively for iPhone &amp; Samsung S Series models (including S20–S25
-              &amp; Ultra models)
-            </p>
+            />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                <h2
+                  style={{
+                    color: 'var(--icase-navy)',
+                    fontSize: 20,
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <Camera size={20} color="#E50914" /> Camera Lens Protection
+                </h2>
+                <span className="compat-pill limited">iPhone &amp; Samsung S Series Only</span>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
+                Available exclusively for iPhone &amp; Samsung S Series models (including S20–S25
+                &amp; Ultra models). Not available for Redmi, Oppo, Realme, Vivo, OnePlus, Nothing,
+                or Galaxy A/M/F models.
+              </p>
+            </div>
           </div>
+
+          {selectedGlassDeviceUnsupportedForCamera && (
+            <div className="compat-warning-box" role="alert">
+              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div>
+                  Camera Lens Protector is not available for{' '}
+                  <strong>
+                    {isManualGlass ? selectedGlassDeviceName : `${glassBrand} ${selectedGlassDeviceName}`}
+                  </strong>
+                  .
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                  Camera Lens rings are currently supported only on iPhone and Samsung S Series
+                  (S20–S25 &amp; Ultra) models.
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="category-chips">
             <button
@@ -658,6 +857,58 @@ export default function ScreenGuardsSection({
 
             {cameraDropdownOpen && (
               <div className="searchable-dropdown-menu">
+                {popularCameraModels.length > 0 && !cameraSearch.trim() && (
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderBottom: '1px solid #E2E8F0',
+                      background: '#F8FAFC'
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: '#475569',
+                        marginBottom: 6
+                      }}
+                    >
+                      Popular Models (Quick Select)
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {popularCameraModels.map((item) => {
+                        const active = cameraBrand === item.brand && cameraModel === item.model;
+                        return (
+                          <button
+                            key={`pop-cam-${item.brand}-${item.model}`}
+                            type="button"
+                            onClick={() => {
+                              setCameraBrand(item.brand);
+                              setCameraModel(item.model);
+                              setCameraSearch('');
+                              setCameraDropdownOpen(false);
+                            }}
+                            style={{
+                              padding: '6px 11px',
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              border: active ? '1px solid #0B1728' : '1px solid #CBD5E1',
+                              background: active ? '#0B1728' : '#FFFFFF',
+                              color: active ? '#FFFFFF' : '#0B1728',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {item.model}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {groupedCamera.length === 0 ? (
                   <div style={{ padding: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
                     Camera Lens Protection is available only for active iPhone and Samsung S Series
@@ -693,6 +944,16 @@ export default function ScreenGuardsSection({
             )}
           </div>
 
+          {cameraSearch.trim().length > 0 && groupedCamera.length === 0 && (
+            <div className="compat-warning-box" role="alert">
+              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                Camera Lens Protector is not available for &ldquo;{cameraSearch.trim()}&rdquo;. Only
+                iPhone and Samsung Galaxy S Series (S20–S25 / Ultra) models are supported.
+              </div>
+            </div>
+          )}
+
           {cameraModel && cameraPricing && (
             <>
               <div className="pricing-summary-box">
@@ -715,10 +976,39 @@ export default function ScreenGuardsSection({
                 </div>
               </div>
 
-              <div>
-                <button type="button" className="btn btn-navy" onClick={handleAddCameraToCart}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-navy"
+                  style={{ flex: '1 1 220px', minHeight: 46 }}
+                  onClick={handleAddCameraToCart}
+                >
                   Add to Cart • {formatINR(cameraPricing.finalPrice)}
                 </button>
+                <a
+                  href={buildWaUrl(
+                    buildCameraLensWhatsAppMessage({
+                      brand: cameraBrand,
+                      model: cameraModel,
+                      finalPrice: cameraPricing.finalPrice,
+                      installationOption
+                    })
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn"
+                  style={{
+                    flex: '1 1 220px',
+                    minHeight: 46,
+                    background: '#F0FDF4',
+                    color: '#15803D',
+                    border: '1.5px solid #16A34A',
+                    fontWeight: 800,
+                    textDecoration: 'none'
+                  }}
+                >
+                  <MessageCircle size={17} /> Ask / Order on WhatsApp
+                </a>
               </div>
             </>
           )}

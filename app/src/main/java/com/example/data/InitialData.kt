@@ -217,6 +217,7 @@ object InitialData {
         AppSettingsEntity("delivery_fee_express", "80.00"),
         AppSettingsEntity("free_delivery_threshold", "0.00"),
         AppSettingsEntity("admin_pin", "2026"),
+        AppSettingsEntity("admin_recovery_code", "ICASE2026"),
         AppSettingsEntity("store_name", "iCASE Mobile Accessories & Repair"),
         AppSettingsEntity("store_phone", "9961454059"),
         AppSettingsEntity("store_whatsapp", "9961454059"),

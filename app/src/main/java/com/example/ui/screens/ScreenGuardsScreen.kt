@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -30,6 +31,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,7 +65,8 @@ fun ScreenGuardsScreen(
     viewModel: AppViewModel,
     onBack: () -> Unit,
     onCartClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialSection: String = ""
 ) {
     val spec = LocalResponsiveSpec.current
     val screenGuardConfig by viewModel.screenGuardConfig.collectAsState()
@@ -71,9 +74,23 @@ fun ScreenGuardsScreen(
     val totalCartCount = cartItems.sumOf { it.quantity }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     var installationOption by remember { mutableStateOf("Shop Installation") }
     var selectedGlassTriple by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var selectedGlassDevice by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    LaunchedEffect(initialSection) {
+        val targetIndex = when (initialSection.uppercase()) {
+            "TEMPERED_GLASS" -> 0
+            "CAMERA_LENS" -> 1
+            "POUCHES" -> 2
+            else -> -1
+        }
+        if (targetIndex >= 0) {
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
 
     fun notifyAdded(label: String) {
         scope.launch {
@@ -170,6 +187,7 @@ fun ScreenGuardsScreen(
             }
 
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     top = 12.dp,
@@ -182,6 +200,8 @@ fun ScreenGuardsScreen(
                     ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
                         TemperedGlassFinderCard(
                             config = screenGuardConfig,
+                            isHighlighted = initialSection.equals("TEMPERED_GLASS", ignoreCase = true),
+                            installationOption = installationOption,
                             onAddToCart = { brand, model, glassType ->
                                 viewModel.addTemperedGlassToCart(brand, model, glassType, installationOption)
                                 notifyAdded("$model ($glassType)")
@@ -192,11 +212,15 @@ fun ScreenGuardsScreen(
                                 } else {
                                     null
                                 }
+                                selectedGlassDevice = if (model.isNotBlank()) brand to model else null
                             },
                             onWhatsAppUvEnquiry = {
                                 viewModel.openWhatsAppEnquiry(
                                     "Hi iCASE Edappal, I would like UV tempered glass options for a curved-display Samsung S series phone."
                                 )
+                            },
+                            onWhatsAppOrder = { msg ->
+                                viewModel.openWhatsAppEnquiry(msg)
                             },
                             modifier = Modifier.padding(horizontal = spec.horizontalPadding)
                         )
@@ -208,7 +232,10 @@ fun ScreenGuardsScreen(
                     ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
                         CameraLensProtectionCard(
                             config = screenGuardConfig,
+                            isHighlighted = initialSection.equals("CAMERA_LENS", ignoreCase = true),
+                            installationOption = installationOption,
                             selectedGlassSelection = selectedGlassTriple,
+                            selectedGlassDevice = selectedGlassDevice,
                             onAddToCart = { brand, model ->
                                 viewModel.addCameraLensToCart(brand, model, installationOption)
                                 notifyAdded("$model Camera Lens")
@@ -223,6 +250,9 @@ fun ScreenGuardsScreen(
                                     installationOption = installationOption
                                 )
                                 notifyAdded("$gModel + Lens Combo")
+                            },
+                            onWhatsAppOrder = { msg ->
+                                viewModel.openWhatsAppEnquiry(msg)
                             },
                             modifier = Modifier.padding(horizontal = spec.horizontalPadding)
                         )

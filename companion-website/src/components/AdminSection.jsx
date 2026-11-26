@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, Trash2, Plus, LogOut, Lock } from 'lucide-react';
+import {
+  ShieldCheck,
+  Trash2,
+  Plus,
+  LogOut,
+  Lock,
+  Upload,
+  RotateCcw,
+  Code2,
+  Copy,
+  Download,
+  X,
+  Check
+} from 'lucide-react';
 import { deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -8,7 +21,9 @@ import {
   COLOR_PRESETS,
   ORDER_STATUSES,
   REPAIR_STATUSES,
+  compressImageFileToDataUrl,
   formatINR,
+  generateDefaultCodeExport,
   normalizeHexColor,
   parseColorOptions,
   parseComplaints,
@@ -36,8 +51,23 @@ export default function AdminSection({
 }) {
   const [pinInput, setPinInput] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
   const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockUntil, setLockUntil] = useState(0);
+  const [lockUntil, setLockUntil] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('icase_admin_lock_until_v1') || 0);
+      return saved > Date.now() ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [lockSecondsLeft, setLockSecondsLeft] = useState(() =>
+    lockUntil > Date.now() ? Math.ceil((lockUntil - Date.now()) / 1000) : 0
+  );
+  const [forgotStep, setForgotStep] = useState('LOGIN'); // 'LOGIN' | 'VERIFY_RECOVERY' | 'RESET_PIN'
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
+  const [resetNewPin, setResetNewPin] = useState('');
+  const [resetConfirmPin, setResetConfirmPin] = useState('');
 
   const [adminTab, setAdminTab] = useState('ORDERS'); // 'ORDERS' | 'REPAIRS' | 'PRODUCTS' | 'SETTINGS'
   const [searchFilter, setSearchFilter] = useState('');
@@ -58,6 +88,9 @@ export default function AdminSection({
   const [editingColorIdx, setEditingColorIdx] = useState(null);
   const [colorNameInput, setColorNameInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#1B2A4A');
+  const [prodImgUploadErr, setProdImgUploadErr] = useState('');
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportCopied, setExportCopied] = useState(false);
 
   // Settings form state
   const [standardFee, setStandardFee] = useState(settings.delivery_fee_standard || '50.00');
@@ -74,7 +107,11 @@ export default function AdminSection({
   const [storeAddress, setStoreAddress] = useState(settings.store_address || '');
   const [storeHours, setStoreHours] = useState(settings.store_hours || '');
   const [newAdminPin, setNewAdminPin] = useState('');
+  const [recoveryCodeSetting, setRecoveryCodeSetting] = useState(
+    settings.admin_recovery_code || 'ICASE2026'
+  );
   const [settingsSavedMsg, setSettingsSavedMsg] = useState('');
+  const [settingsErrorMsg, setSettingsErrorMsg] = useState('');
 
   useEffect(() => {
     setStandardFee(settings.delivery_fee_standard || '50.00');
@@ -90,29 +127,74 @@ export default function AdminSection({
       settings.store_address || 'Main Road, Near Town Square, Edappal, Malappuram, Kerala'
     );
     setStoreHours(settings.store_hours || '9:00 AM - 10:00 PM (Daily)');
+    setRecoveryCodeSetting(settings.admin_recovery_code || 'ICASE2026');
   }, [settings]);
+
+  useEffect(() => {
+    if (!lockUntil || lockUntil <= Date.now()) {
+      setLockSecondsLeft(0);
+      try {
+        localStorage.removeItem('icase_admin_lock_until_v1');
+      } catch {}
+      return undefined;
+    }
+    try {
+      localStorage.setItem('icase_admin_lock_until_v1', String(lockUntil));
+    } catch {}
+    const updateTick = () => {
+      const rem = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (rem <= 0) {
+        setLockSecondsLeft(0);
+        setLockUntil(0);
+        setAuthError('');
+        try {
+          localStorage.removeItem('icase_admin_lock_until_v1');
+        } catch {}
+      } else {
+        setLockSecondsLeft(rem);
+      }
+    };
+    updateTick();
+    const timer = setInterval(updateTick, 1000);
+    return () => clearInterval(timer);
+  }, [lockUntil]);
+
+  function formatLockoutTimer(secs) {
+    const mins = Math.floor(secs / 60);
+    const rem = secs % 60;
+    return mins > 0 ? `${mins}m ${String(rem).padStart(2, '0')}s` : `${rem}s`;
+  }
+
+  function triggerLockout(messagePrefix) {
+    const until = Date.now() + 120000;
+    setLockUntil(until);
+    setLockSecondsLeft(120);
+    setFailedAttempts(0);
+    setAuthError(`${messagePrefix} 3 failed attempts. Locked for 2 minutes.`);
+  }
 
   function handlePinSubmit(e) {
     e.preventDefault();
     const now = Date.now();
     if (now < lockUntil) {
       const rem = Math.ceil((lockUntil - now) / 1000);
-      setAuthError(`Locked for ${rem}s due to repeated invalid attempts.`);
+      setLockSecondsLeft(rem);
+      setAuthError(`Locked for ${formatLockoutTimer(rem)} due to repeated invalid attempts.`);
       return;
     }
-    const activePin = settings.admin_pin || '2026';
+    const activePin = String(settings.admin_pin || '2026').trim();
     if (pinInput.trim() === activePin || pinInput.trim() === 'icase@admin2026') {
       setFailedAttempts(0);
       setLockUntil(0);
+      setLockSecondsLeft(0);
       setPinInput('');
       setAuthError('');
+      setAuthSuccess('');
       onAdminLoginSuccess();
     } else {
       const next = failedAttempts + 1;
       if (next >= 3) {
-        setLockUntil(now + 30000);
-        setFailedAttempts(0);
-        setAuthError('3 failed attempts. Locked for 30 seconds.');
+        triggerLockout('Incorrect PIN.');
       } else {
         setFailedAttempts(next);
         setAuthError(`Invalid Admin PIN. ${3 - next} attempt(s) left.`);
@@ -120,33 +202,230 @@ export default function AdminSection({
     }
   }
 
+  function handleVerifyRecoverySubmit(e) {
+    e.preventDefault();
+    const now = Date.now();
+    if (now < lockUntil) {
+      const rem = Math.ceil((lockUntil - now) / 1000);
+      setLockSecondsLeft(rem);
+      setAuthError(`Locked for ${formatLockoutTimer(rem)} due to repeated invalid attempts.`);
+      return;
+    }
+    const expectedCode = String(settings.admin_recovery_code || 'ICASE2026').trim();
+    if (recoveryCodeInput.trim() && recoveryCodeInput.trim() === expectedCode) {
+      setFailedAttempts(0);
+      setLockUntil(0);
+      setLockSecondsLeft(0);
+      setAuthError('');
+      setForgotStep('RESET_PIN');
+    } else {
+      const next = failedAttempts + 1;
+      if (next >= 3) {
+        triggerLockout('Invalid Recovery Code.');
+      } else {
+        setFailedAttempts(next);
+        setAuthError(`Invalid Master Recovery Code. ${3 - next} attempt(s) left.`);
+      }
+    }
+  }
+
+  async function handleResetPinSubmit(e) {
+    e.preventDefault();
+    const cleanPin = resetNewPin.trim();
+    const cleanConfirm = resetConfirmPin.trim();
+    if (cleanPin.length < 4) {
+      setAuthError('New Admin Password / PIN must be at least 4 characters.');
+      return;
+    }
+    if (cleanPin !== cleanConfirm) {
+      setAuthError('Passwords do not match. Please re-enter.');
+      return;
+    }
+    await saveSetting('admin_pin', cleanPin);
+    setPinInput('');
+    setRecoveryCodeInput('');
+    setResetNewPin('');
+    setResetConfirmPin('');
+    setAuthError('');
+    setAuthSuccess('New Admin Password / PIN saved! Enter it below to unlock.');
+    setForgotStep('LOGIN');
+  }
+
   if (!isAdminLoggedIn) {
+    const isLocked = lockSecondsLeft > 0;
     return (
       <div className="card" style={{ maxWidth: 460, margin: '28px auto', textAlign: 'center' }}>
         <Lock size={40} color="#E50914" style={{ marginBottom: 10 }} />
-        <h2 style={{ color: 'var(--icase-navy)', marginBottom: 6 }}>iCASE Admin Console</h2>
+        <h2 style={{ color: 'var(--icase-navy)', marginBottom: 4 }}>iCASE Management</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13.5, marginBottom: 16 }}>
-          Manage orders, repairs, product catalog, delivery charges &amp; live app settings synced
-          with the Mobile App.
+          {forgotStep === 'VERIFY_RECOVERY'
+            ? 'Enter your Master Recovery Code to reset the Admin Password / PIN.'
+            : forgotStep === 'RESET_PIN'
+              ? 'Master Recovery Code verified. Set a new Admin Password / PIN.'
+              : 'Manage orders, repairs, product catalog, delivery charges & live app settings synced with the Mobile App.'}
         </p>
-        <form onSubmit={handlePinSubmit}>
-          <input
-            type="password"
-            className="input"
-            placeholder="Enter Admin PIN (default: 2026)"
-            value={pinInput}
-            onChange={(e) => setPinInput(e.target.value)}
-            style={{ marginBottom: 10 }}
-          />
-          {authError && (
-            <div style={{ color: '#E50914', fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
-              {authError}
-            </div>
-          )}
-          <button type="submit" className="btn btn-navy" style={{ width: '100%' }}>
-            <ShieldCheck size={17} /> Unlock Admin Dashboard
-          </button>
-        </form>
+
+        {forgotStep === 'VERIFY_RECOVERY' && (
+          <form onSubmit={handleVerifyRecoverySubmit}>
+            <input
+              type="password"
+              className="input"
+              placeholder="Enter Master Recovery Code"
+              value={recoveryCodeInput}
+              disabled={isLocked}
+              onChange={(e) => {
+                setRecoveryCodeInput(e.target.value);
+                setAuthError('');
+              }}
+              style={{ marginBottom: 10 }}
+            />
+            {authError && (
+              <div style={{ color: '#E50914', fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
+                {authError}
+              </div>
+            )}
+            {isLocked && (
+              <div
+                style={{
+                  background: '#FEF2F2',
+                  color: '#B91C1C',
+                  fontWeight: 800,
+                  fontSize: 13,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  marginBottom: 10
+                }}
+              >
+                🔒 Locked for {formatLockoutTimer(lockSecondsLeft)}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn btn-navy"
+              disabled={isLocked}
+              style={{ width: '100%', minHeight: 46 }}
+            >
+              Verify Master Recovery Code
+            </button>
+            <button
+              type="button"
+              className="section-link"
+              style={{ marginTop: 12, fontSize: 13 }}
+              onClick={() => {
+                setForgotStep('LOGIN');
+                setAuthError('');
+              }}
+            >
+              ← Back to Admin Login
+            </button>
+          </form>
+        )}
+
+        {forgotStep === 'RESET_PIN' && (
+          <form onSubmit={handleResetPinSubmit}>
+            <input
+              type="password"
+              className="input"
+              placeholder="New Admin Password / PIN (min 4 chars)"
+              value={resetNewPin}
+              onChange={(e) => {
+                setResetNewPin(e.target.value);
+                setAuthError('');
+              }}
+              style={{ marginBottom: 10 }}
+            />
+            <input
+              type="password"
+              className="input"
+              placeholder="Confirm New Password / PIN"
+              value={resetConfirmPin}
+              onChange={(e) => {
+                setResetConfirmPin(e.target.value);
+                setAuthError('');
+              }}
+              style={{ marginBottom: 10 }}
+            />
+            {authError && (
+              <div style={{ color: '#E50914', fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
+                {authError}
+              </div>
+            )}
+            <button type="submit" className="btn btn-navy" style={{ width: '100%', minHeight: 46 }}>
+              Save New Admin Password / PIN
+            </button>
+            <button
+              type="button"
+              className="section-link"
+              style={{ marginTop: 12, fontSize: 13 }}
+              onClick={() => {
+                setForgotStep('LOGIN');
+                setAuthError('');
+              }}
+            >
+              Cancel &amp; Back to Login
+            </button>
+          </form>
+        )}
+
+        {forgotStep === 'LOGIN' && (
+          <form onSubmit={handlePinSubmit}>
+            <input
+              type="password"
+              className="input"
+              placeholder="Enter Admin Password / PIN"
+              value={pinInput}
+              disabled={isLocked}
+              onChange={(e) => setPinInput(e.target.value)}
+              style={{ marginBottom: 10 }}
+            />
+            {authSuccess && (
+              <div style={{ color: '#15803D', fontWeight: 800, fontSize: 13, marginBottom: 10 }}>
+                {authSuccess}
+              </div>
+            )}
+            {authError && (
+              <div style={{ color: '#E50914', fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
+                {authError}
+              </div>
+            )}
+            {isLocked && (
+              <div
+                style={{
+                  background: '#FEF2F2',
+                  color: '#B91C1C',
+                  fontWeight: 800,
+                  fontSize: 13,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  marginBottom: 10
+                }}
+              >
+                🔒 Too many failed attempts. Locked for {formatLockoutTimer(lockSecondsLeft)}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn btn-navy"
+              disabled={isLocked}
+              style={{ width: '100%', minHeight: 46 }}
+            >
+              <ShieldCheck size={17} /> Unlock Admin Dashboard
+            </button>
+            <button
+              type="button"
+              className="section-link"
+              style={{ marginTop: 12, fontSize: 13, fontWeight: 700 }}
+              onClick={() => {
+                setForgotStep('VERIFY_RECOVERY');
+                setAuthError('');
+                setAuthSuccess('');
+                setRecoveryCodeInput('');
+              }}
+            >
+              Forgot Password / PIN?
+            </button>
+          </form>
+        )}
       </div>
     );
   }
@@ -169,6 +448,19 @@ export default function AdminSection({
 
   async function handleSaveAllSettings(e) {
     e.preventDefault();
+    const cleanPin = newAdminPin.trim();
+    const cleanRec = recoveryCodeSetting.trim();
+    if (cleanPin.length > 0 && cleanPin.length < 4) {
+      setSettingsErrorMsg('New Admin Password / PIN must be at least 4 characters.');
+      setSettingsSavedMsg('');
+      return;
+    }
+    if (cleanRec.length > 0 && cleanRec.length < 4) {
+      setSettingsErrorMsg('Master Recovery Code must be at least 4 characters.');
+      setSettingsSavedMsg('');
+      return;
+    }
+    setSettingsErrorMsg('');
     const updates = {
       delivery_fee_standard: Number(standardFee || 0).toFixed(2),
       delivery_fee_express: Number(expressFee || 0).toFixed(2),
@@ -181,7 +473,8 @@ export default function AdminSection({
       store_email: storeEmail.trim(),
       store_address: storeAddress.trim(),
       store_hours: storeHours.trim(),
-      ...(newAdminPin.trim().length >= 4 ? { admin_pin: newAdminPin.trim() } : {})
+      ...(cleanPin.length >= 4 ? { admin_pin: cleanPin } : {}),
+      ...(cleanRec.length >= 4 ? { admin_recovery_code: cleanRec } : {})
     };
     if (onUpdateSettingsLocal) {
       onUpdateSettingsLocal(updates);
@@ -315,9 +608,21 @@ export default function AdminSection({
             Full live control synced with Cloud Firestore &amp; Mobile App.
           </p>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={onAdminLogout}>
-          <LogOut size={15} /> Lock Admin
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-navy btn-sm"
+            onClick={() => {
+              setExportCopied(false);
+              setExportModalOpen(true);
+            }}
+          >
+            <Code2 size={15} /> Export Default Code
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={onAdminLogout}>
+            <LogOut size={15} /> Lock Admin
+          </button>
+        </div>
       </div>
 
       {/* KPI Metrics */}
@@ -535,9 +840,19 @@ export default function AdminSection({
 
       {adminTab === 'PRODUCTS' && (
         <div>
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn btn-red btn-sm" onClick={() => startEditProduct(null)}>
               <Plus size={16} /> Add New Product
+            </button>
+            <button
+              type="button"
+              className="btn btn-navy btn-sm"
+              onClick={() => {
+                setExportCopied(false);
+                setExportModalOpen(true);
+              }}
+            >
+              <Code2 size={15} /> Export Products &amp; Data Code
             </button>
           </div>
 
@@ -599,12 +914,69 @@ export default function AdminSection({
                   />
                 </div>
                 <div className="form-group">
-                  <label>Image URL</label>
+                  <label>Product Image (Upload or URL)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <img
+                      src={
+                        prodImageUrl ||
+                        'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500&auto=format&fit=crop&q=80'
+                      }
+                      alt="Product preview"
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 10,
+                        objectFit: 'cover',
+                        border: '1px solid var(--border)',
+                        background: '#FFF',
+                        flexShrink: 0
+                      }}
+                    />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                        <Upload size={14} /> Upload Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = '';
+                            if (!f) return;
+                            try {
+                              setProdImgUploadErr('');
+                              const dataUrl = await compressImageFileToDataUrl(f);
+                              setProdImageUrl(dataUrl);
+                            } catch (err) {
+                              setProdImgUploadErr(err.message || 'Image upload failed');
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() =>
+                          setProdImageUrl(
+                            'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500&auto=format&fit=crop&q=80'
+                          )
+                        }
+                      >
+                        <RotateCcw size={13} /> Reset
+                      </button>
+                    </div>
+                  </div>
                   <input
                     className="input"
+                    placeholder="https://... or upload image above"
                     value={prodImageUrl}
                     onChange={(e) => setProdImageUrl(e.target.value)}
                   />
+                  {prodImgUploadErr && (
+                    <div style={{ color: '#E50914', fontSize: 12, fontWeight: 700 }}>
+                      {prodImgUploadErr}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="form-group">
@@ -899,6 +1271,10 @@ export default function AdminSection({
         <AdminGlassOffersTab
           screenGuardConfig={screenGuardConfig}
           onSaveGuardConfig={onSaveGuardConfig}
+          onOpenExportCode={() => {
+            setExportCopied(false);
+            setExportModalOpen(true);
+          }}
         />
       )}
 
@@ -993,15 +1369,53 @@ export default function AdminSection({
             />
           </div>
 
-          <div className="form-group">
-            <label>Change Admin PIN (Optional, 4+ chars)</label>
-            <input
-              type="password"
-              className="input"
-              placeholder="Leave blank to keep current PIN"
-              value={newAdminPin}
-              onChange={(e) => setNewAdminPin(e.target.value)}
-            />
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              background: '#F8FAFC',
+              border: '1px solid #CBD5E1',
+              marginBottom: 16
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 800,
+                color: 'var(--icase-navy)',
+                fontSize: 14,
+                marginBottom: 10
+              }}
+            >
+              Change Admin Password &amp; Recovery Code
+            </div>
+            <div className="form-grid-2">
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>New Admin Password / PIN (Optional, 4+ chars)</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="Leave blank to keep current PIN"
+                  value={newAdminPin}
+                  onChange={(e) => {
+                    setNewAdminPin(e.target.value);
+                    setSettingsErrorMsg('');
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Master Recovery Code (Default: ICASE2026)</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Enter Master Recovery Code"
+                  value={recoveryCodeSetting}
+                  onChange={(e) => {
+                    setRecoveryCodeSetting(e.target.value);
+                    setSettingsErrorMsg('');
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 16 }}>
@@ -1023,16 +1437,108 @@ export default function AdminSection({
             </label>
           </div>
 
+          {settingsErrorMsg && (
+            <div style={{ color: '#E50914', fontWeight: 800, fontSize: 13.5, marginBottom: 10 }}>
+              {settingsErrorMsg}
+            </div>
+          )}
+
           {settingsSavedMsg && (
             <div style={{ color: '#10B981', fontWeight: 800, fontSize: 13.5, marginBottom: 10 }}>
               {settingsSavedMsg}
             </div>
           )}
 
-          <button type="submit" className="btn btn-red">
-            Save &amp; Sync All Settings
-          </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <button type="submit" className="btn btn-red">
+              Save &amp; Sync All Settings
+            </button>
+            <button
+              type="button"
+              className="btn btn-navy"
+              onClick={() => {
+                setExportCopied(false);
+                setExportModalOpen(true);
+              }}
+            >
+              <Code2 size={16} /> Export Default Code for GitHub
+            </button>
+          </div>
         </form>
+      )}
+
+      {exportModalOpen && (
+        <div className="overlay" onClick={() => setExportModalOpen(false)}>
+          <div className="modal" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <strong style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Code2 size={18} /> Export Default Data Code for GitHub (No-DB Live Site)
+              </strong>
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{ background: 'rgba(255,255,255,0.14)', color: '#FFF' }}
+                onClick={() => setExportModalOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="helper-note-bar">
+                Copy or download this code and replace <strong>DEFAULT_SETTINGS</strong>,{' '}
+                <strong>INITIAL_PRODUCTS</strong>, and <strong>BAKED_SCREEN_GUARD_CONFIG</strong>{' '}
+                in <code>companion-website/src/data/constants.js</code> and{' '}
+                <code>public/js/data.js</code>. Push to GitHub so your live Netlify site loads every
+                product, custom photo, rate, and pouch without a database.
+              </div>
+              {(() => {
+                const exportCode = generateDefaultCodeExport({
+                  products,
+                  settings,
+                  screenGuardConfig
+                });
+                return (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                      <button
+                        type="button"
+                        className="btn btn-navy btn-sm"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(exportCode);
+                            setExportCopied(true);
+                            setTimeout(() => setExportCopied(false), 3000);
+                          } catch {}
+                        }}
+                      >
+                        {exportCopied ? <Check size={15} /> : <Copy size={15} />}
+                        {exportCopied ? 'Copied to Clipboard!' : 'Copy Code'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => {
+                          const blob = new Blob([exportCode], { type: 'text/javascript;charset=utf-8' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'default-data-export.js';
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download size={15} /> Download default-data-export.js
+                      </button>
+                    </div>
+                    <pre className="code-export-pre">{exportCode}</pre>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

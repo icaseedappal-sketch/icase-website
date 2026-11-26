@@ -392,8 +392,8 @@ private fun ProductHeroImageCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = liveProduct.imageUrl,
+            com.example.ui.components.PouchThumbImage(
+                imageUrl = liveProduct.imageUrl,
                 contentDescription = liveProduct.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

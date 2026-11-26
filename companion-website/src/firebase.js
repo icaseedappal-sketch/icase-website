@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -8,13 +8,22 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   limit,
   query,
   setDoc
 } from 'firebase/firestore';
-import { DEFAULT_SETTINGS, INITIAL_PRODUCTS } from './data/constants';
+import {
+  CATALOG_SEEDED_KEY,
+  DEFAULT_SETTINGS,
+  DELETED_PRODUCTS_KEY,
+  INITIAL_PRODUCTS,
+  SCREEN_GUARD_CONFIG_KEY,
+  parseDeletedProductIds,
+  serializeScreenGuardConfig
+} from './data/constants';
 
 // Mirrors app/google-services.json & app/src/main/res/values/firebase_applet_config.xml
 export const FIREBASE_CONFIG = {
@@ -30,28 +39,64 @@ export const FIREBASE_CONFIG = {
 export const FIRESTORE_DATABASE_ID =
   'ai-studio-android-icase-44842779-78b7-4b24-894c-745423e44d91';
 
-const app = initializeApp(FIREBASE_CONFIG);
-export const auth = getAuth(app);
-export const db = getFirestore(app, FIRESTORE_DATABASE_ID);
-export const googleProvider = new GoogleAuthProvider();
+let app = null;
+let auth = null;
+let db = null;
+let googleProvider = null;
+
+try {
+  app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getFirestore(app, FIRESTORE_DATABASE_ID);
+  googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+} catch (err) {
+  console.warn('Firebase initialized in offline fallback mode:', err);
+}
 
 export {
+  app,
+  auth,
+  db,
+  googleProvider,
   signInWithPopup,
   signOut
 };
 
 export async function seedFirestoreIfEmpty() {
+  if (!db) return false;
   try {
-    const productSnap = await getDocs(query(collection(db, 'products'), limit(1)));
-    if (productSnap.empty) {
-      await Promise.all(
-        INITIAL_PRODUCTS.map((product) =>
-          setDoc(doc(db, 'products', product.id), {
-            ...product,
-            updatedAt: Date.now()
-          })
-        )
-      );
+    const [seededSnap, deletedSnap] = await Promise.all([
+      getDoc(doc(db, 'settings', CATALOG_SEEDED_KEY)),
+      getDoc(doc(db, 'settings', DELETED_PRODUCTS_KEY))
+    ]);
+
+    const alreadySeeded = seededSnap.exists() && seededSnap.data()?.value === 'true';
+    const deletedIds = deletedSnap.exists()
+      ? parseDeletedProductIds(deletedSnap.data()?.value)
+      : [];
+
+    if (!alreadySeeded) {
+      const productSnap = await getDocs(query(collection(db, 'products'), limit(1)));
+      if (productSnap.empty) {
+        const deletedSet = new Set(deletedIds);
+        const toSeed = INITIAL_PRODUCTS.filter((p) => !deletedSet.has(p.id));
+        if (toSeed.length > 0) {
+          await Promise.all(
+            toSeed.map((product) =>
+              setDoc(doc(db, 'products', product.id), {
+                ...product,
+                updatedAt: Date.now()
+              })
+            )
+          );
+        }
+      }
+      await setDoc(doc(db, 'settings', CATALOG_SEEDED_KEY), {
+        key: CATALOG_SEEDED_KEY,
+        value: 'true',
+        updatedAt: Date.now()
+      });
     }
 
     const settingSnap = await getDocs(query(collection(db, 'settings'), limit(1)));
@@ -66,7 +111,18 @@ export async function seedFirestoreIfEmpty() {
         )
       );
     }
+
+    const guardCfgSnap = await getDoc(doc(db, 'settings', SCREEN_GUARD_CONFIG_KEY));
+    if (!guardCfgSnap.exists()) {
+      await setDoc(doc(db, 'settings', SCREEN_GUARD_CONFIG_KEY), {
+        key: SCREEN_GUARD_CONFIG_KEY,
+        value: serializeScreenGuardConfig(),
+        updatedAt: Date.now()
+      });
+    }
+    return true;
   } catch (err) {
-    console.warn('Initial Firestore seed skipped or failed:', err);
+    console.warn('Initial Firestore seed skipped or offline:', err);
+    return false;
   }
 }

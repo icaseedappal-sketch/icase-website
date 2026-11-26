@@ -3,6 +3,7 @@ import { ShieldCheck, Trash2, Plus, LogOut, Lock } from 'lucide-react';
 import { deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
+  CATALOG_SEEDED_KEY,
   CATEGORIES,
   COLOR_PRESETS,
   ORDER_STATUSES,
@@ -14,6 +15,8 @@ import {
   parseOrderItems,
   serializeColorOptions
 } from '../data/constants';
+import AdminGlassOffersTab from './AdminGlassOffersTab';
+import AdminReviewsTab from './AdminReviewsTab';
 
 export default function AdminSection({
   isAdminLoggedIn,
@@ -22,7 +25,14 @@ export default function AdminSection({
   orders,
   repairs,
   products,
-  settings
+  settings,
+  screenGuardConfig,
+  reviews = [],
+  onSaveGuardConfig,
+  onUpdateProductsLocal,
+  onDeleteProductPersistent,
+  onUpdateSettingsLocal,
+  onUpdateReviewsLocal
 }) {
   const [pinInput, setPinInput] = useState('');
   const [authError, setAuthError] = useState('');
@@ -146,6 +156,10 @@ export default function AdminSection({
   const pendingRepairs = repairs.filter((r) => r.status !== 'Delivered').length;
 
   async function saveSetting(key, value) {
+    if (onUpdateSettingsLocal) {
+      onUpdateSettingsLocal({ [key]: String(value) });
+    }
+    if (!db) return;
     await setDoc(doc(db, 'settings', key), {
       key,
       value: String(value),
@@ -155,22 +169,40 @@ export default function AdminSection({
 
   async function handleSaveAllSettings(e) {
     e.preventDefault();
-    await Promise.all([
-      saveSetting('delivery_fee_standard', Number(standardFee || 0).toFixed(2)),
-      saveSetting('delivery_fee_express', Number(expressFee || 0).toFixed(2)),
-      saveSetting('free_delivery_threshold', Number(freeThreshold || 0).toFixed(2)),
-      saveSetting('one_hour_delivery_enabled', oneHourEnabled ? 'true' : 'false'),
-      saveSetting('store_online', storeOnline ? 'true' : 'false'),
-      saveSetting('store_name', storeName.trim()),
-      saveSetting('store_phone', storePhone.trim()),
-      saveSetting('store_whatsapp', storeWhatsapp.trim()),
-      saveSetting('store_email', storeEmail.trim()),
-      saveSetting('store_address', storeAddress.trim()),
-      saveSetting('store_hours', storeHours.trim()),
-      ...(newAdminPin.trim().length >= 4 ? [saveSetting('admin_pin', newAdminPin.trim())] : [])
-    ]);
+    const updates = {
+      delivery_fee_standard: Number(standardFee || 0).toFixed(2),
+      delivery_fee_express: Number(expressFee || 0).toFixed(2),
+      free_delivery_threshold: Number(freeThreshold || 0).toFixed(2),
+      one_hour_delivery_enabled: oneHourEnabled ? 'true' : 'false',
+      store_online: storeOnline ? 'true' : 'false',
+      store_name: storeName.trim(),
+      store_phone: storePhone.trim(),
+      store_whatsapp: storeWhatsapp.trim(),
+      store_email: storeEmail.trim(),
+      store_address: storeAddress.trim(),
+      store_hours: storeHours.trim(),
+      ...(newAdminPin.trim().length >= 4 ? { admin_pin: newAdminPin.trim() } : {})
+    };
+    if (onUpdateSettingsLocal) {
+      onUpdateSettingsLocal(updates);
+    }
+    if (db) {
+      await Promise.all(
+        Object.entries(updates).map(([k, v]) =>
+          setDoc(doc(db, 'settings', k), {
+            key: k,
+            value: String(v),
+            updatedAt: Date.now()
+          })
+        )
+      );
+    }
     setNewAdminPin('');
-    setSettingsSavedMsg('Settings updated and synced live to Web & Mobile App!');
+    setSettingsSavedMsg(
+      db
+        ? 'Settings updated and synced live to Web & Mobile App!'
+        : 'Settings updated locally for this session.'
+    );
     setTimeout(() => setSettingsSavedMsg(''), 4000);
   }
 
@@ -226,11 +258,9 @@ export default function AdminSection({
   async function handleSaveProduct(e) {
     e.preventDefault();
     if (!prodName.trim() || !prodPrice) return;
-    const id =
-      editingProduct && !editingProduct.isNew
-        ? editingProduct.id
-        : `prod_${Date.now()}`;
-    await setDoc(doc(db, 'products', id), {
+    const isEdit = Boolean(editingProduct && !editingProduct.isNew);
+    const id = isEdit ? editingProduct.id : `prod_${Date.now()}`;
+    const payload = {
       id,
       name: prodName.trim(),
       category: prodCategory,
@@ -245,7 +275,16 @@ export default function AdminSection({
       popularityRank: editingProduct?.popularityRank || 5,
       colorOptionsJson: serializeColorOptions(prodColors),
       updatedAt: Date.now()
-    });
+    };
+    if (onUpdateProductsLocal) {
+      onUpdateProductsLocal((prev) =>
+        isEdit ? prev.map((p) => (p.id === id ? payload : p)) : [payload, ...prev]
+      );
+    }
+    if (db) {
+      await setDoc(doc(db, 'products', id), payload);
+      await saveSetting(CATALOG_SEEDED_KEY, 'true');
+    }
     setEditingProduct(null);
   }
 
@@ -323,6 +362,18 @@ export default function AdminSection({
           Products ({products.length})
         </button>
         <button
+          className={`chip ${adminTab === 'GLASS_OFFERS' ? 'active' : ''}`}
+          onClick={() => setAdminTab('GLASS_OFFERS')}
+        >
+          Glass, Lens &amp; Pouches
+        </button>
+        <button
+          className={`chip ${adminTab === 'REVIEWS' ? 'active' : ''}`}
+          onClick={() => setAdminTab('REVIEWS')}
+        >
+          Reviews ({reviews.length})
+        </button>
+        <button
           className={`chip ${adminTab === 'SETTINGS' ? 'active' : ''}`}
           onClick={() => setAdminTab('SETTINGS')}
         >
@@ -383,12 +434,13 @@ export default function AdminSection({
                     className="input"
                     style={{ maxWidth: 220 }}
                     value={order.status}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (!db) return;
                       updateDoc(doc(db, 'orders', order.id), {
                         status: e.target.value,
                         updatedAt: Date.now()
-                      })
-                    }
+                      });
+                    }}
                   >
                     {ORDER_STATUSES.map((st) => (
                       <option key={st} value={st}>
@@ -399,7 +451,10 @@ export default function AdminSection({
                   <button
                     className="btn btn-outline btn-sm"
                     style={{ color: '#E50914' }}
-                    onClick={() => deleteDoc(doc(db, 'orders', order.id))}
+                    onClick={() => {
+                      if (!db) return;
+                      deleteDoc(doc(db, 'orders', order.id));
+                    }}
                   >
                     <Trash2 size={14} /> Delete
                   </button>
@@ -447,12 +502,13 @@ export default function AdminSection({
                     className="input"
                     style={{ maxWidth: 230 }}
                     value={repair.status}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      if (!db) return;
                       updateDoc(doc(db, 'repairs', repair.id), {
                         status: e.target.value,
                         updatedAt: Date.now()
-                      })
-                    }
+                      });
+                    }}
                   >
                     {REPAIR_STATUSES.map((st) => (
                       <option key={st} value={st}>
@@ -463,7 +519,10 @@ export default function AdminSection({
                   <button
                     className="btn btn-outline btn-sm"
                     style={{ color: '#E50914' }}
-                    onClick={() => deleteDoc(doc(db, 'repairs', repair.id))}
+                    onClick={() => {
+                      if (!db) return;
+                      deleteDoc(doc(db, 'repairs', repair.id));
+                    }}
                   >
                     <Trash2 size={14} /> Delete
                   </button>
@@ -790,12 +849,22 @@ export default function AdminSection({
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     className="btn btn-outline btn-sm"
-                    onClick={() =>
-                      updateDoc(doc(db, 'products', product.id), {
-                        inStock: !product.inStock,
-                        updatedAt: Date.now()
-                      })
-                    }
+                    onClick={async () => {
+                      const nextStock = !product.inStock;
+                      if (onUpdateProductsLocal) {
+                        onUpdateProductsLocal((prev) =>
+                          prev.map((p) =>
+                            p.id === product.id ? { ...p, inStock: nextStock, updatedAt: Date.now() } : p
+                          )
+                        );
+                      }
+                      if (db) {
+                        await updateDoc(doc(db, 'products', product.id), {
+                          inStock: nextStock,
+                          updatedAt: Date.now()
+                        });
+                      }
+                    }}
                   >
                     {product.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
                   </button>
@@ -808,7 +877,14 @@ export default function AdminSection({
                   <button
                     className="btn btn-outline btn-sm"
                     style={{ color: '#E50914' }}
-                    onClick={() => deleteDoc(doc(db, 'products', product.id))}
+                    onClick={async () => {
+                      if (db) {
+                        await deleteDoc(doc(db, 'products', product.id));
+                      }
+                      if (onDeleteProductPersistent) {
+                        await onDeleteProductPersistent(product.id);
+                      }
+                    }}
                   >
                     Delete
                   </button>
@@ -817,6 +893,20 @@ export default function AdminSection({
             ))}
           </div>
         </div>
+      )}
+
+      {adminTab === 'GLASS_OFFERS' && (
+        <AdminGlassOffersTab
+          screenGuardConfig={screenGuardConfig}
+          onSaveGuardConfig={onSaveGuardConfig}
+        />
+      )}
+
+      {adminTab === 'REVIEWS' && (
+        <AdminReviewsTab
+          reviews={reviews}
+          onUpdateReviewsLocal={onUpdateReviewsLocal}
+        />
       )}
 
       {adminTab === 'SETTINGS' && (

@@ -29,6 +29,11 @@ export default function TrackOrderSection({ activeTrackingId, onChangeTrackingId
       return;
     }
 
+    if (!db) {
+      setTrackingState({ loading: false, type: 'NOT_FOUND', data: null });
+      return;
+    }
+
     setTrackingState((prev) => ({ ...prev, loading: true }));
 
     let orderDoc = null;

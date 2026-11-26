@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Home,
   ShoppingBag,
+  Shield,
   Wrench,
   Search,
   User,
@@ -80,6 +81,12 @@ export default function Navbar({
               <ShoppingBag size={16} /> Catalog
             </button>
             <button
+              className={`nav-link-btn ${activeTab === 'guards' ? 'active' : ''}`}
+              onClick={() => onSelectTab('guards')}
+            >
+              <Shield size={16} /> Glass &amp; Lens
+            </button>
+            <button
               className={`nav-link-btn ${activeTab === 'repair' ? 'active' : ''}`}
               onClick={() => onSelectTab('repair')}
             >
@@ -106,7 +113,7 @@ export default function Navbar({
               <span>
                 {profile?.isLoggedIn
                   ? (profile.name || profile.phone || 'Account').split(' ')[0]
-                  : 'Login / Account'}
+                  : 'Account / Login'}
               </span>
             </button>
             <button className="btn btn-red btn-sm cart-btn" onClick={onOpenCart}>
@@ -133,6 +140,13 @@ export default function Navbar({
           >
             <ShoppingBag size={18} />
             <span>Shop</span>
+          </button>
+          <button
+            className={`mobile-nav-item ${activeTab === 'guards' ? 'active' : ''}`}
+            onClick={() => onSelectTab('guards')}
+          >
+            <Shield size={18} />
+            <span>Glass</span>
           </button>
           <button
             className={`mobile-nav-item ${activeTab === 'repair' ? 'active' : ''}`}

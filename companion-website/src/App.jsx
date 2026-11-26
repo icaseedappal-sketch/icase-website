@@ -9,16 +9,38 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ShieldCheck, Zap, Award } from 'lucide-react';
-import { auth, db, googleProvider, seedFirestoreIfEmpty, signInWithPopup } from './firebase';
-import { DEFAULT_SETTINGS, INITIAL_PRODUCTS } from './data/constants';
+import { auth, db, seedFirestoreIfEmpty } from './firebase';
+import {
+  CATALOG_SEEDED_KEY,
+  DEFAULT_SETTINGS,
+  DELETED_PRODUCTS_KEY,
+  INITIAL_PRODUCTS,
+  SCREEN_GUARD_CONFIG_KEY,
+  createDefaultScreenGuardConfig,
+  parseDeletedProductIds,
+  parseScreenGuardConfig,
+  repriceOrNullCartProduct,
+  serializeDeletedProductIds,
+  serializeScreenGuardConfig
+} from './data/constants';
 import Navbar from './components/Navbar';
 import HomeSection from './components/HomeSection';
 import CatalogSection from './components/CatalogSection';
+import ScreenGuardsSection from './components/ScreenGuardsSection';
 import RepairSection from './components/RepairSection';
 import TrackOrderSection from './components/TrackOrderSection';
 import CartDrawer from './components/CartDrawer';
 import AccountModal from './components/AccountModal';
 import AdminSection from './components/AdminSection';
+import VerifiedReviewModal from './components/VerifiedReviewModal';
+
+const STORAGE_CART_KEY = 'icase_web_cart';
+const STORAGE_PROFILE_KEY = 'icase_web_profile';
+const STORAGE_PRODUCTS_KEY = 'icase_web_products_v1';
+const STORAGE_DELETED_PRODUCTS_KEY = 'icase_web_deleted_products_v1';
+const STORAGE_CATALOG_SEEDED_KEY = 'icase_web_catalog_seeded_v1';
+const STORAGE_SETTINGS_KEY = 'icase_web_settings_v1';
+const STORAGE_GUARD_CONFIG_KEY = 'icase_web_guard_config_v1';
 
 const EMPTY_PROFILE = {
   userId: '',
@@ -32,98 +54,253 @@ const EMPTY_PROFILE = {
   wishlistIds: []
 };
 
+function safeStorageGetItem(key) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSetItem(key, value) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {}
+}
+
+function loadJsonStorage(key, fallback) {
+  try {
+    const raw = safeStorageGetItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJsonStorage(key, value) {
+  try {
+    safeStorageSetItem(key, JSON.stringify(value));
+  } catch {}
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'catalog' | 'repair' | 'track' | 'admin'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'catalog' | 'guards' | 'repair' | 'track' | 'admin'
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeTrackingId, setActiveTrackingId] = useState('');
+  const [guardsFocusTarget, setGuardsFocusTarget] = useState('');
 
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [deletedProductIds, setDeletedProductIds] = useState(() => {
+    const localDel = parseDeletedProductIds(loadJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, []));
+    return localDel;
+  });
+
+  const [products, setProducts] = useState(() => {
+    const localDel = new Set(parseDeletedProductIds(loadJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, [])));
+    const localProducts = loadJsonStorage(STORAGE_PRODUCTS_KEY, null);
+    if (Array.isArray(localProducts) && localProducts.length > 0) {
+      return localProducts.filter((p) => p && !localDel.has(p.id));
+    }
+    if (safeStorageGetItem(STORAGE_CATALOG_SEEDED_KEY) === 'true' && Array.isArray(localProducts)) {
+      return localProducts.filter((p) => p && !localDel.has(p.id));
+    }
+    return INITIAL_PRODUCTS.filter((p) => !localDel.has(p.id));
+  });
+
+  const [settings, setSettings] = useState(() => {
+    const localSettings = loadJsonStorage(STORAGE_SETTINGS_KEY, null);
+    return localSettings && typeof localSettings === 'object'
+      ? { ...DEFAULT_SETTINGS, ...localSettings }
+      : DEFAULT_SETTINGS;
+  });
+
+  const [screenGuardConfig, setScreenGuardConfig] = useState(() => {
+    const localGuard = loadJsonStorage(STORAGE_GUARD_CONFIG_KEY, null);
+    if (localGuard) return parseScreenGuardConfig(localGuard);
+    const localSettings = loadJsonStorage(STORAGE_SETTINGS_KEY, null);
+    if (localSettings && localSettings[SCREEN_GUARD_CONFIG_KEY]) {
+      return parseScreenGuardConfig(localSettings[SCREEN_GUARD_CONFIG_KEY]);
+    }
+    return createDefaultScreenGuardConfig();
+  });
 
   const [profile, setProfile] = useState(() => {
-    try {
-      const saved = localStorage.getItem('icase_web_profile');
-      return saved ? { ...EMPTY_PROFILE, ...JSON.parse(saved) } : EMPTY_PROFILE;
-    } catch {
-      return EMPTY_PROFILE;
-    }
+    const saved = loadJsonStorage(STORAGE_PROFILE_KEY, null);
+    return saved && typeof saved === 'object' ? { ...EMPTY_PROFILE, ...saved } : EMPTY_PROFILE;
   });
 
   const [myOrders, setMyOrders] = useState([]);
   const [myRepairs, setMyRepairs] = useState([]);
+  const [publicReviews, setPublicReviews] = useState([]);
 
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminRepairs, setAdminRepairs] = useState([]);
+  const [adminReviews, setAdminReviews] = useState([]);
 
   const [cartItems, setCartItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('icase_web_cart');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    const saved = loadJsonStorage(STORAGE_CART_KEY, []);
+    return Array.isArray(saved) ? saved : [];
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const [authResolved, setAuthResolved] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState('');
+  const [reviewModalState, setReviewModalState] = useState({ open: false, prefillId: '' });
 
-  // Persist cart & profile locally
+  // Persist local fallbacks cleanly
   useEffect(() => {
-    try {
-      localStorage.setItem('icase_web_cart', JSON.stringify(cartItems));
-    } catch {}
+    saveJsonStorage(STORAGE_CART_KEY, cartItems);
   }, [cartItems]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('icase_web_profile', JSON.stringify(profile));
-    } catch {}
+    saveJsonStorage(STORAGE_PROFILE_KEY, profile);
   }, [profile]);
 
-  // Real-time public Firestore sync: Products + Global Settings
   useEffect(() => {
+    saveJsonStorage(STORAGE_PRODUCTS_KEY, products);
+  }, [products]);
+
+  useEffect(() => {
+    saveJsonStorage(STORAGE_SETTINGS_KEY, settings);
+  }, [settings]);
+
+  useEffect(() => {
+    saveJsonStorage(STORAGE_GUARD_CONFIG_KEY, screenGuardConfig);
+  }, [screenGuardConfig]);
+
+  // Real-time public Firestore sync: Products, Settings, and Approved Product Reviews
+  useEffect(() => {
+    if (!db) return;
+
     seedFirestoreIfEmpty();
 
     const unsubProducts = onSnapshot(collection(db, 'products'), (snap) => {
+      const localDeleted = parseDeletedProductIds(loadJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, []));
+      const settingsDeleted = parseDeletedProductIds(settings[DELETED_PRODUCTS_KEY]);
+      const delSet = new Set([...localDeleted, ...settingsDeleted, ...deletedProductIds]);
+
       if (!snap.empty) {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((p) => p && !delSet.has(p.id));
         setProducts(list);
+      } else {
+        const isSeeded =
+          safeStorageGetItem(STORAGE_CATALOG_SEEDED_KEY) === 'true' ||
+          settings[CATALOG_SEEDED_KEY] === 'true';
+        if (!isSeeded) {
+          setProducts(INITIAL_PRODUCTS.filter((p) => !delSet.has(p.id)));
+        } else {
+          setProducts([]);
+        }
       }
     });
 
     const unsubSettings = onSnapshot(collection(db, 'settings'), (snap) => {
-      if (!snap.empty) {
-        const next = { ...DEFAULT_SETTINGS };
-        snap.docs.forEach((d) => {
-          const data = d.data();
-          const key = data.key || d.id;
-          if (key) next[key] = String(data.value ?? '');
-        });
-        setSettings(next);
+      if (snap.empty) return;
+      const next = { ...DEFAULT_SETTINGS };
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        const key = data.key || d.id;
+        if (key) next[key] = String(data.value ?? '');
+      });
+      setSettings(next);
+
+      if (next[SCREEN_GUARD_CONFIG_KEY]) {
+        setScreenGuardConfig(parseScreenGuardConfig(next[SCREEN_GUARD_CONFIG_KEY]));
+      }
+      if (next[DELETED_PRODUCTS_KEY]) {
+        const mergedDel = parseDeletedProductIds(next[DELETED_PRODUCTS_KEY]);
+        setDeletedProductIds(mergedDel);
+        saveJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, mergedDel);
+        const delSet = new Set(mergedDel);
+        setProducts((prev) => prev.filter((p) => !delSet.has(p.id)));
+      }
+      if (next[CATALOG_SEEDED_KEY] === 'true') {
+        safeStorageSetItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
       }
     });
+
+    const unsubPublicReviews = onSnapshot(
+      query(
+        collection(db, 'reviews'),
+        where('reviewType', '==', 'PRODUCT'),
+        where('isApproved', '==', true)
+      ),
+      (snap) => {
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r) => r.reviewType === 'PRODUCT' && r.isApproved === true)
+          .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+        setPublicReviews(list);
+      }
+    );
 
     return () => {
       unsubProducts();
       unsubSettings();
+      unsubPublicReviews();
     };
   }, []);
 
-  // Restore Firebase Auth session (Google Sign-In only)
+  // Reconcile cart live with ScreenGuardConfig and deleted catalog items
   useEffect(() => {
+    setCartItems((prev) => {
+      let changed = false;
+      const next = [];
+      for (const item of prev) {
+        const p = item?.product;
+        if (!p?.id) {
+          changed = true;
+          continue;
+        }
+        const isDynamic =
+          p.id.startsWith('sg::') ||
+          p.id.startsWith('cl::') ||
+          p.id.startsWith('combo::') ||
+          p.id.startsWith('pouch::');
+        if (isDynamic) {
+          const repriced = repriceOrNullCartProduct(p, screenGuardConfig, item.selectedColor || '');
+          if (!repriced) {
+            changed = true;
+            continue;
+          }
+          if (
+            repriced.price !== p.price ||
+            repriced.description !== p.description ||
+            repriced.imageUrl !== p.imageUrl
+          ) {
+            changed = true;
+          }
+          next.push({ ...item, product: repriced });
+        } else {
+          const liveProd = products.find((x) => x.id === p.id);
+          if (deletedProductIds.includes(p.id)) {
+            changed = true;
+            continue;
+          }
+          if (liveProd && (liveProd.price !== p.price || liveProd.name !== p.name)) {
+            changed = true;
+            next.push({ ...item, product: liveProd });
+          } else {
+            next.push(item);
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [screenGuardConfig, products, deletedProductIds]);
+
+  // Restore Firebase Auth session (Google Sign-In) cleanly when available
+  useEffect(() => {
+    if (!auth) return;
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       const hasGoogle = Boolean(
         fbUser && fbUser.providerData.some((p) => p.providerId === 'google.com')
       );
       if (!fbUser || !hasGoogle) {
-        setProfile(EMPTY_PROFILE);
-        setMyOrders([]);
-        setMyRepairs([]);
-        setAuthResolved(true);
         return;
       }
 
@@ -136,7 +313,6 @@ export default function App() {
         isLoggedIn: true,
         isGoogleSignedIn: true
       }));
-      setAuthResolved(true);
     });
     return () => unsubAuth();
   }, []);
@@ -146,7 +322,7 @@ export default function App() {
     profile.isLoggedIn && profile.isGoogleSignedIn ? profile.userId : '';
 
   useEffect(() => {
-    if (!resolvedUserId) {
+    if (!db || !resolvedUserId) {
       setMyOrders([]);
       setMyRepairs([]);
       return;
@@ -201,9 +377,10 @@ export default function App() {
 
   // Admin full collection sync when unlocked
   useEffect(() => {
-    if (!isAdminLoggedIn) {
+    if (!db || !isAdminLoggedIn) {
       setAdminOrders([]);
       setAdminRepairs([]);
+      setAdminReviews([]);
       return;
     }
 
@@ -221,9 +398,17 @@ export default function App() {
       setAdminRepairs(list);
     });
 
+    const unsubReviews = onSnapshot(collection(db, 'reviews'), (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      setAdminReviews(list);
+    });
+
     return () => {
       unsubOrders();
       unsubRepairs();
+      unsubReviews();
     };
   }, [isAdminLoggedIn]);
 
@@ -240,7 +425,7 @@ export default function App() {
     };
     setProfile(nextProfile);
 
-    if (uid) {
+    if (db && uid) {
       await setDoc(
         doc(db, 'users', uid),
         {
@@ -269,7 +454,7 @@ export default function App() {
 
     setProfile((prev) => ({ ...prev, wishlistIds: nextWishlist }));
 
-    if (profile.isLoggedIn && profile.userId) {
+    if (db && profile.isLoggedIn && profile.userId) {
       try {
         await setDoc(
           doc(db, 'users', profile.userId),
@@ -292,36 +477,45 @@ export default function App() {
     setMyRepairs([]);
   }
 
-  function addToCart(product, quantity = 1) {
+  function addToCart(product, quantity = 1, selectedColor = '') {
+    const cleanColor = typeof selectedColor === 'string' ? selectedColor : '';
     setCartItems((prev) => {
-      const idx = prev.findIndex((item) => item.product.id === product.id);
+      const idx = prev.findIndex(
+        (item) => item.product.id === product.id && (item.selectedColor || '') === cleanColor
+      );
       if (idx >= 0) {
         return prev.map((item, i) =>
           i === idx ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity, selectedColor: cleanColor }];
     });
   }
 
-  function updateCartQty(productId, qty) {
+  function updateCartQty(productId, qty, selectedColor = '') {
     if (qty <= 0) {
-      setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
+      removeCartItem(productId, selectedColor);
     } else {
       setCartItems((prev) =>
         prev.map((item) =>
-          item.product.id === productId ? { ...item, quantity: qty } : item
+          item.product.id === productId && (item.selectedColor || '') === selectedColor
+            ? { ...item, quantity: qty }
+            : item
         )
       );
     }
   }
 
-  function removeCartItem(productId) {
-    setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
+  function removeCartItem(productId, selectedColor = '') {
+    setCartItems((prev) =>
+      prev.filter(
+        (item) => !(item.product.id === productId && (item.selectedColor || '') === selectedColor)
+      )
+    );
   }
 
-  function handleBuyNow(product) {
-    addToCart(product, 1);
+  function handleBuyNow(product, selectedColor = '') {
+    addToCart(product, 1, selectedColor);
     setIsCartOpen(true);
   }
 
@@ -335,132 +529,58 @@ export default function App() {
     if (tab === 'track') {
       setActiveTrackingId('');
     }
+    if (tab !== 'guards') {
+      setGuardsFocusTarget('');
+    }
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  async function handleLandingGoogleSignIn() {
-    setAuthError('');
-    setAuthBusy(true);
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const fbUser = result.user;
-      await handleSaveProfile({
-        userId: fbUser.uid,
-        name: fbUser.displayName || 'Customer',
-        email: fbUser.email || '',
-        phone: fbUser.phoneNumber || '',
-        whatsapp: fbUser.phoneNumber || '',
-        address: '',
-        isGoogleSignedIn: true
+  async function handleSaveGuardConfig(nextConfig) {
+    const normalized = parseScreenGuardConfig(nextConfig);
+    setScreenGuardConfig(normalized);
+    const serialized = serializeScreenGuardConfig(normalized);
+    setSettings((prev) => ({ ...prev, [SCREEN_GUARD_CONFIG_KEY]: serialized }));
+    if (db) {
+      await setDoc(doc(db, 'settings', SCREEN_GUARD_CONFIG_KEY), {
+        key: SCREEN_GUARD_CONFIG_KEY,
+        value: serialized,
+        updatedAt: Date.now()
       });
-    } catch (err) {
-      setAuthError(err.message || 'Google Sign-In could not be completed. Please try again.');
-    } finally {
-      setAuthBusy(false);
+    }
+  }
+
+  async function handleDeleteProductPersistent(productId) {
+    const nextDeleted = Array.from(new Set([...deletedProductIds, productId]));
+    setDeletedProductIds(nextDeleted);
+    saveJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, nextDeleted);
+    safeStorageSetItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+
+    const serializedDel = serializeDeletedProductIds(nextDeleted);
+    setSettings((prev) => ({
+      ...prev,
+      [DELETED_PRODUCTS_KEY]: serializedDel,
+      [CATALOG_SEEDED_KEY]: 'true'
+    }));
+
+    if (db) {
+      await Promise.all([
+        setDoc(doc(db, 'settings', DELETED_PRODUCTS_KEY), {
+          key: DELETED_PRODUCTS_KEY,
+          value: serializedDel,
+          updatedAt: Date.now()
+        }),
+        setDoc(doc(db, 'settings', CATALOG_SEEDED_KEY), {
+          key: CATALOG_SEEDED_KEY,
+          value: 'true',
+          updatedAt: Date.now()
+        })
+      ]);
     }
   }
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const isAuthenticated = profile.isLoggedIn && profile.isGoogleSignedIn;
-
-  if (!authResolved || !isAuthenticated) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #071220 0%, #0B1728 60%, #162944 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 20
-        }}
-      >
-        <div
-          className="card"
-          style={{
-            maxWidth: 440,
-            width: '100%',
-            padding: 32,
-            borderRadius: 22,
-            textAlign: 'center',
-            boxShadow: '0 22px 50px rgba(0, 0, 0, 0.35)'
-          }}
-        >
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              background: '#0B1728',
-              color: '#FFFFFF',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 28,
-              fontWeight: 900,
-              margin: '0 auto 14px',
-              border: '2px solid #E50914'
-            }}
-          >
-            <span>
-              <span style={{ color: '#E50914' }}>i</span>C
-            </span>
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
-            <span style={{ color: '#E50914' }}>i</span>CASE
-          </h1>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.08em', marginBottom: 16 }}>
-            MOBILE ACCESSORIES &amp; EXPRESS REPAIR
-          </div>
-          <p style={{ fontSize: 14, color: '#475569', marginBottom: 22, lineHeight: 1.55 }}>
-            {!authResolved
-              ? 'Checking your Google session...'
-              : 'Sign in with your Google account to browse products, place orders, book doorstep repairs, and sync live across Android and Web.'}
-          </p>
-
-          {authError && (
-            <div style={{ color: '#E50914', fontWeight: 700, fontSize: 13, marginBottom: 14 }}>
-              {authError}
-            </div>
-          )}
-
-          <button
-            type="button"
-            className="btn btn-red"
-            style={{ width: '100%', padding: '13px 18px', fontSize: 15 }}
-            disabled={!authResolved || authBusy}
-            onClick={handleLandingGoogleSignIn}
-          >
-            {!authResolved
-              ? 'Checking Session...'
-              : authBusy
-                ? 'Signing in with Google...'
-                : 'Sign in with Google'}
-          </button>
-
-          <div
-            style={{
-              marginTop: 18,
-              paddingTop: 16,
-              borderTop: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'center',
-              gap: 16,
-              fontSize: 12,
-              color: '#64748B',
-              fontWeight: 600
-            }}
-          >
-            <span>1-Hour Delivery</span>
-            <span>•</span>
-            <span>Live Tracking</span>
-            <span>•</span>
-            <span>Secure Google Sync</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -480,15 +600,26 @@ export default function App() {
           <HomeSection
             products={products}
             settings={settings}
+            screenGuardConfig={screenGuardConfig}
+            publicReviews={publicReviews}
             wishlistIds={profile.wishlistIds || []}
             onToggleWishlist={handleToggleWishlist}
             onNavigate={navigateTab}
             onSelectCategory={(cat) => setSelectedCategory(cat)}
+            onSelectBrand={(brand) => setSelectedBrand(brand)}
             onSelectProduct={(prod) => {
               setSelectedProduct(prod);
               setActiveTab('catalog');
             }}
             onAddToCart={(prod) => addToCart(prod, 1)}
+            onOpenAccount={() => setIsAccountOpen(true)}
+            onOpenGuardsPouch={() => {
+              setGuardsFocusTarget('pouch');
+              setActiveTab('guards');
+            }}
+            onOpenReviewModal={(prefillId) =>
+              setReviewModalState({ open: true, prefillId: prefillId || '' })
+            }
           />
         )}
 
@@ -497,13 +628,33 @@ export default function App() {
             products={products}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
+            selectedBrand={selectedBrand}
+            onSelectBrand={setSelectedBrand}
             settings={settings}
+            publicReviews={publicReviews}
+            profile={profile}
             wishlistIds={profile.wishlistIds || []}
             onToggleWishlist={handleToggleWishlist}
-            onAddToCart={(prod) => addToCart(prod, 1)}
-            onBuyNow={handleBuyNow}
+            onAddToCart={(prod, selectedColor) => addToCart(prod, 1, selectedColor || '')}
+            onBuyNow={(prod, selectedColor) => handleBuyNow(prod, selectedColor || '')}
             selectedProduct={selectedProduct}
             onSelectProduct={setSelectedProduct}
+            onOpenGuards={() => navigateTab('guards')}
+            onLocalReviewCreated={(rev) => {
+              setAdminReviews((prev) => [rev, ...prev]);
+            }}
+          />
+        )}
+
+        {activeTab === 'guards' && (
+          <ScreenGuardsSection
+            screenGuardConfig={screenGuardConfig}
+            settings={settings}
+            initialFocus={guardsFocusTarget}
+            onAddToCart={(prod, qty = 1, selectedColor = '') => {
+              addToCart(prod, qty, selectedColor);
+              setIsCartOpen(true);
+            }}
           />
         )}
 
@@ -532,6 +683,23 @@ export default function App() {
             repairs={adminRepairs}
             products={products}
             settings={settings}
+            screenGuardConfig={screenGuardConfig}
+            reviews={adminReviews}
+            onSaveGuardConfig={handleSaveGuardConfig}
+            onUpdateProductsLocal={setProducts}
+            onDeleteProductPersistent={handleDeleteProductPersistent}
+            onUpdateSettingsLocal={(updates) =>
+              setSettings((prev) => ({ ...prev, ...updates }))
+            }
+            onUpdateReviewsLocal={(updater) => {
+              setAdminReviews((prev) => {
+                const next = typeof updater === 'function' ? updater(prev) : updater;
+                setPublicReviews(
+                  next.filter((r) => r.reviewType === 'PRODUCT' && r.isApproved === true)
+                );
+                return next;
+              });
+            }}
           />
         )}
       </main>
@@ -593,6 +761,17 @@ export default function App() {
         onAddToCart={(prod) => addToCart(prod, 1)}
         onLogout={handleLogout}
         onTrackId={openTrackId}
+        onOpenReview={(refId) =>
+          setReviewModalState({ open: true, prefillId: refId || '' })
+        }
+      />
+
+      <VerifiedReviewModal
+        isOpen={reviewModalState.open}
+        onClose={() => setReviewModalState({ open: false, prefillId: '' })}
+        prefillId={reviewModalState.prefillId}
+        profile={profile}
+        onLocalReviewCreated={(rev) => setAdminReviews((prev) => [rev, ...prev])}
       />
     </div>
   );

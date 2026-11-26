@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Wrench, CheckCircle, Info, Search, Navigation, ChevronDown } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { COMPLAINT_OPTIONS, TIME_SLOTS, normalizePhoneToE164 } from '../data/constants';
+import { COMPLAINT_OPTIONS, REPAIR_DATE_OPTIONS, TIME_SLOTS, normalizePhoneToE164 } from '../data/constants';
 import { MAJOR_DEVICE_BRANDS, searchDeviceCatalog } from '../data/deviceCatalog';
 import { detectCurrentLocation } from '../data/locationHelper';
 
@@ -122,7 +122,9 @@ export default function RepairSection({ profile, resolvedUserId, onEnsureProfile
         updatedAt: now
       };
 
-      await setDoc(doc(db, 'repairs', repairId), repairDoc);
+      if (db) {
+        await setDoc(doc(db, 'repairs', repairId), repairDoc);
+      }
       setBookedRepair(repairDoc);
       setBrandName('');
       setModelName('');
@@ -361,8 +363,11 @@ export default function RepairSection({ profile, resolvedUserId, onEnsureProfile
                 value={preferredDate}
                 onChange={(e) => setPreferredDate(e.target.value)}
               >
-                <option value="Today">Today</option>
-                <option value="Tomorrow">Tomorrow</option>
+                {REPAIR_DATE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="form-group">

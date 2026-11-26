@@ -418,7 +418,7 @@ textarea {
 /* Quick Actions Grid */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-bottom: 28px;
 }
@@ -1005,7 +1005,7 @@ textarea {
 
 .mobile-bottom-nav-inner {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 
 .mobile-nav-item {
@@ -1026,6 +1026,277 @@ textarea {
   color: var(--icase-red);
 }
 
+/* Home Search, Top Brands, Quality Banner */
+.home-search-wrap {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 22px;
+}
+
+.home-search-wrap input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--icase-navy);
+}
+
+.top-brands-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.brand-pill-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--icase-navy);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+}
+
+.brand-pill-card:hover,
+.brand-pill-card.active {
+  background: var(--icase-navy);
+  color: #FFFFFF;
+  border-color: var(--icase-navy);
+  transform: translateY(-2px);
+}
+
+.quality-banner {
+  background: linear-gradient(135deg, #0B1728 0%, #162944 100%);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Tempered Glass, Camera Lens & Pouches Finder */
+.guards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.searchable-dropdown {
+  position: relative;
+}
+
+.searchable-dropdown-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #F8FAFC;
+}
+
+.searchable-dropdown-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--icase-navy);
+}
+
+.searchable-dropdown-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 35;
+}
+
+.dropdown-group-label {
+  padding: 6px 14px;
+  background: #F1F5F9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--icase-blue);
+  position: sticky;
+  top: 0;
+}
+
+.dropdown-option-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #F1F5F9;
+  background: #FFFFFF;
+  color: var(--icase-navy);
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdown-option-btn:hover,
+.dropdown-option-btn.selected {
+  background: var(--icase-light-blue);
+  color: var(--icase-blue);
+  font-weight: 800;
+}
+
+.helper-note-bar {
+  background: #EAF2FF;
+  color: #0066CC;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.pricing-summary-box {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.combo-bundle-card {
+  background: rgba(234, 242, 255, 0.72);
+  border: 1.5px solid rgba(0, 102, 204, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pouch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.pouch-card {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pouch-thumb-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+}
+
+.pouch-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.color-swatch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.color-swatch-chip.selected {
+  background: #EAF2FF;
+  border-color: var(--icase-navy);
+  color: var(--icase-navy);
+  font-weight: 800;
+}
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.review-card {
+  background: #F8FAFC;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.video-banner-card {
+  background: linear-gradient(135deg, #0B1728 0%, #162944 100%);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 @media (max-width: 960px) {
   .nav-links {
     display: none;
@@ -1038,6 +1309,9 @@ textarea {
   }
   .quick-actions-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .top-brands-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 

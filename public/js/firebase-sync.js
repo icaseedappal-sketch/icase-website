@@ -51,13 +51,24 @@ export const ANDROID_APP_ID = '1:848117223673:android:d2891c51e5fa1ea78ad228';
 export const FIRESTORE_DATABASE_ID =
   'ai-studio-android-icase-44842779-78b7-4b24-894c-745423e44d91';
 
-export const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
-export const auth = getAuth(app);
-export const db = getFirestore(app, FIRESTORE_DATABASE_ID);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+let app = null;
+let auth = null;
+let db = null;
+let googleProvider = null;
+try {
+  app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getFirestore(app, FIRESTORE_DATABASE_ID);
+  googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+} catch (err) {
+  console.warn('Firebase initialized in offline fallback mode:', err);
+}
+
+export { app, auth, db, googleProvider };
 
 export async function seedFirestoreIfEmpty() {
+  if (!db) return false;
   try {
     const [seededSnap, deletedSnap] = await Promise.all([
       getDoc(doc(db, 'settings', CATALOG_SEEDED_KEY)),
@@ -121,70 +132,94 @@ export async function seedFirestoreIfEmpty() {
 }
 
 export function subscribePublicStoreData({ onProducts, onSettings, onSyncStatus }) {
-  const unsubProducts = onSnapshot(
-    collection(db, 'products'),
-    (snap) => {
-      onSyncStatus?.('connected');
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      onProducts(list);
-    },
-    () => onSyncStatus?.('offline')
-  );
+  if (!db) {
+    onSyncStatus?.('offline');
+    return () => {};
+  }
+  let unsubProducts = () => {};
+  let unsubSettings = () => {};
+  try {
+    unsubProducts = onSnapshot(
+      collection(db, 'products'),
+      (snap) => {
+        onSyncStatus?.('connected');
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        onProducts(list);
+      },
+      () => onSyncStatus?.('offline')
+    );
 
-  const unsubSettings = onSnapshot(
-    collection(db, 'settings'),
-    (snap) => {
-      onSyncStatus?.('connected');
-      const next = { ...DEFAULT_SETTINGS };
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        const key = data.key || d.id;
-        if (key) next[key] = String(data.value ?? '');
-      });
-      onSettings(next);
-    },
-    () => onSyncStatus?.('offline')
-  );
+    unsubSettings = onSnapshot(
+      collection(db, 'settings'),
+      (snap) => {
+        onSyncStatus?.('connected');
+        const next = { ...DEFAULT_SETTINGS };
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          const key = data.key || d.id;
+          if (key) next[key] = String(data.value ?? '');
+        });
+        onSettings(next);
+      },
+      () => onSyncStatus?.('offline')
+    );
+  } catch {
+    onSyncStatus?.('offline');
+  }
 
   return () => {
-    unsubProducts();
-    unsubSettings();
+    try { unsubProducts(); } catch {}
+    try { unsubSettings(); } catch {}
   };
 }
 
 export function subscribePublicApprovedReviews(onReviews, onError) {
-  const q = query(
-    collection(db, 'reviews'),
-    where('reviewType', '==', 'PRODUCT'),
-    where('isApproved', '==', true)
-  );
-  return onSnapshot(
-    q,
-    (snap) => {
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((r) => r.reviewType === 'PRODUCT' && r.isApproved === true)
-        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-      onReviews(list);
-    },
-    (err) => onError?.(err)
-  );
+  if (!db) return () => {};
+  try {
+    const q = query(
+      collection(db, 'reviews'),
+      where('reviewType', '==', 'PRODUCT'),
+      where('isApproved', '==', true)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((r) => r.reviewType === 'PRODUCT' && r.isApproved === true)
+          .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+        onReviews(list);
+      },
+      (err) => onError?.(err)
+    );
+  } catch {
+    return () => {};
+  }
 }
 
 export function subscribeAuthState(callback) {
-  return onAuthStateChanged(auth, callback);
+  if (!auth) return () => {};
+  try {
+    return onAuthStateChanged(auth, callback);
+  } catch {
+    return () => {};
+  }
 }
 
 export function signInWithGooglePopup() {
+  if (!auth || !googleProvider) {
+    return Promise.reject(new Error('Cloud Sign-In is unavailable offline.'));
+  }
   return signInWithPopup(auth, googleProvider);
 }
 
 export function signOutFirebase() {
+  if (!auth) return Promise.resolve();
   return signOut(auth);
 }
 
 export function subscribeUserScopedData(uid, { onProfile, onOrders, onRepairs, onError }) {
-  if (!uid) return () => {};
+  if (!uid || !db) return () => {};
 
   const unsubUser = onSnapshot(
     doc(db, 'users', uid),
@@ -226,6 +261,7 @@ export function subscribeUserScopedData(uid, { onProfile, onOrders, onRepairs, o
 }
 
 export function subscribeAdminData({ onOrders, onRepairs, onReviews, onError }) {
+  if (!db) return () => {};
   const unsubOrders = onSnapshot(
     collection(db, 'orders'),
     (snap) => {
@@ -268,7 +304,10 @@ export function subscribeAdminData({ onOrders, onRepairs, onReviews, onError }) 
 
 export function subscribeTrackingId(trackingId, { onUpdate, onError }) {
   const cleaned = String(trackingId || '').trim().replace(/^#/, '').toUpperCase();
-  if (!cleaned) return () => {};
+  if (!cleaned || !db) {
+    if (cleaned && !db) onUpdate({ type: 'NOT_FOUND', data: null });
+    return () => {};
+  }
 
   let orderDoc = null;
   let repairDoc = null;
@@ -320,35 +359,42 @@ export function subscribeTrackingId(trackingId, { onUpdate, onError }) {
 }
 
 export async function saveUserProfileToCloud(profile) {
-  if (!profile?.userId) return;
-  await setDoc(
-    doc(db, 'users', profile.userId),
-    {
-      userId: profile.userId,
-      name: profile.name || '',
-      email: profile.email || '',
-      phone: profile.phone || '',
-      whatsapp: profile.whatsapp || '',
-      address: profile.address || '',
-      wishlistIds: Array.isArray(profile.wishlistIds) ? profile.wishlistIds : [],
-      isGoogleSignedIn: Boolean(profile.isGoogleSignedIn),
-      updatedAt: Date.now()
-    },
-    { merge: true }
-  );
+  if (!profile?.userId || !db) return;
+  try {
+    await setDoc(
+      doc(db, 'users', profile.userId),
+      {
+        userId: profile.userId,
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        whatsapp: profile.whatsapp || '',
+        address: profile.address || '',
+        wishlistIds: Array.isArray(profile.wishlistIds) ? profile.wishlistIds : [],
+        isGoogleSignedIn: Boolean(profile.isGoogleSignedIn),
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Profile cloud sync skipped:', err);
+  }
 }
 
 export async function createOrderInCloud(orderPayload) {
+  if (!db) return orderPayload;
   await setDoc(doc(db, 'orders', orderPayload.id), orderPayload);
   return orderPayload;
 }
 
 export async function createRepairInCloud(repairPayload) {
+  if (!db) return repairPayload;
   await setDoc(doc(db, 'repairs', repairPayload.id), repairPayload);
   return repairPayload;
 }
 
 export async function updateOrderStatusInCloud(orderId, status, statusNotes) {
+  if (!db) return;
   await updateDoc(doc(db, 'orders', orderId), {
     status,
     statusNotes: statusNotes || '',
@@ -357,10 +403,12 @@ export async function updateOrderStatusInCloud(orderId, status, statusNotes) {
 }
 
 export async function deleteOrderInCloud(orderId) {
+  if (!db) return;
   await deleteDoc(doc(db, 'orders', orderId));
 }
 
 export async function updateRepairStatusInCloud(repairId, status, adminNotes) {
+  if (!db) return;
   await updateDoc(doc(db, 'repairs', repairId), {
     status,
     adminNotes: adminNotes || '',
@@ -369,6 +417,7 @@ export async function updateRepairStatusInCloud(repairId, status, adminNotes) {
 }
 
 export async function rescheduleRepairInCloud(repairId, preferredDate, preferredTimeSlot, adminNotes) {
+  if (!db) return;
   await updateDoc(doc(db, 'repairs', repairId), {
     preferredDate,
     preferredTimeSlot,
@@ -378,10 +427,12 @@ export async function rescheduleRepairInCloud(repairId, preferredDate, preferred
 }
 
 export async function deleteRepairInCloud(repairId) {
+  if (!db) return;
   await deleteDoc(doc(db, 'repairs', repairId));
 }
 
 export async function saveProductInCloud(productPayload, currentDeletedIds = []) {
+  if (!db) return;
   const now = Date.now();
   const tasks = [
     setDoc(doc(db, 'products', productPayload.id), {
@@ -410,6 +461,7 @@ export async function saveProductInCloud(productPayload, currentDeletedIds = [])
 }
 
 export async function deleteProductInCloud(productId, currentDeletedIds = []) {
+  if (!db) return;
   const now = Date.now();
   let remoteDeleted = parseDeletedProductIds(currentDeletedIds);
   try {
@@ -438,6 +490,7 @@ export async function deleteProductInCloud(productId, currentDeletedIds = []) {
 }
 
 export async function saveSettingInCloud(key, value) {
+  if (!db) return;
   await setDoc(doc(db, 'settings', key), {
     key,
     value: String(value),
@@ -447,7 +500,7 @@ export async function saveSettingInCloud(key, value) {
 
 export async function lookupReferenceInCloud(referenceId) {
   const cleaned = String(referenceId || '').trim().replace(/^#/, '').toUpperCase();
-  if (!cleaned) return null;
+  if (!cleaned || !db) return null;
 
   const orderSnap = await getDoc(doc(db, 'orders', cleaned));
   if (orderSnap.exists()) {
@@ -467,11 +520,13 @@ export async function createReviewInCloud(reviewPayload) {
     ...reviewPayload,
     isApproved: reviewPayload.reviewType === 'PRODUCT' ? Boolean(reviewPayload.isApproved) : false
   };
+  if (!db) return enforced;
   await setDoc(doc(db, 'reviews', enforced.id), enforced);
   return enforced;
 }
 
 export async function updateReviewInCloud(reviewId, updates) {
+  if (!db) return;
   await updateDoc(doc(db, 'reviews', reviewId), {
     ...updates,
     updatedAt: Date.now()
@@ -479,5 +534,6 @@ export async function updateReviewInCloud(reviewId, updates) {
 }
 
 export async function deleteReviewInCloud(reviewId) {
+  if (!db) return;
   await deleteDoc(doc(db, 'reviews', reviewId));
 }

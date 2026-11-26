@@ -107,7 +107,10 @@ export default function CartDrawer({
       const itemsJson = JSON.stringify(
         cartItems.map((item) => ({
           productId: item.product.id,
-          productName: item.product.name,
+          productName: item.selectedColor
+            ? `${item.product.name} (${item.selectedColor})`
+            : item.product.name,
+          selectedFinish: item.selectedColor || '',
           price: Number(item.product.price),
           quantity: item.quantity,
           imageUrl: item.product.imageUrl
@@ -136,7 +139,9 @@ export default function CartDrawer({
         updatedAt: now
       };
 
-      await setDoc(doc(db, 'orders', orderId), orderPayload);
+      if (db) {
+        await setDoc(doc(db, 'orders', orderId), orderPayload);
+      }
       onClearCart();
       setPlacedOrder(orderPayload);
     } catch (err) {
@@ -224,9 +229,9 @@ export default function CartDrawer({
             <form id="checkout-form" onSubmit={handlePlaceOrder}>
               {/* Cart Items */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-                {cartItems.map(({ product, quantity }) => (
+                {cartItems.map(({ product, quantity, selectedColor }) => (
                   <div
-                    key={product.id}
+                    key={`${product.id}::${selectedColor || ''}`}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -254,6 +259,11 @@ export default function CartDrawer({
                       >
                         {product.name}
                       </div>
+                      {selectedColor && (
+                        <div style={{ fontSize: 11.5, color: 'var(--icase-blue)', fontWeight: 700 }}>
+                          Finish: {selectedColor}
+                        </div>
+                      )}
                       <div style={{ fontWeight: 800, color: 'var(--icase-red)', fontSize: 14 }}>
                         {formatINR(product.price)}
                       </div>
@@ -263,7 +273,7 @@ export default function CartDrawer({
                         type="button"
                         className="btn btn-outline btn-sm"
                         style={{ padding: '4px 8px' }}
-                        onClick={() => onUpdateQty(product.id, quantity - 1)}
+                        onClick={() => onUpdateQty(product.id, quantity - 1, selectedColor || '')}
                       >
                         <Minus size={13} />
                       </button>
@@ -274,7 +284,7 @@ export default function CartDrawer({
                         type="button"
                         className="btn btn-outline btn-sm"
                         style={{ padding: '4px 8px' }}
-                        onClick={() => onUpdateQty(product.id, quantity + 1)}
+                        onClick={() => onUpdateQty(product.id, quantity + 1, selectedColor || '')}
                       >
                         <Plus size={13} />
                       </button>
@@ -282,7 +292,7 @@ export default function CartDrawer({
                         type="button"
                         className="btn btn-sm"
                         style={{ background: '#FFECEE', color: '#E50914', padding: '5px 8px' }}
-                        onClick={() => onRemoveItem(product.id)}
+                        onClick={() => onRemoveItem(product.id, selectedColor || '')}
                       >
                         <Trash2 size={14} />
                       </button>

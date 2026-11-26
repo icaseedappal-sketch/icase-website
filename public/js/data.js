@@ -40,10 +40,13 @@ export const REPAIR_STATUSES = [
 
 export const TIME_SLOTS = [
   '10:00 AM - 12:00 PM',
-  '12:00 PM - 02:00 PM',
-  '02:00 PM - 05:00 PM',
-  '05:00 PM - 08:00 PM'
+  '02:00 PM - 04:00 PM',
+  '05:00 PM - 07:00 PM'
 ];
+
+export const REPAIR_DATE_OPTIONS = ['Today', 'Tomorrow', 'In 2 Days'];
+
+export const TOP_BRANDS = ['Apple', 'SAMSUNG', 'Xiaomi', 'oppo', 'vivo', 'realme'];
 
 export const DEFAULT_SETTINGS = {
   one_hour_delivery_enabled: 'true',
@@ -618,7 +621,10 @@ export function createDefaultPouchItems() {
       compatibleBrands: ['iPhone', 'Samsung S Series'],
       enabled: true,
       deleted: false,
-      offer: { active: false, type: 'NONE', value: 0, badgeText: '' }
+      offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
+      imageUrl: '',
+      colorOptions: [],
+      showOnHomePage: false
     },
     {
       id: 'pouch_matte_armor',
@@ -628,7 +634,10 @@ export function createDefaultPouchItems() {
       compatibleBrands: ['iPhone', 'Samsung S Series'],
       enabled: true,
       deleted: false,
-      offer: { active: false, type: 'NONE', value: 0, badgeText: '' }
+      offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
+      imageUrl: '',
+      colorOptions: [],
+      showOnHomePage: false
     },
     {
       id: 'pouch_silicone_grip',
@@ -638,7 +647,10 @@ export function createDefaultPouchItems() {
       compatibleBrands: ['iPhone', 'Samsung S Series'],
       enabled: true,
       deleted: false,
-      offer: { active: false, type: 'NONE', value: 0, badgeText: '' }
+      offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
+      imageUrl: '',
+      colorOptions: [],
+      showOnHomePage: false
     }
   ];
 }

@@ -15,7 +15,13 @@ import {
   signInWithPopup,
   signOut
 } from '../firebase';
-import { formatINR, parseComplaints, parseOrderItems } from '../data/constants';
+import {
+  formatINR,
+  isOrderCompleted,
+  isRepairCompleted,
+  parseComplaints,
+  parseOrderItems
+} from '../data/constants';
 import { detectCurrentLocation } from '../data/locationHelper';
 
 export default function AccountModal({
@@ -29,7 +35,8 @@ export default function AccountModal({
   onToggleWishlist,
   onAddToCart,
   onLogout,
-  onTrackId
+  onTrackId,
+  onOpenReview
 }) {
   const [tab, setTab] = useState('PROFILE'); // 'PROFILE' | 'ORDERS' | 'REPAIRS' | 'WISHLIST'
   const [name, setName] = useState(profile.name || '');
@@ -54,6 +61,10 @@ export default function AccountModal({
   async function handleGoogleLogin() {
     setErrorMsg('');
     setStatusMsg('');
+    if (!auth || !googleProvider) {
+      setErrorMsg('Google Sign-In is unavailable offline.');
+      return;
+    }
     setBusy(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -112,7 +123,7 @@ export default function AccountModal({
 
   async function handleLogout() {
     try {
-      await signOut(auth);
+      if (auth) await signOut(auth);
     } catch {}
     onLogout();
     onClose();
@@ -344,15 +355,30 @@ export default function AccountModal({
                         <strong style={{ color: 'var(--icase-red)' }}>
                           {formatINR(order.totalAmount)}
                         </strong>
-                        <button
-                          className="section-link"
-                          onClick={() => {
-                            onClose();
-                            onTrackId(order.id);
-                          }}
-                        >
-                          Track Live →
-                        </button>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                          {onOpenReview && isOrderCompleted(order.status) && (
+                            <button
+                              type="button"
+                              className="section-link"
+                              style={{ color: 'var(--icase-green)' }}
+                              onClick={() => {
+                                onClose();
+                                onOpenReview(order.id);
+                              }}
+                            >
+                              Write Review ★
+                            </button>
+                          )}
+                          <button
+                            className="section-link"
+                            onClick={() => {
+                              onClose();
+                              onTrackId(order.id);
+                            }}
+                          >
+                            Track Live →
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -406,15 +432,30 @@ export default function AccountModal({
                         <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
                           {repair.preferredDate} • {repair.preferredTimeSlot}
                         </span>
-                        <button
-                          className="section-link"
-                          onClick={() => {
-                            onClose();
-                            onTrackId(repair.id);
-                          }}
-                        >
-                          Track Live →
-                        </button>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                          {onOpenReview && isRepairCompleted(repair.status) && (
+                            <button
+                              type="button"
+                              className="section-link"
+                              style={{ color: 'var(--icase-blue)' }}
+                              onClick={() => {
+                                onClose();
+                                onOpenReview(repair.id);
+                              }}
+                            >
+                              Service Feedback ★
+                            </button>
+                          )}
+                          <button
+                            className="section-link"
+                            onClick={() => {
+                              onClose();
+                              onTrackId(repair.id);
+                            }}
+                          >
+                            Track Live →
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

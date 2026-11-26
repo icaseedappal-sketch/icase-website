@@ -18,12 +18,14 @@ import {
   POUCH_BRANDS,
   POUCH_MODELS,
   POUCH_PRESET_COLORS,
+  REPAIR_DATE_OPTIONS,
   REPAIR_STATUSES,
   SAMPLE_GUARD_VIDEO_URL,
   SCREEN_GUARD_BRANDS,
   SCREEN_GUARD_CONFIG_KEY,
   SCREEN_GUARD_MODELS,
   TIME_SLOTS,
+  TOP_BRANDS,
   buildCameraLensCartProduct,
   buildComboCartProduct,
   buildPouchCartProduct,
@@ -119,6 +121,63 @@ const EMPTY_PROFILE = {
   wishlistIds: []
 };
 
+function safeStorageGetItem(key) {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSetItem(key, value) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, String(value));
+    }
+  } catch {}
+}
+
+function loadJsonStorage(key, fallback) {
+  try {
+    const raw = safeStorageGetItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJsonStorage(key, value) {
+  try {
+    safeStorageSetItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+function productMatchesBrand(product, brand) {
+  const b = String(brand || '').trim().toLowerCase();
+  if (!b) return true;
+  if (String(product?.brand || '').trim().toLowerCase() === b) return true;
+  const hay = `${product?.name || ''} ${product?.description || ''} ${product?.category || ''}`.toLowerCase();
+  if (b === 'apple') {
+    return ['apple', 'iphone', 'magsafe', 'lightning', 'ipad'].some((k) => hay.includes(k));
+  }
+  if (b === 'samsung') {
+    return ['samsung', 'galaxy'].some((k) => hay.includes(k));
+  }
+  if (b === 'xiaomi') {
+    return ['xiaomi', 'redmi', 'poco'].some((k) => hay.includes(k));
+  }
+  if (b === 'oppo') {
+    return ['oppo', 'reno'].some((k) => hay.includes(k));
+  }
+  if (b === 'vivo') {
+    return ['vivo', 'iqoo'].some((k) => hay.includes(k));
+  }
+  if (b === 'realme') {
+    return ['realme', 'narzo'].some((k) => hay.includes(k));
+  }
+  return hay.includes(b);
+}
+
 const initialDeletedProductIds = parseDeletedProductIds(
   loadJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, [])
 );
@@ -126,16 +185,10 @@ const initialCachedSettings = {
   ...DEFAULT_SETTINGS,
   ...(loadJsonStorage(STORAGE_SETTINGS_KEY, {}) || {})
 };
-const initialCatalogSeeded = (() => {
-  try {
-    return (
-      localStorage.getItem(STORAGE_CATALOG_SEEDED_KEY) === 'true' ||
-      localStorage.getItem(STORAGE_PRODUCTS_KEY) !== null
-    );
-  } catch {
-    return false;
-  }
-})();
+const initialCatalogSeeded =
+  safeStorageGetItem(STORAGE_CATALOG_SEEDED_KEY) === 'true' ||
+  safeStorageGetItem(STORAGE_PRODUCTS_KEY) !== null;
+
 const initialProducts = (() => {
   const deletedSet = new Set(initialDeletedProductIds);
   const cached = loadJsonStorage(STORAGE_PRODUCTS_KEY, null);
@@ -153,7 +206,9 @@ const initialGuardConfig = parseScreenGuardConfig(
 
 const state = {
   activeTab: 'home',
+  homeSearch: '',
   selectedCategory: 'All',
+  selectedCatalogBrand: '',
   catalogSearch: '',
   products: initialProducts,
   deletedProductIds: initialDeletedProductIds,
@@ -317,21 +372,6 @@ function compressImageFileToDataUrl(file, maxDimension = 420, quality = 0.72) {
   });
 }
 
-function loadJsonStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveJsonStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
-
 function rememberTrackingId(id) {
   const clean = String(id || '').trim().toUpperCase();
   if (!clean) return;
@@ -420,6 +460,11 @@ function applySettingsToDom() {
   setHref('quick-call-link', `tel:+91${digits}`);
   setText('quick-call-text', `+91 ${phone}`);
   setHref(
+    'quick-whatsapp-link',
+    `https://api.whatsapp.com/send?phone=91${waDigits}&text=${encodeURIComponent('Hi iCASE Edappal! I would like to enquire about mobile accessories or repair.')}`
+  );
+  setText('quick-whatsapp-text', `+91 ${s.store_whatsapp || phone}`);
+  setHref(
     'hero-whatsapp-link',
     `https://api.whatsapp.com/send?phone=91${waDigits}&text=${encodeURIComponent('Hi iCASE Edappal! I would like to enquire about an accessory order or mobile repair.')}`
   );
@@ -447,7 +492,7 @@ function applySettingsToDom() {
   if (pausedBanner) pausedBanner.classList.toggle('hidden', storeOnline);
 
   const countEl = document.getElementById('home-product-count');
-  if (countEl) countEl.textContent = `${state.products.length} synced products`;
+  if (countEl) countEl.textContent = `${state.products.length} items`;
 }
 
 function updateSyncStatusBadge(status) {
@@ -574,6 +619,47 @@ function renderHome() {
   }
 
   renderHomeFeaturedPouches();
+
+  const brandsHost = document.getElementById('home-top-brands');
+  if (brandsHost) {
+    brandsHost.innerHTML = TOP_BRANDS.map(
+      (brand) => `
+      <button type="button" data-home-brand="${escapeHtml(brand)}" class="bg-white border border-slate-200 hover:border-icase-navy hover:bg-slate-50 rounded-2xl py-3 px-2 text-center font-extrabold text-xs sm:text-sm text-icase-navy shadow-sm transition">
+        ${escapeHtml(brand)}
+      </button>
+    `
+    ).join('');
+  }
+
+  const hq = state.homeSearch.trim().toLowerCase();
+  const clearBtn = document.getElementById('home-search-clear');
+  if (clearBtn) clearBtn.classList.toggle('hidden', !hq);
+
+  const allMatching = state.products
+    .filter(
+      (p) =>
+        !hq ||
+        (p.name || '').toLowerCase().includes(hq) ||
+        (p.category || '').toLowerCase().includes(hq) ||
+        (p.description || '').toLowerCase().includes(hq)
+    )
+    .sort((a, b) => Number(a.popularityRank || 99) - Number(b.popularityRank || 99));
+
+  const allCountEl = document.getElementById('home-all-products-count');
+  if (allCountEl) allCountEl.textContent = `${allMatching.length} items`;
+
+  const allGrid = document.getElementById('home-all-products-grid');
+  const allEmpty = document.getElementById('home-all-products-empty');
+  if (allGrid && allEmpty) {
+    if (allMatching.length === 0) {
+      allGrid.innerHTML = '';
+      allEmpty.classList.remove('hidden');
+    } else {
+      allEmpty.classList.add('hidden');
+      allGrid.innerHTML = allMatching.map(renderProductCardHtml).join('');
+    }
+  }
+
   renderPublicReviewsSections();
 }
 
@@ -1711,9 +1797,29 @@ function renderCatalog() {
     }).join('');
   }
 
+  const brandWrap = document.getElementById('catalog-brand-chips');
+  if (brandWrap) {
+    brandWrap.innerHTML = ['', ...TOP_BRANDS]
+      .map((brand) => {
+        const active = state.selectedCatalogBrand === brand;
+        const label = brand || 'All Brands';
+        return `
+          <button type="button" data-catalog-brand="${escapeHtml(brand)}" class="px-3 py-1 rounded-full text-xs font-bold border transition ${
+            active
+              ? 'bg-icase-red text-white border-icase-red shadow-sm'
+              : 'bg-slate-50 text-icase-navy border-slate-200 hover:border-icase-navy'
+          }">
+            ${escapeHtml(label)}
+          </button>
+        `;
+      })
+      .join('');
+  }
+
   const q = state.catalogSearch.trim().toLowerCase();
   const filtered = state.products
     .filter((p) => state.selectedCategory === 'All' || p.category === state.selectedCategory)
+    .filter((p) => productMatchesBrand(p, state.selectedCatalogBrand))
     .filter(
       (p) =>
         !q ||
@@ -2509,6 +2615,12 @@ async function handleCheckoutSubmit(e) {
 
 // ==================== REPAIR & PICKUP BOOKING ====================
 function initRepairSection() {
+  const dateSel = document.getElementById('repair-date');
+  if (dateSel) {
+    dateSel.innerHTML = REPAIR_DATE_OPTIONS.map(
+      (dt) => `<option value="${escapeHtml(dt)}">${escapeHtml(dt)}</option>`
+    ).join('');
+  }
   const slotSel = document.getElementById('repair-slot');
   if (slotSel) {
     slotSel.innerHTML = TIME_SLOTS.map(
@@ -3672,9 +3784,7 @@ function renderAdminSection() {
         if (state.editingProductId === targetId) state.editingProductId = null;
         saveJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, state.deletedProductIds);
         saveJsonStorage(STORAGE_PRODUCTS_KEY, state.products);
-        try {
-          localStorage.setItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
-        } catch {}
+        safeStorageSetItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
         reconcileCartWithLiveCatalog();
         renderHome();
         renderAdminSection();
@@ -5662,6 +5772,15 @@ function bindGlobalEvents() {
     const homeCat = e.target.closest('[data-home-cat]');
     if (homeCat) {
       state.selectedCategory = homeCat.dataset.homeCat;
+      state.selectedCatalogBrand = '';
+      setActiveTab('catalog');
+      return;
+    }
+
+    const homeBrand = e.target.closest('[data-home-brand]');
+    if (homeBrand) {
+      state.selectedCategory = 'All';
+      state.selectedCatalogBrand = homeBrand.dataset.homeBrand;
       setActiveTab('catalog');
       return;
     }
@@ -5669,6 +5788,14 @@ function bindGlobalEvents() {
     const catBtn = e.target.closest('[data-catalog-cat]');
     if (catBtn) {
       state.selectedCategory = catBtn.dataset.catalogCat;
+      renderCatalog();
+      return;
+    }
+
+    const brandChip = e.target.closest('[data-catalog-brand]');
+    if (brandChip) {
+      const nextB = brandChip.dataset.catalogBrand;
+      state.selectedCatalogBrand = state.selectedCatalogBrand === nextB ? '' : nextB;
       renderCatalog();
       return;
     }
@@ -5881,6 +6008,18 @@ function bindGlobalEvents() {
     }
   });
 
+  document.getElementById('home-search-input')?.addEventListener('input', (e) => {
+    state.homeSearch = e.target.value;
+    renderHome();
+  });
+  document.getElementById('home-search-clear')?.addEventListener('click', () => {
+    state.homeSearch = '';
+    const inp = document.getElementById('home-search-input');
+    if (inp) inp.value = '';
+    renderHome();
+  });
+  document.getElementById('quick-account-btn')?.addEventListener('click', openAccountModal);
+
   document.getElementById('catalog-search-input')?.addEventListener('input', (e) => {
     state.catalogSearch = e.target.value;
     renderCatalog();
@@ -6062,13 +6201,15 @@ function bootstrap() {
   seedFirestoreIfEmpty();
   subscribePublicStoreData({
     onProducts: (list) => {
-      state.hasSyncedProductsFromCloud = true;
       const deletedSet = new Set(state.deletedProductIds || []);
-      state.products = list.filter((p) => p?.id && !deletedSet.has(p.id));
-      saveJsonStorage(STORAGE_PRODUCTS_KEY, state.products);
-      try {
-        localStorage.setItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
-      } catch {}
+      if (Array.isArray(list) && list.length > 0) {
+        state.hasSyncedProductsFromCloud = true;
+        state.products = list.filter((p) => p?.id && !deletedSet.has(p.id));
+        saveJsonStorage(STORAGE_PRODUCTS_KEY, state.products);
+        safeStorageSetItem(STORAGE_CATALOG_SEEDED_KEY, 'true');
+      } else {
+        state.products = INITIAL_PRODUCTS.filter((p) => !deletedSet.has(p.id));
+      }
       reconcileCartWithLiveCatalog();
       renderHome();
       if (state.activeTab === 'catalog') renderCatalog();

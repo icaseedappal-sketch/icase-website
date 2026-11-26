@@ -234,6 +234,7 @@ fun MainApp(viewModel: AppViewModel = viewModel()) {
                     ScreenGuardsScreen(
                         viewModel = viewModel,
                         initialSection = screen.initialSection,
+                        initialGlassType = screen.initialGlassType,
                         onBack = { viewModel.navigateBack() },
                         onCartClick = { viewModel.navigateTo(Screen.Cart) }
                     )

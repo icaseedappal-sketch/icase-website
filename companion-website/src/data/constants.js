@@ -517,6 +517,7 @@ export function createDefaultPouchItems() {
       deleted: false,
       offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
       imageUrl: '',
+      videoUrl: '',
       colorOptions: [],
       showOnHomePage: false
     },
@@ -530,6 +531,7 @@ export function createDefaultPouchItems() {
       deleted: false,
       offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
       imageUrl: '',
+      videoUrl: '',
       colorOptions: [],
       showOnHomePage: false
     },
@@ -543,6 +545,7 @@ export function createDefaultPouchItems() {
       deleted: false,
       offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
       imageUrl: '',
+      videoUrl: '',
       colorOptions: [],
       showOnHomePage: false
     }
@@ -607,6 +610,7 @@ function normalizePouchItem(raw) {
     deleted: Boolean(raw.deleted),
     offer: normalizeGuardOffer(raw.offer),
     imageUrl: String(raw.imageUrl || '').trim(),
+    videoUrl: String(raw.videoUrl || '').trim(),
     colorOptions,
     showOnHomePage: Boolean(raw.showOnHomePage)
   };
@@ -622,7 +626,9 @@ function createBaseDefaultScreenGuardConfig() {
       enabled: true,
       deleted: false,
       offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
-      helperNote: ''
+      helperNote: '',
+      imageUrl: '',
+      videoUrl: ''
     };
   }
   return {
@@ -633,7 +639,8 @@ function createBaseDefaultScreenGuardConfig() {
       basePrice: DEFAULT_CAMERA_LENS_PRICE,
       enabled: true,
       deleted: false,
-      offer: { active: false, type: 'NONE', value: 0, badgeText: '' }
+      offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
+      videoUrl: ''
     },
     cameraLensModelConfigs: {},
     customCameraLensModelsByBrand: {},
@@ -643,7 +650,9 @@ function createBaseDefaultScreenGuardConfig() {
     pouchModelConfigs: {},
     customPouchModelsByBrand: {},
     temperedGlassImageUrl: '',
-    cameraLensImageUrl: ''
+    cameraLensImageUrl: '',
+    pouchCardImageUrl: '',
+    pouchCardStartingPrice: 0
   };
 }
 
@@ -671,7 +680,9 @@ export function parseScreenGuardConfig(raw, baseOverride = null) {
           enabled: v?.enabled !== false,
           deleted: Boolean(v?.deleted),
           offer: normalizeGuardOffer(v?.offer),
-          helperNote: String(v?.helperNote || '')
+          helperNote: String(v?.helperNote || ''),
+          imageUrl: String(v?.imageUrl || '').trim(),
+          videoUrl: String(v?.videoUrl || '').trim()
         };
       }
     }
@@ -702,7 +713,8 @@ export function parseScreenGuardConfig(raw, baseOverride = null) {
         basePrice: Number.isFinite(bp) && bp >= 0 ? bp : DEFAULT_CAMERA_LENS_PRICE,
         enabled: parsed.cameraLensDefault.enabled !== false,
         deleted: Boolean(parsed.cameraLensDefault.deleted),
-        offer: normalizeGuardOffer(parsed.cameraLensDefault.offer)
+        offer: normalizeGuardOffer(parsed.cameraLensDefault.offer),
+        videoUrl: String(parsed.cameraLensDefault.videoUrl || '').trim()
       };
     }
 
@@ -741,6 +753,10 @@ export function parseScreenGuardConfig(raw, baseOverride = null) {
     base.customPouchModelsByBrand = normalizeStringListMap(parsed.customPouchModelsByBrand);
     base.temperedGlassImageUrl = String(parsed.temperedGlassImageUrl || '').trim();
     base.cameraLensImageUrl = String(parsed.cameraLensImageUrl || '').trim();
+    base.pouchCardImageUrl = String(parsed.pouchCardImageUrl || '').trim();
+    const pouchStart = Number(parsed.pouchCardStartingPrice);
+    base.pouchCardStartingPrice =
+      Number.isFinite(pouchStart) && pouchStart > 0 ? Math.round(pouchStart) : 0;
     return base;
   } catch {
     return base;
@@ -764,6 +780,10 @@ export function getAllGlassTypes(config = createDefaultScreenGuardConfig()) {
   const keys = Object.keys(config?.glassTypeConfigs || {});
   const extras = keys.filter((k) => !ALL_GLASS_TYPES.includes(k));
   return [...ALL_GLASS_TYPES, ...extras];
+}
+
+export function getActiveGlassTypes(config = createDefaultScreenGuardConfig()) {
+  return getAllGlassTypes(config).filter((gt) => isGlassTypeAvailable(gt, config));
 }
 
 export function parseDeletedProductIds(raw) {
@@ -1240,14 +1260,62 @@ function extractInstallationOption(description = '') {
   return (nextBullet >= 0 ? after.slice(0, nextBullet) : after).trim();
 }
 
+export const OTHER_ANDROID_POPULAR_MODELS = [
+  'Redmi Note 13 Pro 5G',
+  'OnePlus 12R',
+  'Nothing Phone (2a)',
+  'Vivo V40 Pro',
+  'Oppo Reno 12 Pro 5G',
+  'Galaxy A55 5G'
+];
+
+export function buildOtherAndroidPouchWhatsAppMessage({ modelName = '', pouchName = '' } = {}) {
+  const cleanModel = String(modelName || '').trim() || 'My Android Phone';
+  const cleanPouch = String(pouchName || '').trim();
+  const lines = [
+    'Hi iCASE Edappal! I want to ask / order a Pouch / Back Case for my Android phone:',
+    `• Phone Model: ${cleanModel}`
+  ];
+  if (cleanPouch && cleanPouch !== 'Any Matching Design') {
+    lines.push(`• Preferred Design: ${cleanPouch}`);
+  }
+  lines.push('Please share available stock photos and pricing.');
+  return lines.join('\n');
+}
+
 export function resolveTemperedGlassImageUrl(config = createDefaultScreenGuardConfig()) {
   const custom = String(config?.temperedGlassImageUrl || '').trim();
   return custom || TEMPERED_GLASS_IMAGE_URL;
 }
 
+export function resolveGlassTypeImageUrl(glassType = '', config = createDefaultScreenGuardConfig()) {
+  const custom = String(config?.glassTypeConfigs?.[glassType]?.imageUrl || '').trim();
+  return custom || resolveTemperedGlassImageUrl(config);
+}
+
+export function resolveGlassTypeVideoUrl(glassType = '', config = createDefaultScreenGuardConfig()) {
+  return String(config?.glassTypeConfigs?.[glassType]?.videoUrl || '').trim();
+}
+
 export function resolveCameraLensImageUrl(config = createDefaultScreenGuardConfig()) {
   const custom = String(config?.cameraLensImageUrl || '').trim();
   return custom || CAMERA_LENS_IMAGE_URL;
+}
+
+export function resolvePouchCardImageUrl(config = createDefaultScreenGuardConfig()) {
+  const custom = String(config?.pouchCardImageUrl || '').trim();
+  return custom || POUCH_IMAGE_URL;
+}
+
+export function getStartingPouchPrice(config = createDefaultScreenGuardConfig()) {
+  const override = Number(config?.pouchCardStartingPrice || 0);
+  if (Number.isFinite(override) && override > 0) return Math.round(override);
+  const items = Array.isArray(config?.pouchItems) ? config.pouchItems : [];
+  const activePrices = items
+    .filter((item) => item && !item.deleted && item.enabled !== false)
+    .map((item) => resolvePouchPrice(item).finalPrice)
+    .filter((p) => Number.isFinite(p) && p > 0);
+  return activePrices.length > 0 ? Math.min(...activePrices) : 299;
 }
 
 export function getStartingTemperedGlassPrice(config = createDefaultScreenGuardConfig()) {
@@ -1303,7 +1371,8 @@ export function buildTemperedGlassCartProduct(
     description: `Precision ${glassType} Tempered Glass for ${cleanBrand === 'CUSTOM' ? cleanModel : `${cleanBrand} ${cleanModel}`}${installSuffix}${offerSuffix}`,
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
-    imageUrl: resolveTemperedGlassImageUrl(config),
+    imageUrl: resolveGlassTypeImageUrl(glassType, config),
+    videoUrl: resolveGlassTypeVideoUrl(glassType, config),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1332,6 +1401,7 @@ export function buildCameraLensCartProduct(
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
     imageUrl: resolveCameraLensImageUrl(config),
+    videoUrl: String(config?.cameraLensDefault?.videoUrl || '').trim(),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1391,6 +1461,7 @@ export function buildPouchCartProduct(brand = '', model = '', pouch = {}, select
     price: pricing.finalPrice,
     originalPrice: pricing.basePrice > pricing.finalPrice ? pricing.basePrice : pricing.finalPrice,
     imageUrl: resolvedImage,
+    videoUrl: String(pouch?.videoUrl || '').trim(),
     inStock: true,
     stockCount: 99,
     isOneHourEligible: true,
@@ -1605,6 +1676,56 @@ export function compressImageFileToDataUrl(file, maxDimension = 420, quality = 0
   });
 }
 
+export function isYouTubeUrl(rawUrl = '') {
+  const url = String(rawUrl || '').trim();
+  if (!url) return false;
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)\//i.test(url);
+}
+
+export function parseYouTubeEmbedUrl(rawUrl = '') {
+  const url = String(rawUrl || '').trim();
+  if (!isYouTubeUrl(url)) return '';
+  try {
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    const u = new URL(normalized);
+    let id = '';
+    if (u.hostname.includes('youtu.be')) {
+      id = u.pathname.replace(/^\/+/, '').split('/')[0] || '';
+    } else if (u.pathname.startsWith('/shorts/')) {
+      id = u.pathname.split('/')[2] || '';
+    } else if (u.pathname.startsWith('/embed/')) {
+      id = u.pathname.split('/')[2] || '';
+    } else {
+      id = u.searchParams.get('v') || '';
+    }
+    const cleanId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+    return cleanId ? `https://www.youtube-nocookie.com/embed/${cleanId}?autoplay=1&rel=0` : '';
+  } catch {
+    return '';
+  }
+}
+
+export function readShortVideoFileToDataUrl(file, maxBytes = 350 * 1024) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error('No video file selected.'));
+      return;
+    }
+    if (file.size > maxBytes) {
+      reject(
+        new Error(
+          `Video clip is ${(file.size / 1024).toFixed(0)} KB. Max upload size is 350 KB—trim the clip or paste an MP4/YouTube URL instead.`
+        )
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read video file.'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function generateDefaultCodeExport({
   products = INITIAL_PRODUCTS,
   settings = DEFAULT_SETTINGS,
@@ -1612,7 +1733,14 @@ export function generateDefaultCodeExport({
 } = {}) {
   const cleanSettings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
   delete cleanSettings[SCREEN_GUARD_CONFIG_KEY];
-  const cleanProducts = Array.isArray(products) ? products : INITIAL_PRODUCTS;
+  const cleanProducts = (Array.isArray(products) ? products : INITIAL_PRODUCTS).map((p) =>
+    p && typeof p === 'object'
+      ? {
+          ...p,
+          videoUrl: String(p.videoUrl || '').trim()
+        }
+      : p
+  );
   const cleanGuard = parseScreenGuardConfig(screenGuardConfig);
   return [
     '// === iCASE Default Data Export ===',
@@ -1628,4 +1756,5 @@ export function generateDefaultCodeExport({
     ''
   ].join('\n');
 }
+
 

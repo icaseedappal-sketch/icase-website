@@ -18,7 +18,8 @@ data class ProductEntity(
     val isOneHourEligible: Boolean = true,
     val isPopular: Boolean = false,
     val popularityRank: Int = 0,
-    val colorOptionsJson: String = "[]"
+    val colorOptionsJson: String = "[]",
+    val videoUrl: String = ""
 )
 
 @Entity(tableName = "orders")

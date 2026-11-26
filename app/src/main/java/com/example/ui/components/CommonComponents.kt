@@ -859,6 +859,26 @@ fun ProductCard(
                         )
                     }
                 }
+
+                if (product.videoUrl.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .align(Alignment.BottomEnd)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF0F172A).copy(alpha = 0.86f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "▶ Video",
+                            fontSize = spec.sp(9.5f),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
             }
 
             Column(modifier = Modifier.padding(if (spec.isCompactSmall) 10.dp else 12.dp)) {

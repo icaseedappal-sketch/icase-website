@@ -64,7 +64,9 @@ data class GlassTypeAdminConfig(
     val enabled: Boolean = true,
     val deleted: Boolean = false,
     val offer: ScreenGuardOffer = ScreenGuardOffer(),
-    val helperNote: String = ""
+    val helperNote: String = "",
+    val imageUrl: String = "",
+    val videoUrl: String = ""
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("basePrice", basePrice)
@@ -72,6 +74,8 @@ data class GlassTypeAdminConfig(
         put("deleted", deleted)
         put("offer", offer.toJson())
         if (helperNote.isNotBlank()) put("helperNote", helperNote)
+        if (imageUrl.isNotBlank()) put("imageUrl", imageUrl.trim())
+        if (videoUrl.isNotBlank()) put("videoUrl", videoUrl.trim())
     }
 
     companion object {
@@ -82,7 +86,9 @@ data class GlassTypeAdminConfig(
                 enabled = obj.optBoolean("enabled", true),
                 deleted = obj.optBoolean("deleted", false),
                 offer = ScreenGuardOffer.fromJson(obj.optJSONObject("offer")),
-                helperNote = obj.optString("helperNote", "")
+                helperNote = obj.optString("helperNote", ""),
+                imageUrl = obj.optString("imageUrl", "").trim(),
+                videoUrl = obj.optString("videoUrl", "").trim()
             )
         }
     }
@@ -198,6 +204,7 @@ data class PouchAdminItem(
     val deleted: Boolean = false,
     val offer: ScreenGuardOffer = ScreenGuardOffer(),
     val imageUrl: String = "",
+    val videoUrl: String = "",
     val colorOptions: List<PouchColorOption> = emptyList(),
     val showOnHomePage: Boolean = false
 ) {
@@ -212,6 +219,9 @@ data class PouchAdminItem(
         put("offer", offer.toJson())
         if (imageUrl.isNotBlank()) {
             put("imageUrl", imageUrl.trim())
+        }
+        if (videoUrl.isNotBlank()) {
+            put("videoUrl", videoUrl.trim())
         }
         put("showOnHomePage", showOnHomePage)
         val colorsArr = JSONArray()
@@ -259,6 +269,7 @@ data class PouchAdminItem(
                 deleted = obj.optBoolean("deleted", false),
                 offer = ScreenGuardOffer.fromJson(obj.optJSONObject("offer")),
                 imageUrl = obj.optString("imageUrl", "").trim(),
+                videoUrl = obj.optString("videoUrl", "").trim(),
                 colorOptions = parsedColors,
                 showOnHomePage = obj.optBoolean("showOnHomePage", false)
             )
@@ -286,7 +297,9 @@ data class ScreenGuardAdminConfig(
     val pouchModelConfigs: Map<String, ModelAdminConfig> = emptyMap(),
     val customPouchModelsByBrand: Map<String, List<String>> = emptyMap(),
     val temperedGlassImageUrl: String = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL,
-    val cameraLensImageUrl: String = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL
+    val cameraLensImageUrl: String = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL,
+    val pouchCardImageUrl: String = ScreenGuardCatalog.POUCH_IMAGE_URL,
+    val pouchCardStartingPrice: Double = 0.0
 ) {
     fun toJsonString(): String {
         val root = JSONObject()
@@ -327,6 +340,8 @@ data class ScreenGuardAdminConfig(
         root.put("customPouchModelsByBrand", stringListMapToJson(customPouchModelsByBrand))
         root.put("temperedGlassImageUrl", temperedGlassImageUrl)
         root.put("cameraLensImageUrl", cameraLensImageUrl)
+        root.put("pouchCardImageUrl", pouchCardImageUrl)
+        root.put("pouchCardStartingPrice", pouchCardStartingPrice)
 
         return root.toString()
     }
@@ -483,6 +498,10 @@ data class ScreenGuardAdminConfig(
                     .ifBlank { ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL }
                 val cameraLensImg = root.optString("cameraLensImageUrl", "").trim()
                     .ifBlank { ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL }
+                val pouchCardImg = root.optString("pouchCardImageUrl", "").trim()
+                    .ifBlank { ScreenGuardCatalog.POUCH_IMAGE_URL }
+                val pouchStartPrice = root.optDouble("pouchCardStartingPrice", 0.0)
+                    .takeIf { !it.isNaN() && it >= 0.0 } ?: 0.0
 
                 ScreenGuardAdminConfig(
                     glassTypeConfigs = defaults,
@@ -497,7 +516,9 @@ data class ScreenGuardAdminConfig(
                     pouchModelConfigs = pouchModelMap,
                     customPouchModelsByBrand = customPouchModels,
                     temperedGlassImageUrl = temperedGlassImg,
-                    cameraLensImageUrl = cameraLensImg
+                    cameraLensImageUrl = cameraLensImg,
+                    pouchCardImageUrl = pouchCardImg,
+                    pouchCardStartingPrice = pouchStartPrice
                 )
             } catch (_: Exception) {
                 ScreenGuardAdminConfig()
@@ -1114,6 +1135,34 @@ object ScreenGuardCatalog {
         append("• Preference: $installationOption")
     }
 
+    val otherAndroidQuickModels: List<String> = listOf(
+        "Redmi Note 13 Pro 5G",
+        "OnePlus 12R",
+        "Nothing Phone (2a)",
+        "Vivo V40 Pro",
+        "Oppo Reno 12 Pro 5G",
+        "Galaxy A55 5G"
+    )
+
+    fun buildOtherAndroidPouchWhatsAppMessage(
+        model: String,
+        pouchStyle: String = "",
+        approxPrice: Double = 0.0
+    ): String = buildString {
+        val cleanModel = model.trim().ifBlank { "My Android Smartphone" }
+        append("Hi iCASE Edappal! Please share today's available pouch stock photos & price:\n")
+        append("• Brand Category: Other Android Model\n")
+        append("• Phone Model: $cleanModel\n")
+        if (pouchStyle.isNotBlank()) {
+            append("• Preferred Style: $pouchStyle")
+            if (approxPrice > 0.0) {
+                append(" (~₹${approxPrice.roundToInt()})")
+            }
+            append("\n")
+        }
+        append("Please send live photos available for my model.")
+    }
+
     /**
      * Samsung (Flat S Series only):
      * Exclude curved-display models (S20 series, S21 Ultra, S22 Ultra, S23 Ultra).
@@ -1256,12 +1305,40 @@ object ScreenGuardCatalog {
         return pouch.colorOptions.firstOrNull()
     }
 
+    fun activeGlassTypes(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): List<String> {
+        return allGlassTypes(config).filter { isGlassTypeAvailable(it, config) }
+    }
+
     fun resolveTemperedGlassImageUrl(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): String {
         return config.temperedGlassImageUrl.trim().ifBlank { TEMPERED_GLASS_IMAGE_URL }
     }
 
+    fun resolveGlassTypeImageUrl(
+        glassType: String,
+        config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()
+    ): String {
+        val typeImg = config.glassTypeConfigs[glassType]?.imageUrl?.trim().orEmpty()
+        return typeImg.ifBlank { resolveTemperedGlassImageUrl(config) }
+    }
+
+    fun resolveGlassTypeVideoUrl(
+        glassType: String,
+        config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()
+    ): String {
+        return config.glassTypeConfigs[glassType]?.videoUrl?.trim().orEmpty()
+    }
+
     fun resolveCameraLensImageUrl(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): String {
         return config.cameraLensImageUrl.trim().ifBlank { CAMERA_LENS_IMAGE_URL }
+    }
+
+    fun resolvePouchCardImageUrl(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): String {
+        return config.pouchCardImageUrl.trim().ifBlank { POUCH_IMAGE_URL }
+    }
+
+    fun isYouTubeUrl(url: String): Boolean {
+        val clean = url.trim().lowercase()
+        return clean.contains("youtube.com/") || clean.contains("youtu.be/")
     }
 
     fun startingTemperedGlassPrice(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): Double {
@@ -1279,6 +1356,14 @@ object ScreenGuardCatalog {
                 .map { resolveCameraLensPrice(brand, it, config).finalPrice }
         }
         return (activeCustomPrices + defaultPrice).minOrNull() ?: defaultPrice
+    }
+
+    fun startingPouchPrice(config: ScreenGuardAdminConfig = ScreenGuardAdminConfig()): Double {
+        if (config.pouchCardStartingPrice > 0.0) return config.pouchCardStartingPrice
+        val activePrices = config.pouchItems
+            .filter { !it.deleted && it.enabled }
+            .map { resolvePouchPrice(it).finalPrice }
+        return activePrices.minOrNull() ?: 299.0
     }
 
     fun isDeviceEligibleForCameraLens(
@@ -1358,7 +1443,8 @@ object ScreenGuardCatalog {
             description = "Precision $glassType Tempered Glass for ${if (cleanBrand == "CUSTOM") cleanModel else "$cleanBrand $cleanModel"}$installSuffix$offerSuffix",
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
-            imageUrl = resolveTemperedGlassImageUrl(config),
+            imageUrl = resolveGlassTypeImageUrl(glassType, config),
+            videoUrl = resolveGlassTypeVideoUrl(glassType, config),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1387,6 +1473,7 @@ object ScreenGuardCatalog {
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
             imageUrl = resolveCameraLensImageUrl(config),
+            videoUrl = config.cameraLensDefault.videoUrl.trim(),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1462,6 +1549,7 @@ object ScreenGuardCatalog {
             price = pricing.finalPrice,
             originalPrice = if (pricing.basePrice > pricing.finalPrice) pricing.basePrice else pricing.finalPrice,
             imageUrl = resolvedImage,
+            videoUrl = pouch.videoUrl.trim(),
             inStock = true,
             stockCount = 99,
             isOneHourEligible = true,
@@ -1561,6 +1649,9 @@ object ScreenGuardCatalog {
             pObj.put("price", prod.price)
             pObj.put("originalPrice", prod.originalPrice)
             pObj.put("imageUrl", prod.imageUrl)
+            if (prod.videoUrl.isNotBlank()) {
+                pObj.put("videoUrl", prod.videoUrl.trim())
+            }
             pObj.put("inStock", prod.inStock)
             pObj.put("stockCount", prod.stockCount)
             pObj.put("isOneHourEligible", prod.isOneHourEligible)

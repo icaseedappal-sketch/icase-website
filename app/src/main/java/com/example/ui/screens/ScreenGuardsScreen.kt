@@ -66,7 +66,8 @@ fun ScreenGuardsScreen(
     onBack: () -> Unit,
     onCartClick: () -> Unit,
     modifier: Modifier = Modifier,
-    initialSection: String = ""
+    initialSection: String = "",
+    initialGlassType: String = ""
 ) {
     val spec = LocalResponsiveSpec.current
     val screenGuardConfig by viewModel.screenGuardConfig.collectAsState()
@@ -201,6 +202,7 @@ fun ScreenGuardsScreen(
                         TemperedGlassFinderCard(
                             config = screenGuardConfig,
                             isHighlighted = initialSection.equals("TEMPERED_GLASS", ignoreCase = true),
+                            initialGlassType = initialGlassType,
                             installationOption = installationOption,
                             onAddToCart = { brand, model, glassType ->
                                 viewModel.addTemperedGlassToCart(brand, model, glassType, installationOption)
@@ -264,6 +266,7 @@ fun ScreenGuardsScreen(
                     ResponsiveCenteredBox(maxWidth = spec.browseMaxWidth) {
                         PouchesFinderCard(
                             config = screenGuardConfig,
+                            isHighlighted = initialSection.equals("POUCHES", ignoreCase = true),
                             onAddPouchToCart = { brand, model, pouch, selectedColor ->
                                 viewModel.addPouchToCart(brand, model, pouch, selectedColor)
                                 val label = if (selectedColor.isNotBlank()) {
@@ -277,6 +280,9 @@ fun ScreenGuardsScreen(
                                 viewModel.openWhatsAppEnquiry(
                                     "Hi iCASE Edappal, please share today's available pouch stock photos for my Android smartphone."
                                 )
+                            },
+                            onWhatsAppOtherAndroidOrder = { msg ->
+                                viewModel.openWhatsAppEnquiry(msg)
                             },
                             modifier = Modifier.padding(horizontal = spec.horizontalPadding)
                         )

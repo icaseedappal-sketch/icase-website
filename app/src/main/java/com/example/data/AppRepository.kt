@@ -783,7 +783,8 @@ class AppRepository(
             isOneHourEligible = doc.getBoolean("isOneHourEligible") ?: true,
             isPopular = doc.getBoolean("isPopular") ?: false,
             popularityRank = (doc.get("popularityRank") as? Number)?.toInt() ?: 10,
-            colorOptionsJson = colorJson
+            colorOptionsJson = colorJson,
+            videoUrl = doc.getString("videoUrl") ?: ""
         )
     }
 
@@ -1586,6 +1587,7 @@ class AppRepository(
         "isPopular" to product.isPopular,
         "popularityRank" to product.popularityRank,
         "colorOptionsJson" to product.colorOptionsJson,
+        "videoUrl" to product.videoUrl,
         "updatedAt" to System.currentTimeMillis()
     )
 

@@ -11,6 +11,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import {
+  OTHER_ANDROID_POPULAR_MODELS,
   OTHER_ANDROID_POUCHES_OPTION,
   OTHER_MODEL_OPTION,
   POUCH_BRANDS,
@@ -18,6 +19,7 @@ import {
   buildCameraLensCartProduct,
   buildCameraLensWhatsAppMessage,
   buildComboCartProduct,
+  buildOtherAndroidPouchWhatsAppMessage,
   buildPouchCartProduct,
   buildTemperedGlassCartProduct,
   buildTemperedGlassWhatsAppMessage,
@@ -34,6 +36,9 @@ import {
   resolveCameraLensImageUrl,
   resolveCameraLensPrice,
   resolveComboPrice,
+  resolveGlassTypeImageUrl,
+  resolveGlassTypeVideoUrl,
+  resolvePouchCardImageUrl,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolvePouchSelectedColor,
@@ -48,7 +53,9 @@ export default function ScreenGuardsSection({
   screenGuardConfig,
   settings,
   onAddToCart,
-  initialFocus = ''
+  initialFocus = '',
+  initialGlassType = '',
+  onOpenVideo
 }) {
   const config = screenGuardConfig || createDefaultScreenGuardConfig();
 
@@ -58,7 +65,7 @@ export default function ScreenGuardsSection({
   const [glassSearch, setGlassSearch] = useState('');
   const [glassDropdownOpen, setGlassDropdownOpen] = useState(false);
   const [glassManualModel, setGlassManualModel] = useState('');
-  const [glassType, setGlassType] = useState('Normal 5D');
+  const [glassType, setGlassType] = useState(initialGlassType || 'Normal 5D');
   const [glassError, setGlassError] = useState('');
 
   // Camera Lens Protection state
@@ -74,6 +81,8 @@ export default function ScreenGuardsSection({
   const [pouchDropdownOpen, setPouchDropdownOpen] = useState(false);
   const [pouchError, setPouchError] = useState('');
   const [selectedPouchColors, setSelectedPouchColors] = useState({});
+  const [otherAndroidModel, setOtherAndroidModel] = useState('');
+  const [otherAndroidPouchPref, setOtherAndroidPouchPref] = useState('Any Matching Design');
 
   // Installation & Video modal state
   const [installationOption, setInstallationOption] = useState('Shop Installation');
@@ -86,6 +95,12 @@ export default function ScreenGuardsSection({
   const glassSectionRef = useRef(null);
   const cameraSectionRef = useRef(null);
   const pouchSectionRef = useRef(null);
+
+  useEffect(() => {
+    if (initialGlassType) {
+      setGlassType(initialGlassType);
+    }
+  }, [initialGlassType]);
 
   useEffect(() => {
     const targetRef =
@@ -283,8 +298,15 @@ export default function ScreenGuardsSection({
   }
 
   const showCameraCard = activeCameraBrands.length > 0;
-  const temperedGlassSampleImg = resolveTemperedGlassImageUrl(config);
+  const temperedGlassSampleImg = resolveGlassTypeImageUrl(glassType, config);
+  const activeGlassTypeVideoUrl = resolveGlassTypeVideoUrl(glassType, config);
   const cameraLensSampleImg = resolveCameraLensImageUrl(config);
+  const cameraLensVideoUrl = String(config?.cameraLensDefault?.videoUrl || '').trim();
+  const pouchHeaderImg = resolvePouchCardImageUrl(config);
+  const allActivePouchDesigns = useMemo(
+    () => (Array.isArray(config?.pouchItems) ? config.pouchItems.filter((p) => p && !p.deleted && p.enabled !== false) : []),
+    [config]
+  );
 
   const selectedGlassDeviceName = isManualGlass ? glassManualModel.trim() : glassModel;
   const selectedGlassDeviceUnsupportedForCamera = useMemo(() => {
@@ -336,12 +358,39 @@ export default function ScreenGuardsSection({
                 Tempered Glass
               </h2>
               <span className="compat-pill all">Available for iPhone &amp; All Android Models</span>
+              {activeGlassTypeVideoUrl && onOpenVideo && (
+                <button
+                  type="button"
+                  className="media-video-pill"
+                  onClick={() => onOpenVideo(`${glassType} Tempered Glass`, activeGlassTypeVideoUrl)}
+                >
+                  <Play size={10} fill="currentColor" /> Watch {glassType} Video
+                </button>
+              )}
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
               Select your brand &amp; model for exact tempered glass
             </p>
           </div>
         </div>
+
+        {!glassModel && glassType && (
+          <div
+            className="helper-note-bar"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8
+            }}
+          >
+            <span>
+              Pre-selected style: <strong>{glassType}</strong> — pick your phone model below to see
+              exact availability &amp; price.
+            </span>
+          </div>
+        )}
 
         <div className="category-chips">
           <button
@@ -750,6 +799,15 @@ export default function ScreenGuardsSection({
                   <Camera size={20} color="#E50914" /> Camera Lens Protection
                 </h2>
                 <span className="compat-pill limited">iPhone &amp; Samsung S Series Only</span>
+                {cameraLensVideoUrl && onOpenVideo && (
+                  <button
+                    type="button"
+                    className="media-video-pill"
+                    onClick={() => onOpenVideo('Camera Lens Protection', cameraLensVideoUrl)}
+                  >
+                    <Play size={10} fill="currentColor" /> Watch Video
+                  </button>
+                )}
               </div>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
                 Available exclusively for iPhone &amp; Samsung S Series models (including S20–S25
@@ -1070,27 +1128,47 @@ export default function ScreenGuardsSection({
 
       {/* 3. POUCHES CARD */}
       <section
-        className="card"
+        className={`card ${initialFocus === 'pouch' ? 'section-focus-ring' : ''}`}
         ref={pouchSectionRef}
         id="pouch-wrapper"
         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
       >
-        <div>
-          <h2
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <img
+            src={pouchHeaderImg}
+            alt="Pouches & Back Cases"
             style={{
-              color: 'var(--icase-navy)',
-              fontSize: 20,
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8
+              width: 60,
+              height: 60,
+              borderRadius: 12,
+              objectFit: 'cover',
+              border: '1px solid var(--border)',
+              flexShrink: 0
             }}
-          >
-            <ShoppingBag size={20} color="#0066CC" /> Pouches
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
-            Custom-fit protective pouches for iPhone &amp; Samsung S Series
-          </p>
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+              <h2
+                style={{
+                  color: 'var(--icase-navy)',
+                  fontSize: 20,
+                  fontWeight: 900,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}
+              >
+                <ShoppingBag size={20} color="#0066CC" /> Pouches &amp; Back Cases
+              </h2>
+              <span className="compat-pill pouch">
+                iPhone, Samsung S Series &amp; Other Android Models
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13.5 }}>
+              Custom-fit protective pouches for iPhone &amp; Samsung S Series, plus instant WhatsApp
+              enquiry for all Other Android models.
+            </p>
+          </div>
         </div>
 
         <div className="category-chips">
@@ -1124,20 +1202,91 @@ export default function ScreenGuardsSection({
               gap: 12
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--icase-navy)' }}>
-              Stock for Redmi, Oppo, Realme, Vivo, OnePlus, Nothing &amp; other Android models
-              varies daily. Message us on WhatsApp to see live pouch photos for your exact phone!
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--icase-navy)' }}>
+              Enter or pick your Android phone model for instant WhatsApp pouch photos &amp; price:
             </div>
+
             <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  marginBottom: 6
+                }}
+              >
+                Popular Android Models (Quick Pick)
+              </div>
+              <div className="category-chips">
+                {OTHER_ANDROID_POPULAR_MODELS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`chip ${otherAndroidModel === m ? 'active' : ''}`}
+                    onClick={() => setOtherAndroidModel(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Your Android Phone Model *</label>
+              <input
+                className="input"
+                placeholder="e.g. Redmi Note 13 Pro, OnePlus 12R, Vivo V40, Motorola Edge 50"
+                value={otherAndroidModel}
+                onChange={(e) => setOtherAndroidModel(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  marginBottom: 6
+                }}
+              >
+                Preferred Pouch Style
+              </div>
+              <div className="category-chips">
+                {['Any Matching Design', ...allActivePouchDesigns.map((p) => p.name)].map((styleName) => (
+                  <button
+                    key={styleName}
+                    type="button"
+                    className={`chip ${otherAndroidPouchPref === styleName ? 'active' : ''}`}
+                    onClick={() => setOtherAndroidPouchPref(styleName)}
+                  >
+                    {styleName}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <a
                 href={buildWaUrl(
-                  'Hi iCASE Edappal! Looking for protective pouches for my Android phone. Please share current stock photos and pricing.'
+                  buildOtherAndroidPouchWhatsAppMessage({
+                    modelName: otherAndroidModel,
+                    pouchName: otherAndroidPouchPref
+                  })
                 )}
                 target="_blank"
                 rel="noreferrer"
-                className="btn btn-navy"
+                className="btn"
+                style={{
+                  background: '#16A34A',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  textDecoration: 'none'
+                }}
               >
-                <MessageCircle size={16} /> Enquire on WhatsApp for Stock Photos →
+                <MessageCircle size={16} /> Ask / Order on WhatsApp →
               </a>
             </div>
           </div>
@@ -1255,6 +1404,19 @@ export default function ScreenGuardsSection({
                             >
                               {pr.offerBadge}
                             </span>
+                          )}
+                          {p.videoUrl && onOpenVideo && (
+                            <button
+                              type="button"
+                              className="media-video-pill"
+                              style={{ position: 'absolute', bottom: 8, left: 8 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenVideo(p.name, p.videoUrl);
+                              }}
+                            >
+                              <Play size={10} fill="currentColor" /> Video
+                            </button>
                           )}
                         </div>
                         <div>

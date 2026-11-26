@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Zap, X, Heart, Shield, Award } from 'lucide-react';
+import { Search, Zap, X, Heart, Shield, Award, Play } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -29,6 +29,7 @@ export default function CatalogSection({
   selectedProduct,
   onSelectProduct,
   onOpenGuards,
+  onOpenVideo,
   onLocalReviewCreated
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -255,6 +256,19 @@ export default function CatalogSection({
                       <Zap size={11} /> 1-Hour Eligible
                     </span>
                   )}
+                  {product.videoUrl && onOpenVideo && (
+                    <button
+                      type="button"
+                      className="media-video-pill"
+                      style={{ position: 'absolute', bottom: 8, left: 8 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenVideo(product.name, product.videoUrl);
+                      }}
+                    >
+                      <Play size={10} fill="currentColor" /> Video
+                    </button>
+                  )}
                   {!product.inStock && <span className="stock-pill-out">Out of Stock</span>}
                 </div>
                 <div className="product-body">
@@ -342,17 +356,29 @@ export default function CatalogSection({
               </button>
             </div>
             <div className="modal-body">
-              <img
-                src={activeProduct.imageUrl}
-                alt={activeProduct.name}
-                style={{
-                  width: '100%',
-                  maxHeight: 280,
-                  objectFit: 'cover',
-                  borderRadius: 12,
-                  marginBottom: 16
-                }}
-              />
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <img
+                  src={activeProduct.imageUrl}
+                  alt={activeProduct.name}
+                  style={{
+                    width: '100%',
+                    maxHeight: 280,
+                    objectFit: 'cover',
+                    borderRadius: 12,
+                    display: 'block'
+                  }}
+                />
+                {activeProduct.videoUrl && onOpenVideo && (
+                  <button
+                    type="button"
+                    className="btn btn-navy btn-sm"
+                    style={{ position: 'absolute', bottom: 10, right: 10 }}
+                    onClick={() => onOpenVideo(activeProduct.name, activeProduct.videoUrl)}
+                  >
+                    <Play size={14} fill="currentColor" /> Watch Product Video
+                  </button>
+                )}
+              </div>
               <div
                 style={{
                   display: 'flex',

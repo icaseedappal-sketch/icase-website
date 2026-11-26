@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Upload, Camera, X, Image as ImageIcon, Code2, RotateCcw } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Upload,
+  Camera,
+  X,
+  Image as ImageIcon,
+  Code2,
+  RotateCcw,
+  Play,
+  Film
+} from 'lucide-react';
 import {
   DEFAULT_GLASS_TYPE_PRICES,
   POUCH_BRANDS,
@@ -14,33 +25,53 @@ import {
   getGlassTypesForDevice,
   getModelsForBrand,
   getPouchModelsForBrand,
+  getStartingPouchPrice,
   guardModelKey,
   normalizeHexColor,
   parseScreenGuardConfig,
+  readShortVideoFileToDataUrl,
   resolveCameraLensImageUrl,
   resolveCameraLensPrice,
+  resolveGlassTypeImageUrl,
+  resolveGlassTypeVideoUrl,
+  resolvePouchCardImageUrl,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolveTemperedGlassImageUrl,
   resolveTemperedGlassPrice
 } from '../data/constants';
+import MediaVideoModal from './MediaVideoModal';
 
 export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConfig, onOpenExportCode }) {
   const cfg = screenGuardConfig || createDefaultScreenGuardConfig();
   const [toast, setToast] = useState('');
   const [glassImgInput, setGlassImgInput] = useState(cfg.temperedGlassImageUrl || '');
   const [camImgInput, setCamImgInput] = useState(cfg.cameraLensImageUrl || '');
+  const [pouchCardImgInput, setPouchCardImgInput] = useState(cfg.pouchCardImageUrl || '');
+  const [pouchStartPriceInput, setPouchStartPriceInput] = useState(
+    String(cfg.pouchCardStartingPrice || '')
+  );
+  const [adminVideoPreview, setAdminVideoPreview] = useState({ open: false, title: '', url: '' });
 
   useEffect(() => {
     setGlassImgInput(cfg.temperedGlassImageUrl || '');
     setCamImgInput(cfg.cameraLensImageUrl || '');
-  }, [cfg.temperedGlassImageUrl, cfg.cameraLensImageUrl]);
+    setPouchCardImgInput(cfg.pouchCardImageUrl || '');
+    setPouchStartPriceInput(cfg.pouchCardStartingPrice ? String(cfg.pouchCardStartingPrice) : '');
+  }, [
+    cfg.temperedGlassImageUrl,
+    cfg.cameraLensImageUrl,
+    cfg.pouchCardImageUrl,
+    cfg.pouchCardStartingPrice
+  ]);
 
   // Glass types add
   const [addingGlassType, setAddingGlassType] = useState(false);
   const [newGtName, setNewGtName] = useState('');
   const [newGtPrice, setNewGtPrice] = useState('299');
   const [newGtNote, setNewGtNote] = useState('');
+  const [newGtImageUrl, setNewGtImageUrl] = useState('');
+  const [newGtVideoUrl, setNewGtVideoUrl] = useState('');
 
   // Glass models
   const [glassModelBrand, setGlassModelBrand] = useState('iPhone');
@@ -111,11 +142,15 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
       enabled: true,
       deleted: false,
       offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
-      helperNote: newGtNote.trim()
+      helperNote: newGtNote.trim(),
+      imageUrl: newGtImageUrl.trim(),
+      videoUrl: newGtVideoUrl.trim()
     };
     setAddingGlassType(false);
     setNewGtName('');
     setNewGtNote('');
+    setNewGtImageUrl('');
+    setNewGtVideoUrl('');
     await commitConfig(next, `Added glass type "${clean}"`);
   }
 
@@ -170,6 +205,7 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
       basePrice: '349',
       compatibleBrands: ['iPhone', 'Samsung S Series'],
       imageUrl: '',
+      videoUrl: '',
       colorOptions: [],
       showOnHomePage: false,
       offerType: 'NONE',
@@ -190,6 +226,7 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
       basePrice: String(p.basePrice || 299),
       compatibleBrands: Array.isArray(p.compatibleBrands) ? [...p.compatibleBrands] : ['iPhone', 'Samsung S Series'],
       imageUrl: p.imageUrl || '',
+      videoUrl: p.videoUrl || '',
       colorOptions: Array.isArray(p.colorOptions) ? p.colorOptions.map((c) => ({ ...c })) : [],
       showOnHomePage: Boolean(p.showOnHomePage),
       offerType: p.offer?.type || 'NONE',
@@ -272,6 +309,7 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
       deleted: false,
       showOnHomePage: Boolean(pouchDraft.showOnHomePage),
       imageUrl: String(pouchDraft.imageUrl || '').trim(),
+      videoUrl: String(pouchDraft.videoUrl || '').trim(),
       colorOptions: pouchDraft.colorOptions,
       offer: {
         active: pouchDraft.offerType !== 'NONE',
@@ -523,6 +561,123 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
               </button>
             </div>
           </div>
+
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <img
+                src={resolvePouchCardImageUrl(cfg)}
+                alt="Pouches & Back Cases Card"
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 12,
+                  objectFit: 'cover',
+                  border: '1px solid var(--border)',
+                  background: '#FFF'
+                }}
+              />
+              <div>
+                <div style={{ fontWeight: 900, color: 'var(--icase-navy)', fontSize: 14.5 }}>
+                  Pouches &amp; Back Cases Card
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Home Card image &amp; starting price (Auto:{' '}
+                  {formatINR(getStartingPouchPrice({ ...cfg, pouchCardStartingPrice: 0 }))})
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                <Upload size={14} /> Upload Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!f) return;
+                    try {
+                      const dataUrl = await compressImageFileToDataUrl(f);
+                      setPouchCardImgInput(dataUrl);
+                      const next = parseScreenGuardConfig(cfg);
+                      next.pouchCardImageUrl = dataUrl;
+                      await commitConfig(next, 'Pouches card image updated!');
+                    } catch (err) {
+                      setToast(err.message || 'Image upload failed');
+                    }
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={async () => {
+                  setPouchCardImgInput('');
+                  const next = parseScreenGuardConfig(cfg);
+                  next.pouchCardImageUrl = '';
+                  await commitConfig(next, 'Pouches card image reset to default');
+                }}
+              >
+                <RotateCcw size={13} /> Reset
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="input"
+                placeholder="Or paste Pouches card image URL..."
+                value={pouchCardImgInput}
+                onChange={(e) => setPouchCardImgInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-navy btn-sm"
+                onClick={async () => {
+                  const next = parseScreenGuardConfig(cfg);
+                  next.pouchCardImageUrl = pouchCardImgInput.trim();
+                  await commitConfig(next, 'Pouches card image URL saved!');
+                }}
+              >
+                Save
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="number"
+                className="input"
+                placeholder="Starting price override (₹, 0 = auto)"
+                value={pouchStartPriceInput}
+                onChange={(e) => setPouchStartPriceInput(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-navy btn-sm"
+                onClick={async () => {
+                  const next = parseScreenGuardConfig(cfg);
+                  const val = Math.max(0, Math.round(Number(pouchStartPriceInput || 0)));
+                  next.pouchCardStartingPrice = val;
+                  await commitConfig(
+                    next,
+                    val > 0
+                      ? `Pouches card starting price set to ₹${val}`
+                      : 'Pouches card starting price set to auto'
+                  );
+                }}
+              >
+                Save Price
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -531,10 +686,10 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
         <div className="section-header" style={{ marginBottom: 12 }}>
           <div>
             <h3 style={{ color: 'var(--icase-navy)', fontSize: 17, fontWeight: 900 }}>
-              Tempered Glass Types — Add, Rates, Offers &amp; Delete
+              Tempered Glass Types — Add, Rates, Offers, Media &amp; Delete
             </h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-              Changes immediately update customer selection and active shopping cart totals.
+              Changes immediately update Home quick-select cards, Finder choices, and Cart totals.
             </p>
           </div>
           <button
@@ -553,10 +708,13 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
               borderRadius: 12,
               background: '#EAF2FF',
               border: '1px solid rgba(0,102,204,0.3)',
-              marginBottom: 14
+              marginBottom: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10
             }}
           >
-            <div className="form-grid" style={{ marginBottom: 10 }}>
+            <div className="form-grid">
               <input
                 className="input"
                 placeholder="Type name (e.g. Anti-Blue 9H)"
@@ -573,11 +731,64 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
             </div>
             <input
               className="input"
-              style={{ marginBottom: 10 }}
               placeholder="1-line helper note (optional)"
               value={newGtNote}
               onChange={(e) => setNewGtNote(e.target.value)}
             />
+            <div className="form-grid">
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  className="input"
+                  placeholder="Optional Type Image URL"
+                  value={newGtImageUrl.startsWith('data:image') ? '' : newGtImageUrl}
+                  onChange={(e) => setNewGtImageUrl(e.target.value)}
+                />
+                <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                  <Upload size={13} /> Img
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      try {
+                        setNewGtImageUrl(await compressImageFileToDataUrl(f));
+                      } catch (err) {
+                        setToast(err.message || 'Image upload failed');
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  className="input"
+                  placeholder="Optional Video URL / YouTube"
+                  value={newGtVideoUrl.startsWith('data:video') ? '' : newGtVideoUrl}
+                  onChange={(e) => setNewGtVideoUrl(e.target.value)}
+                />
+                <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                  <Film size={13} /> Clip
+                  <input
+                    type="file"
+                    accept="video/*"
+                    hidden
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      try {
+                        setNewGtVideoUrl(await readShortVideoFileToDataUrl(f));
+                      } catch (err) {
+                        setToast(err.message || 'Video upload failed');
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" className="btn btn-navy btn-sm" onClick={handleAddGlassType}>
                 Save Glass Type
@@ -600,18 +811,25 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
               enabled: true,
               deleted: false,
               offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
-              helperNote: ''
+              helperNote: '',
+              imageUrl: '',
+              videoUrl: ''
             };
             return (
               <GlassTypeEditorCard
                 key={gt}
                 glassType={gt}
                 gCfg={gCfg}
+                resolvedThumb={resolveGlassTypeImageUrl(gt, cfg)}
                 helperFallback={getGlassTypeHelperNote(gt, cfg)}
                 preview={resolveTemperedGlassPrice('iPhone', '__default__', gt, {
                   ...cfg,
                   modelConfigs: {}
                 })}
+                onPreviewVideo={(title, url) =>
+                  setAdminVideoPreview({ open: true, title, url })
+                }
+                onToast={(m) => setToast(m)}
                 onToggleActive={async (enabled) => {
                   const next = parseScreenGuardConfig(cfg);
                   next.glassTypeConfigs[gt] = { ...gCfg, enabled };
@@ -818,10 +1036,12 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
           camDefault={cfg.cameraLensDefault}
           comboEnabled={cfg.comboEnabled !== false}
           comboOffer={cfg.comboOffer}
+          onPreviewVideo={(title, url) => setAdminVideoPreview({ open: true, title, url })}
+          onToast={(m) => setToast(m)}
           onSaveDefaults={async (updated) => {
             const next = parseScreenGuardConfig(cfg);
             next.cameraLensDefault = { ...next.cameraLensDefault, ...updated };
-            await commitConfig(next, 'Camera lens default rates saved!');
+            await commitConfig(next, 'Camera lens default rates & media saved!');
           }}
           onSaveCombo={async (enabled, comboOffer) => {
             const next = parseScreenGuardConfig(cfg);
@@ -1040,6 +1260,7 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
                       }}
                     >
                       {p.deleted ? 'DELETED' : `${formatINR(pr.finalPrice)}${p.enabled ? '' : ' • PAUSED'}`}
+                      {!p.deleted && p.videoUrl ? ' • Video set' : ''}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                       {(p.compatibleBrands || []).join(' • ')}
@@ -1408,6 +1629,97 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
                 </div>
               </div>
 
+              {/* 1b. Optional Video Upload / Link */}
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 14,
+                  background: '#F8FAFC',
+                  border: '1px solid var(--border)',
+                  marginBottom: 14
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 8
+                  }}
+                >
+                  <strong style={{ fontSize: 12.5, color: 'var(--icase-navy)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Film size={14} /> Optional Pouch Video (MP4 URL, YouTube Link, or Clip ≤ 350 KB)
+                  </strong>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {pouchDraft.videoUrl && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-navy btn-sm"
+                          style={{ padding: '4px 10px' }}
+                          onClick={() =>
+                            setAdminVideoPreview({
+                              open: true,
+                              title: pouchDraft.name || 'Pouch Video Preview',
+                              url: pouchDraft.videoUrl
+                            })
+                          }
+                        >
+                          <Play size={12} fill="currentColor" /> Preview
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          style={{ background: '#FFECEE', color: '#E50914', padding: '4px 10px' }}
+                          onClick={() => setPouchDraft((prev) => ({ ...prev, videoUrl: '' }))}
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                    <Upload size={13} /> Upload Video Clip (≤ 350 KB)
+                    <input
+                      type="file"
+                      accept="video/*"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        try {
+                          const dataUrl = await readShortVideoFileToDataUrl(f);
+                          setPouchDraft((prev) => (prev ? { ...prev, videoUrl: dataUrl } : prev));
+                        } catch (err) {
+                          setToast(err.message || 'Video upload failed');
+                        }
+                      }}
+                    />
+                  </label>
+                  <input
+                    className="input"
+                    style={{ flex: 1, minWidth: 200 }}
+                    placeholder="Or paste MP4 / YouTube link"
+                    value={
+                      pouchDraft.videoUrl && !String(pouchDraft.videoUrl).startsWith('data:video')
+                        ? pouchDraft.videoUrl
+                        : ''
+                    }
+                    onChange={(e) =>
+                      setPouchDraft((prev) => ({ ...prev, videoUrl: e.target.value }))
+                    }
+                  />
+                </div>
+                {String(pouchDraft.videoUrl || '').startsWith('data:video') && (
+                  <div style={{ fontSize: 11.5, color: 'var(--icase-green)', fontWeight: 700, marginTop: 6 }}>
+                    ✓ Short video clip uploaded ({Math.round((pouchDraft.videoUrl.length * 0.75) / 1024)} KB)
+                  </div>
+                )}
+              </div>
+
               {/* 2. Details & Pricing */}
               <div className="form-grid">
                 <div className="form-group">
@@ -1697,6 +2009,13 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
           </div>
         </div>
       )}
+
+      <MediaVideoModal
+        isOpen={adminVideoPreview.open}
+        title={adminVideoPreview.title}
+        url={adminVideoPreview.url}
+        onClose={() => setAdminVideoPreview({ open: false, title: '', url: '' })}
+      />
     </div>
   );
 }
@@ -1704,8 +2023,11 @@ export default function AdminGlassOffersTab({ screenGuardConfig, onSaveGuardConf
 function GlassTypeEditorCard({
   glassType,
   gCfg,
+  resolvedThumb,
   helperFallback,
   preview,
+  onPreviewVideo,
+  onToast,
   onToggleActive,
   onDelete,
   onRestore,
@@ -1716,6 +2038,13 @@ function GlassTypeEditorCard({
   const [offerVal, setOfferVal] = useState(String(gCfg.offer?.value || 0));
   const [badgeText, setBadgeText] = useState(gCfg.offer?.badgeText || '');
   const [helperNote, setHelperNote] = useState(gCfg.helperNote || '');
+  const [imageUrl, setImageUrl] = useState(gCfg.imageUrl || '');
+  const [videoUrl, setVideoUrl] = useState(gCfg.videoUrl || '');
+
+  useEffect(() => {
+    setImageUrl(gCfg.imageUrl || '');
+    setVideoUrl(gCfg.videoUrl || '');
+  }, [gCfg.imageUrl, gCfg.videoUrl]);
 
   return (
     <div
@@ -1726,21 +2055,37 @@ function GlassTypeEditorCard({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <div>
-          <strong style={{ color: 'var(--icase-navy)', fontSize: 14 }}>{glassType}</strong>
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src={imageUrl.trim() || resolvedThumb}
+            alt={glassType}
             style={{
-              fontSize: 12,
-              fontWeight: 800,
-              color: gCfg.deleted ? 'var(--icase-red)' : gCfg.enabled ? 'var(--icase-green)' : '#B45309'
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              objectFit: 'cover',
+              border: '1px solid var(--border)',
+              background: '#FFF',
+              flexShrink: 0
             }}
-          >
-            {gCfg.deleted
-              ? 'DELETED (Hidden)'
-              : gCfg.enabled
-                ? `LIVE: ${formatINR(preview.finalPrice)}`
-                : 'PAUSED'}
-            {!gCfg.deleted && preview.offerBadge ? ` • ${preview.offerBadge}` : ''}
+          />
+          <div>
+            <strong style={{ color: 'var(--icase-navy)', fontSize: 14 }}>{glassType}</strong>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: gCfg.deleted ? 'var(--icase-red)' : gCfg.enabled ? 'var(--icase-green)' : '#B45309'
+              }}
+            >
+              {gCfg.deleted
+                ? 'DELETED (Hidden)'
+                : gCfg.enabled
+                  ? `LIVE: ${formatINR(preview.finalPrice)}`
+                  : 'PAUSED'}
+              {!gCfg.deleted && preview.offerBadge ? ` • ${preview.offerBadge}` : ''}
+              {!gCfg.deleted && videoUrl.trim() ? ' • Video set' : ''}
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -1821,6 +2166,90 @@ function GlassTypeEditorCard({
             value={helperNote}
             onChange={(e) => setHelperNote(e.target.value)}
           />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="input"
+              style={{ flex: 1, minWidth: 140 }}
+              placeholder="Optional Type Image URL"
+              value={imageUrl.startsWith('data:image') ? '' : imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+            />
+            <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', padding: '5px 8px' }}>
+              <Upload size={12} /> Img
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  try {
+                    setImageUrl(await compressImageFileToDataUrl(f));
+                  } catch (err) {
+                    if (onToast) onToast(err.message || 'Image upload failed');
+                  }
+                }}
+              />
+            </label>
+            {imageUrl && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                style={{ padding: '5px 8px' }}
+                onClick={() => setImageUrl('')}
+              >
+                Reset Img
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="input"
+              style={{ flex: 1, minWidth: 140 }}
+              placeholder="Optional Video URL / YouTube"
+              value={videoUrl.startsWith('data:video') ? '' : videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+            />
+            <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', padding: '5px 8px' }}>
+              <Film size={12} /> Clip
+              <input
+                type="file"
+                accept="video/*"
+                hidden
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  try {
+                    setVideoUrl(await readShortVideoFileToDataUrl(f));
+                  } catch (err) {
+                    if (onToast) onToast(err.message || 'Video upload failed');
+                  }
+                }}
+              />
+            </label>
+            {videoUrl.trim() && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-navy btn-sm"
+                  style={{ padding: '5px 8px' }}
+                  onClick={() => onPreviewVideo && onPreviewVideo(`${glassType} Video`, videoUrl.trim())}
+                >
+                  <Play size={11} fill="currentColor" />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: '5px 8px', color: 'var(--icase-red)' }}
+                  onClick={() => setVideoUrl('')}
+                >
+                  ×
+                </button>
+              </>
+            )}
+          </div>
           <button
             type="button"
             className="btn btn-navy btn-sm"
@@ -1828,6 +2257,8 @@ function GlassTypeEditorCard({
               onSave({
                 basePrice: Math.max(0, Number(basePrice || 0)),
                 helperNote: helperNote.trim(),
+                imageUrl: imageUrl.trim(),
+                videoUrl: videoUrl.trim(),
                 offer: {
                   active: offerType !== 'NONE',
                   type: offerType,
@@ -1837,7 +2268,7 @@ function GlassTypeEditorCard({
               })
             }
           >
-            Save Rate, Note &amp; Offer
+            Save Rate, Note &amp; Media
           </button>
         </div>
       )}
@@ -1983,6 +2414,8 @@ function CameraLensDefaultsEditor({
   camDefault,
   comboEnabled,
   comboOffer,
+  onPreviewVideo,
+  onToast,
   onSaveDefaults,
   onSaveCombo
 }) {
@@ -1990,6 +2423,11 @@ function CameraLensDefaultsEditor({
   const [oType, setOType] = useState(camDefault.offer?.type || 'NONE');
   const [oVal, setOVal] = useState(String(camDefault.offer?.value || 0));
   const [oBadge, setOBadge] = useState(camDefault.offer?.badgeText || '');
+  const [camVideoUrl, setCamVideoUrl] = useState(camDefault.videoUrl || '');
+
+  useEffect(() => {
+    setCamVideoUrl(camDefault.videoUrl || '');
+  }, [camDefault.videoUrl]);
 
   const [isComboOn, setIsComboOn] = useState(comboEnabled);
   const [cType, setCType] = useState(comboOffer?.type || 'FLAT_OFF');
@@ -2037,12 +2475,59 @@ function CameraLensDefaultsEditor({
             />
           </div>
         </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+          <input
+            className="input"
+            style={{ flex: 1, minWidth: 200 }}
+            placeholder="Optional Camera Lens Video URL / YouTube"
+            value={camVideoUrl.startsWith('data:video') ? '' : camVideoUrl}
+            onChange={(e) => setCamVideoUrl(e.target.value)}
+          />
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+            <Film size={13} /> Clip (≤ 350 KB)
+            <input
+              type="file"
+              accept="video/*"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (!f) return;
+                try {
+                  setCamVideoUrl(await readShortVideoFileToDataUrl(f));
+                } catch (err) {
+                  if (onToast) onToast(err.message || 'Video upload failed');
+                }
+              }}
+            />
+          </label>
+          {camVideoUrl.trim() && (
+            <>
+              <button
+                type="button"
+                className="btn btn-navy btn-sm"
+                onClick={() => onPreviewVideo && onPreviewVideo('Camera Lens Video', camVideoUrl.trim())}
+              >
+                <Play size={12} fill="currentColor" /> Preview
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                style={{ color: 'var(--icase-red)' }}
+                onClick={() => setCamVideoUrl('')}
+              >
+                Remove
+              </button>
+            </>
+          )}
+        </div>
         <button
           type="button"
           className="btn btn-navy btn-sm"
           onClick={() =>
             onSaveDefaults({
               basePrice: Math.max(0, Number(basePrice || 0)),
+              videoUrl: camVideoUrl.trim(),
               offer: {
                 active: oType !== 'NONE',
                 type: oType,

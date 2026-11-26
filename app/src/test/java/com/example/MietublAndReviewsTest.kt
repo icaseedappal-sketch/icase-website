@@ -784,4 +784,100 @@ class MietublAndReviewsTest {
         assertEquals(0, afterDelete.reviewCount)
         assertTrue(repo.adminAllReviews.first().none { it.id == rev2.id })
     }
+
+    @Test
+    fun pouchesHomeCard_glassTypeQuickSelectAndMediaSupportWorkTogether() {
+        val customPrivacyImg = "https://cdn.example.com/glass/privacy-custom.jpg"
+        val customPrivacyVid = "https://cdn.example.com/glass/privacy-demo.mp4"
+        val sapphireImg = "https://cdn.example.com/glass/sapphire.jpg"
+        val sapphireVid = "https://youtu.be/sapphire9hDemo"
+        val pouchCardImg = "https://cdn.example.com/pouches/hero-card.jpg"
+        val camLensVid = "https://cdn.example.com/lens/demo.mp4"
+        val pouchItemVid = "https://youtu.be/pouchArmor99"
+
+        val cfg = ScreenGuardAdminConfig(
+            glassTypeConfigs = ScreenGuardAdminConfig.defaultGlassTypeConfigs().toMutableMap().apply {
+                this["Privacy"] = this["Privacy"]!!.copy(
+                    imageUrl = customPrivacyImg,
+                    videoUrl = customPrivacyVid
+                )
+                this["Matte"] = this["Matte"]!!.copy(enabled = false)
+                this["Sapphire 9H"] = GlassTypeAdminConfig(
+                    basePrice = 449.0,
+                    enabled = true,
+                    deleted = false,
+                    helperNote = "Scratch-proof sapphire coating",
+                    imageUrl = sapphireImg,
+                    videoUrl = sapphireVid
+                )
+            },
+            cameraLensDefault = GlassTypeAdminConfig(
+                basePrice = 249.0,
+                enabled = true,
+                deleted = false,
+                videoUrl = camLensVid
+            ),
+            pouchItems = listOf(
+                PouchAdminItem(
+                    id = "pouch_armor_media",
+                    name = "MagSafe Armor Case",
+                    basePrice = 399.0,
+                    enabled = true,
+                    deleted = false,
+                    videoUrl = pouchItemVid
+                )
+            ),
+            pouchCardImageUrl = pouchCardImg,
+            pouchCardStartingPrice = 249.0
+        )
+
+        val reparsed = ScreenGuardAdminConfig.fromJsonString(cfg.toJsonString())
+        assertEquals(cfg, reparsed)
+
+        // 1. Pouches Home card image, starting price override & fallback, and Other Android WhatsApp message
+        assertEquals(pouchCardImg, ScreenGuardCatalog.resolvePouchCardImageUrl(reparsed))
+        assertEquals(
+            ScreenGuardCatalog.POUCH_IMAGE_URL,
+            ScreenGuardCatalog.resolvePouchCardImageUrl(reparsed.copy(pouchCardImageUrl = ""))
+        )
+        assertEquals(249.0, ScreenGuardCatalog.startingPouchPrice(reparsed), 0.01)
+        assertEquals(
+            399.0,
+            ScreenGuardCatalog.startingPouchPrice(reparsed.copy(pouchCardStartingPrice = 0.0)),
+            0.01
+        )
+        val otherAndroidMsg = ScreenGuardCatalog.buildOtherAndroidPouchWhatsAppMessage(
+            model = "Google Pixel 9 Pro",
+            pouchStyle = "MagSafe Clear Case"
+        )
+        assertTrue(otherAndroidMsg.contains("Google Pixel 9 Pro"))
+        assertTrue(otherAndroidMsg.contains("MagSafe Clear Case"))
+
+        // 2. Dynamic Glass Types sync: active default & new types appear; paused Matte stays hidden
+        val activeTypes = ScreenGuardCatalog.activeGlassTypes(reparsed)
+        assertTrue(activeTypes.contains("Privacy"))
+        assertTrue(activeTypes.contains("Sapphire 9H"))
+        assertFalse(activeTypes.contains("Matte"))
+
+        // 3. Per-type image/video resolution & YouTube URL helper
+        assertEquals(customPrivacyImg, ScreenGuardCatalog.resolveGlassTypeImageUrl("Privacy", reparsed))
+        assertEquals(customPrivacyVid, ScreenGuardCatalog.resolveGlassTypeVideoUrl("Privacy", reparsed))
+        assertEquals(sapphireImg, ScreenGuardCatalog.resolveGlassTypeImageUrl("Sapphire 9H", reparsed))
+        assertEquals(sapphireVid, ScreenGuardCatalog.resolveGlassTypeVideoUrl("Sapphire 9H", reparsed))
+        assertEquals(
+            ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL,
+            ScreenGuardCatalog.resolveGlassTypeImageUrl("Normal 5D", reparsed)
+        )
+        assertTrue(ScreenGuardCatalog.isYouTubeUrl(sapphireVid))
+        assertFalse(ScreenGuardCatalog.isYouTubeUrl(camLensVid))
+
+        // 4. Default Code Export preserves all media and Pouches card settings
+        val exported = ScreenGuardCatalog.generateDefaultCodeExport(InitialData.products, reparsed)
+        val normalizedExport = exported.replace("\\/", "/")
+        assertTrue(normalizedExport.contains(pouchCardImg))
+        assertTrue(normalizedExport.contains(customPrivacyVid))
+        assertTrue(normalizedExport.contains("Sapphire 9H"))
+        assertTrue(normalizedExport.contains(camLensVid))
+        assertTrue(normalizedExport.contains(pouchItemVid))
+    }
 }

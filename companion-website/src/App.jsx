@@ -33,6 +33,7 @@ import CartDrawer from './components/CartDrawer';
 import AccountModal from './components/AccountModal';
 import AdminSection from './components/AdminSection';
 import VerifiedReviewModal from './components/VerifiedReviewModal';
+import MediaVideoModal from './components/MediaVideoModal';
 
 const STORAGE_CART_KEY = 'icase_web_cart';
 const STORAGE_PROFILE_KEY = 'icase_web_profile';
@@ -92,6 +93,8 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeTrackingId, setActiveTrackingId] = useState('');
   const [guardsFocusTarget, setGuardsFocusTarget] = useState('');
+  const [preselectedGlassType, setPreselectedGlassType] = useState('');
+  const [videoPreview, setVideoPreview] = useState({ open: false, title: '', url: '' });
 
   const [deletedProductIds, setDeletedProductIds] = useState(() => {
     const localDel = parseDeletedProductIds(loadJsonStorage(STORAGE_DELETED_PRODUCTS_KEY, []));
@@ -531,6 +534,7 @@ export default function App() {
     }
     if (tab !== 'guards') {
       setGuardsFocusTarget('');
+      setPreselectedGlassType('');
     }
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -615,12 +619,22 @@ export default function App() {
             onOpenAccount={() => setIsAccountOpen(true)}
             onOpenGuardsPouch={() => {
               setGuardsFocusTarget('pouch');
+              setPreselectedGlassType('');
               setActiveTab('guards');
             }}
             onOpenGuardsSection={(target) => {
               setGuardsFocusTarget(target || 'glass');
+              setPreselectedGlassType('');
               setActiveTab('guards');
             }}
+            onOpenGuardsGlassType={(gt) => {
+              setGuardsFocusTarget('glass');
+              setPreselectedGlassType(gt || '');
+              setActiveTab('guards');
+            }}
+            onOpenVideo={(title, url) =>
+              setVideoPreview({ open: true, title: title || 'Product Video', url: url || '' })
+            }
             onOpenReviewModal={(prefillId) =>
               setReviewModalState({ open: true, prefillId: prefillId || '' })
             }
@@ -644,6 +658,9 @@ export default function App() {
             selectedProduct={selectedProduct}
             onSelectProduct={setSelectedProduct}
             onOpenGuards={() => navigateTab('guards')}
+            onOpenVideo={(title, url) =>
+              setVideoPreview({ open: true, title: title || 'Product Video', url: url || '' })
+            }
             onLocalReviewCreated={(rev) => {
               setAdminReviews((prev) => [rev, ...prev]);
             }}
@@ -655,6 +672,10 @@ export default function App() {
             screenGuardConfig={screenGuardConfig}
             settings={settings}
             initialFocus={guardsFocusTarget}
+            initialGlassType={preselectedGlassType}
+            onOpenVideo={(title, url) =>
+              setVideoPreview({ open: true, title: title || 'Product Video', url: url || '' })
+            }
             onAddToCart={(prod, qty = 1, selectedColor = '') => {
               addToCart(prod, qty, selectedColor);
               setIsCartOpen(true);
@@ -776,6 +797,13 @@ export default function App() {
         prefillId={reviewModalState.prefillId}
         profile={profile}
         onLocalReviewCreated={(rev) => setAdminReviews((prev) => [rev, ...prev])}
+      />
+
+      <MediaVideoModal
+        isOpen={videoPreview.open}
+        title={videoPreview.title}
+        url={videoPreview.url}
+        onClose={() => setVideoPreview({ open: false, title: '', url: '' })}
       />
     </div>
   );

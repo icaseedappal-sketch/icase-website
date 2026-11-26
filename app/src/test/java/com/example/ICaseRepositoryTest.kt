@@ -300,4 +300,36 @@ class ICaseRepositoryTest {
         assertTrue(detected.formattedAddress.contains("Kozhikode"))
         assertFalse(detected.formattedAddress.contains("Edappal"))
     }
+
+    @Test
+    fun productVideoUrl_persistsInRoomAndExportsCleanly() = runBlocking {
+        val prodWithVideo = ProductEntity(
+            id = "prod_vid_test",
+            name = "Clear MagSafe Demo Case",
+            category = "Cases",
+            description = "Case with optional demo video",
+            price = 599.0,
+            originalPrice = 799.0,
+            imageUrl = "https://example.com/pouch.jpg",
+            videoUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            inStock = true,
+            stockCount = 12,
+            isOneHourEligible = true,
+            isPopular = true,
+            popularityRank = 1
+        )
+        repo.addProduct(prodWithVideo)
+        val saved = repo.allProducts.first().first { it.id == "prod_vid_test" }
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", saved.videoUrl)
+
+        val exportWithVideo = com.example.data.ScreenGuardCatalog.generateDefaultCodeExport(
+            products = listOf(saved),
+            config = com.example.data.ScreenGuardAdminConfig()
+        )
+        assertTrue(exportWithVideo.contains("dQw4w9WgXcQ"))
+
+        repo.updateProduct(saved.copy(videoUrl = ""))
+        val cleared = repo.allProducts.first().first { it.id == "prod_vid_test" }
+        assertEquals("", cleared.videoUrl)
+    }
 }

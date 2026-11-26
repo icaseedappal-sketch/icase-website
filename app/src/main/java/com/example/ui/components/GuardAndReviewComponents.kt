@@ -113,6 +113,7 @@ fun TemperedGlassFinderCard(
     onAddToCart: (brand: String, model: String, glassType: String) -> Unit,
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,
+    initialGlassType: String = "",
     installationOption: String = "Shop Installation",
     onSelectionChanged: (brand: String, model: String, glassType: String) -> Unit = { _, _, _ -> },
     onWhatsAppUvEnquiry: () -> Unit = {},
@@ -123,10 +124,16 @@ fun TemperedGlassFinderCard(
     var selectedBrand by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     var manualModelInput by remember { mutableStateOf("") }
-    var selectedGlassType by remember { mutableStateOf("Normal 5D") }
+    var selectedGlassType by remember(initialGlassType) {
+        mutableStateOf(
+            initialGlassType.takeIf { it.isNotBlank() && ScreenGuardCatalog.isGlassTypeAvailable(it, config) }
+                ?: "Normal 5D"
+        )
+    }
     var showModelDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var validationMessage by remember { mutableStateOf<String?>(null) }
+    var activeVideoPreview by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     val activeBrands = remember(config) {
         ScreenGuardCatalog.activeBrands(config)
@@ -134,6 +141,12 @@ fun TemperedGlassFinderCard(
     val isManualMode = selectedModel == ScreenGuardCatalog.OTHER_MODEL_OPTION
     val availableGlassTypes = remember(selectedBrand, selectedModel, config) {
         ScreenGuardCatalog.glassTypesForDevice(selectedBrand, selectedModel, config)
+    }
+
+    LaunchedEffect(initialGlassType, config) {
+        if (initialGlassType.isNotBlank() && ScreenGuardCatalog.isGlassTypeAvailable(initialGlassType, config)) {
+            selectedGlassType = initialGlassType
+        }
     }
 
     LaunchedEffect(config, selectedBrand, selectedModel) {
@@ -144,9 +157,13 @@ fun TemperedGlassFinderCard(
         }
     }
 
-    LaunchedEffect(availableGlassTypes) {
+    LaunchedEffect(availableGlassTypes, initialGlassType) {
         if (availableGlassTypes.isNotEmpty() && !availableGlassTypes.contains(selectedGlassType)) {
-            selectedGlassType = availableGlassTypes.first()
+            selectedGlassType = if (initialGlassType.isNotBlank() && availableGlassTypes.contains(initialGlassType)) {
+                initialGlassType
+            } else {
+                availableGlassTypes.first()
+            }
         }
     }
 
@@ -160,8 +177,12 @@ fun TemperedGlassFinderCard(
         }
     }
 
-    val cardImage = remember(config.temperedGlassImageUrl) {
-        ScreenGuardCatalog.resolveTemperedGlassImageUrl(config)
+    val cardImage = remember(config.temperedGlassImageUrl, selectedGlassType, selectedModel) {
+        if (selectedModel.isNotBlank() || initialGlassType.isNotBlank()) {
+            ScreenGuardCatalog.resolveGlassTypeImageUrl(selectedGlassType, config)
+        } else {
+            ScreenGuardCatalog.resolveTemperedGlassImageUrl(config)
+        }
     }
 
     Card(
@@ -217,6 +238,49 @@ fun TemperedGlassFinderCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (initialGlassType.isNotBlank() && selectedModel.isBlank() && ScreenGuardCatalog.isGlassTypeAvailable(initialGlassType, config)) {
+                val presetPricing = ScreenGuardCatalog.resolveTemperedGlassPrice("", "", initialGlassType, config)
+                val presetVideo = ScreenGuardCatalog.resolveGlassTypeVideoUrl(initialGlassType, config)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFEFF6FF))
+                        .border(1.dp, Color(0xFFBFDBFE), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .testTag("glass_preselected_style_banner"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Selected Style: $initialGlassType (₹${presetPricing.finalPrice.roundToInt()})",
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy
+                        )
+                        Text(
+                            text = "Now pick your phone model below to confirm compatibility.",
+                            fontSize = spec.sp(10.5f),
+                            color = Color(0xFF1E40AF)
+                        )
+                    }
+                    if (presetVideo.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        OutlinedButton(
+                            onClick = { activeVideoPreview = initialGlassType to presetVideo },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.heightIn(min = 36.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp), tint = iCaseNavy)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                        }
+                    }
+                }
+            }
 
             Text(
                 text = "Filter by Brand",
@@ -552,6 +616,8 @@ fun TemperedGlassFinderCard(
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
+                val selectedTypeVideo = ScreenGuardCatalog.resolveGlassTypeVideoUrl(selectedGlassType, config)
+                val selectedTypeImage = ScreenGuardCatalog.resolveGlassTypeImageUrl(selectedGlassType, config)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -561,29 +627,63 @@ fun TemperedGlassFinderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "$selectedGlassType Tempered Glass",
-                            fontSize = spec.sp(12.5f),
-                            fontWeight = FontWeight.Bold,
-                            color = iCaseNavy,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        PouchThumbImage(
+                            imageUrl = selectedTypeImage,
+                            contentDescription = selectedGlassType,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
                         )
-                        if (resolvedPricing.offerBadge.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFFDCFCE7))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = resolvedPricing.offerBadge,
-                                    fontSize = spec.sp(10),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF15803D)
-                                )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "$selectedGlassType Tempered Glass",
+                                fontSize = spec.sp(12.5f),
+                                fontWeight = FontWeight.Bold,
+                                color = iCaseNavy,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (resolvedPricing.offerBadge.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xFFDCFCE7))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = resolvedPricing.offerBadge,
+                                        fontSize = spec.sp(10),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF15803D)
+                                    )
+                                }
+                            }
+                            if (selectedTypeVideo.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Surface(
+                                    color = Color(0xFF0F172A),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier
+                                        .clickable { activeVideoPreview = selectedGlassType to selectedTypeVideo }
+                                        .testTag("glass_watch_video_button")
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("Watch Video", fontSize = spec.sp(10.5f), fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
                             }
                         }
                     }
@@ -690,6 +790,14 @@ fun TemperedGlassFinderCard(
                 }
             }
         }
+    }
+
+    activeVideoPreview?.let { (title, url) ->
+        MediaVideoPlayerDialog(
+            title = title,
+            videoUrl = url,
+            onDismiss = { activeVideoPreview = null }
+        )
     }
 
     if (showModelDialog) {
@@ -1019,6 +1127,8 @@ fun CameraLensProtectionCard(
     val camCardImage = remember(config.cameraLensImageUrl) {
         ScreenGuardCatalog.resolveCameraLensImageUrl(config)
     }
+    val camVideoUrl = config.cameraLensDefault.videoUrl.trim()
+    var showCamVideoDialog by remember { mutableStateOf(false) }
     val selectedDeviceUnsupported = remember(selectedGlassDevice, config) {
         val dev = selectedGlassDevice
         if (dev == null || dev.second.isBlank()) {
@@ -1067,17 +1177,40 @@ fun CameraLensProtectionCard(
                         color = Color(0xFF64748B)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Surface(
-                        color = Color(0xFFFEF3C7),
-                        shape = RoundedCornerShape(6.dp)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(
-                            text = "Supported: iPhone & Samsung S Series Only (S20–S25 / Ultra)",
-                            fontSize = spec.sp(10f),
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF92400E),
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                        )
+                        Surface(
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "Supported: iPhone & Samsung S Series Only (S20–S25 / Ultra)",
+                                fontSize = spec.sp(10f),
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF92400E),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                        if (camVideoUrl.isNotBlank()) {
+                            Surface(
+                                color = Color(0xFF0F172A),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier
+                                    .clickable { showCamVideoDialog = true }
+                                    .testTag("camera_lens_watch_video_button")
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text("Watch Video", fontSize = spec.sp(10f), fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1503,6 +1636,14 @@ fun CameraLensProtectionCard(
         }
     }
 
+    if (showCamVideoDialog && camVideoUrl.isNotBlank()) {
+        MediaVideoPlayerDialog(
+            title = "Camera Lens Protection",
+            videoUrl = camVideoUrl,
+            onDismiss = { showCamVideoDialog = false }
+        )
+    }
+
     if (showModelDialog) {
         var modalBrandFilter by remember { mutableStateOf(selectedBrand) }
         val groupedModels = remember(modalBrandFilter, searchQuery, config) {
@@ -1763,11 +1904,17 @@ fun PouchesFinderCard(
     config: ScreenGuardAdminConfig,
     onAddPouchToCart: (brand: String, model: String, pouch: PouchAdminItem, selectedColor: String) -> Unit,
     onWhatsAppStockPhotos: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isHighlighted: Boolean = false,
+    onWhatsAppOtherAndroidOrder: (String) -> Unit = { _ -> onWhatsAppStockPhotos() }
 ) {
     val spec = LocalResponsiveSpec.current
     var selectedTab by remember { mutableStateOf("iPhone") }
     var selectedModel by remember { mutableStateOf("") }
+    var otherAndroidModelInput by remember { mutableStateOf("") }
+    var otherAndroidSelectedPouchId by remember { mutableStateOf("") }
+    var otherAndroidError by remember { mutableStateOf<String?>(null) }
+    var activePouchVideo by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showModelDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var validationMessage by remember { mutableStateOf<String?>(null) }
@@ -1779,6 +1926,12 @@ fun PouchesFinderCard(
     val isOtherAndroid = selectedTab == ScreenGuardCatalog.OTHER_ANDROID_POUCHES_OPTION
     val activePouches = remember(selectedTab, config) {
         if (isOtherAndroid) emptyList() else ScreenGuardCatalog.activePouchesForBrand(selectedTab, config)
+    }
+    val allActivePouches = remember(config) {
+        config.pouchItems.filter { !it.deleted && it.enabled }
+    }
+    val pouchCardCover = remember(config.pouchCardImageUrl) {
+        ScreenGuardCatalog.resolvePouchCardImageUrl(config)
     }
 
     LaunchedEffect(config, selectedTab, selectedModel) {
@@ -1795,38 +1948,33 @@ fun PouchesFinderCard(
             .testTag("pouches_finder_card"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, BorderLight)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isHighlighted) 5.dp else 2.dp),
+        border = BorderStroke(if (isHighlighted) 2.dp else 1.dp, if (isHighlighted) iCaseGreen else BorderLight)
     ) {
         Column(modifier = Modifier.padding(spec.cardPadding)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                PouchThumbImage(
+                    imageUrl = pouchCardCover,
+                    contentDescription = "Pouches & Back Cases",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(50.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(iCaseLightBlue),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = "Pouches",
-                        tint = iCaseNavy,
-                        modifier = Modifier.size(21.dp)
-                    )
-                }
+                        .background(iCaseLightBlue)
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Pouches",
+                        text = "Pouches & Back Cases",
                         fontSize = spec.sp(16f),
                         fontWeight = FontWeight.Bold,
                         color = iCaseNavy
                     )
                     Text(
-                        text = "iPhone & Samsung S Series ready in cart • Live photo check for Android",
+                        text = "iPhone & Samsung S Series ready in cart • Model enquiry for Other Android",
                         fontSize = spec.sp(12),
                         color = Color(0xFF64748B)
                     )
@@ -1893,26 +2041,140 @@ fun PouchesFinderCard(
                         .padding(14.dp)
                 ) {
                     Text(
-                        text = "Android Pouch Stock Varies Daily",
+                        text = "Other Android Models — Ask / Order on WhatsApp",
                         fontSize = spec.sp(13.5f),
                         fontWeight = FontWeight.Bold,
                         color = iCaseNavy
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Designs for Redmi/Xiaomi, Oppo/Realme, Vivo/iQOO, OnePlus, Nothing & non-S Samsung rotate frequently. Message us on WhatsApp to receive live stock photos for your exact model.",
-                        fontSize = spec.sp(12),
+                        text = "Pick a popular Android model or type your exact model name and preferred case style to get live stock photos & price on WhatsApp.",
+                        fontSize = spec.sp(11.5f),
                         color = Color(0xFF475569)
                     )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Popular Android Models",
+                        fontSize = spec.sp(11),
+                        fontWeight = FontWeight.Bold,
+                        color = iCaseNavy
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ScreenGuardCatalog.otherAndroidQuickModels.forEach { quickModel ->
+                            val isPicked = otherAndroidModelInput.equals(quickModel, ignoreCase = true)
+                            FilterChip(
+                                selected = isPicked,
+                                onClick = {
+                                    otherAndroidModelInput = quickModel
+                                    otherAndroidError = null
+                                },
+                                label = { Text(quickModel, fontSize = spec.sp(11)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = iCaseNavy,
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color.White,
+                                    labelColor = iCaseNavy
+                                )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = otherAndroidModelInput,
+                        onValueChange = {
+                            otherAndroidModelInput = it
+                            otherAndroidError = null
+                        },
+                        label = { Text("Your Android Phone Model *") },
+                        placeholder = { Text("e.g. Redmi Note 13 Pro, OnePlus 12R, Nothing Phone 2a") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("pouch_other_android_model_input")
+                    )
+
+                    if (allActivePouches.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Preferred Pouch Style (Optional)",
+                            fontSize = spec.sp(11),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy
+                        )
+                        Spacer(modifier = Modifier.height(5.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            FilterChip(
+                                selected = otherAndroidSelectedPouchId.isBlank(),
+                                onClick = { otherAndroidSelectedPouchId = "" },
+                                label = { Text("Any Matching Design", fontSize = spec.sp(11)) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = iCaseRed,
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color.White,
+                                    labelColor = iCaseNavy
+                                )
+                            )
+                            allActivePouches.forEach { pouch ->
+                                val selectedStyle = otherAndroidSelectedPouchId == pouch.id
+                                val pPrice = ScreenGuardCatalog.resolvePouchPrice(pouch).finalPrice.roundToInt()
+                                FilterChip(
+                                    selected = selectedStyle,
+                                    onClick = { otherAndroidSelectedPouchId = pouch.id },
+                                    label = { Text("${pouch.name} (~₹$pPrice)", fontSize = spec.sp(11)) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = iCaseRed,
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color.White,
+                                        labelColor = iCaseNavy
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    if (otherAndroidError != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = otherAndroidError!!,
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.SemiBold,
+                            color = iCaseRed
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
-                        onClick = onWhatsAppStockPhotos,
-                        colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                        onClick = {
+                            val cleanModel = otherAndroidModelInput.trim()
+                            if (cleanModel.isBlank()) {
+                                otherAndroidError = "Please select or enter your Android model name first."
+                                return@Button
+                            }
+                            otherAndroidError = null
+                            val chosenPouch = allActivePouches.firstOrNull { it.id == otherAndroidSelectedPouchId }
+                            val chosenPrice = chosenPouch?.let { ScreenGuardCatalog.resolvePouchPrice(it).finalPrice } ?: 0.0
+                            onWhatsAppOtherAndroidOrder(
+                                ScreenGuardCatalog.buildOtherAndroidPouchWhatsAppMessage(
+                                    model = cleanModel,
+                                    pouchStyle = chosenPouch?.name.orEmpty(),
+                                    approxPrice = chosenPrice
+                                )
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF15803D)),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 48.dp)
-                            .testTag("pouch_other_android_whatsapp_button")
+                            .testTag("pouch_other_android_whatsapp_order_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Chat,
@@ -1922,10 +2184,27 @@ fun PouchesFinderCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Enquire on WhatsApp for Stock Photos",
+                            text = "Ask / Order on WhatsApp",
                             fontSize = spec.sp(13),
                             fontWeight = FontWeight.Bold,
                             color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onWhatsAppStockPhotos,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .testTag("pouch_other_android_whatsapp_button")
+                    ) {
+                        Text(
+                            text = "Enquire for Today's General Android Stock Photos",
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.SemiBold,
+                            color = iCaseNavy
                         )
                     }
                 }
@@ -2117,6 +2396,25 @@ fun PouchesFinderCard(
                                                 )
                                             }
                                         }
+                                        if (pouch.videoUrl.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Surface(
+                                                color = Color(0xFF0F172A),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier
+                                                    .clickable { activePouchVideo = pouch.name to pouch.videoUrl }
+                                                    .testTag("pouch_watch_video_${pouch.id}")
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                ) {
+                                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text("Watch Video", fontSize = spec.sp(10.5f), fontWeight = FontWeight.Bold, color = Color.White)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
@@ -2225,6 +2523,14 @@ fun PouchesFinderCard(
                 }
             }
         }
+    }
+
+    activePouchVideo?.let { (title, url) ->
+        MediaVideoPlayerDialog(
+            title = title,
+            videoUrl = url,
+            onDismiss = { activePouchVideo = null }
+        )
     }
 
     if (showModelDialog && !isOtherAndroid) {

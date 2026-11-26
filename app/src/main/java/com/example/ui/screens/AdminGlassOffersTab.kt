@@ -40,9 +40,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,6 +92,7 @@ import com.example.data.ScreenGuardAdminConfig
 import com.example.data.ScreenGuardCatalog
 import com.example.data.ScreenGuardOffer
 import com.example.data.ScreenGuardOfferType
+import com.example.ui.components.MediaVideoPlayerDialog
 import com.example.ui.components.PouchImageHelper
 import com.example.ui.components.PouchThumbImage
 import com.example.ui.theme.BorderLight
@@ -123,7 +126,7 @@ fun AdminGlassOffersTab(
     val spec = LocalResponsiveSpec.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var pendingImageTarget by remember { mutableStateOf("") } // "GLASS" or "CAMERA"
+    var pendingImageTarget by remember { mutableStateOf("") } // "GLASS", "CAMERA", or "POUCH_CARD"
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var isProcessingSamplePhoto by remember { mutableStateOf(false) }
 
@@ -137,6 +140,16 @@ fun AdminGlassOffersTab(
             if (config.cameraLensImageUrl.startsWith("data:image", ignoreCase = true)) "" else config.cameraLensImageUrl
         )
     }
+    var pouchCardUrlInput by remember(config.pouchCardImageUrl) {
+        mutableStateOf(
+            if (config.pouchCardImageUrl.startsWith("data:image", ignoreCase = true)) "" else config.pouchCardImageUrl
+        )
+    }
+    var pouchStartPriceInput by remember(config.pouchCardStartingPrice) {
+        mutableStateOf(
+            if (config.pouchCardStartingPrice > 0.0) config.pouchCardStartingPrice.roundToInt().toString() else ""
+        )
+    }
 
     fun applySampleCardUri(uri: Uri, target: String) {
         scope.launch {
@@ -145,16 +158,25 @@ fun AdminGlassOffersTab(
                 PouchImageHelper.compressImageUriToDataUrl(context, uri)
             }
             if (dataUri != null) {
-                if (target == "CAMERA") {
-                    onSaveConfig(
-                        config.copy(cameraLensImageUrl = dataUri),
-                        "Camera Lens card image updated"
-                    )
-                } else {
-                    onSaveConfig(
-                        config.copy(temperedGlassImageUrl = dataUri),
-                        "Tempered Glass card image updated"
-                    )
+                when (target) {
+                    "CAMERA" -> {
+                        onSaveConfig(
+                            config.copy(cameraLensImageUrl = dataUri),
+                            "Camera Lens card image updated"
+                        )
+                    }
+                    "POUCH_CARD" -> {
+                        onSaveConfig(
+                            config.copy(pouchCardImageUrl = dataUri),
+                            "Pouches card image updated"
+                        )
+                    }
+                    else -> {
+                        onSaveConfig(
+                            config.copy(temperedGlassImageUrl = dataUri),
+                            "Tempered Glass card image updated"
+                        )
+                    }
                 }
             }
             isProcessingSamplePhoto = false
@@ -456,6 +478,120 @@ fun AdminGlassOffersTab(
                             }
                         }
 
+                        // Pouches & Back Cases Card Image + Starting Price Override
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFF8FAFC))
+                                .padding(10.dp)
+                        ) {
+                            Text("Pouches & Back Cases Card Image & Price", fontSize = spec.sp(12.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                PouchThumbImage(
+                                    imageUrl = ScreenGuardCatalog.resolvePouchCardImageUrl(config),
+                                    contentDescription = "Pouches Card Sample",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color.White)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                FlowRow(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            pendingImageTarget = "POUCH_CARD"
+                                            sampleGalleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Upload", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            try {
+                                                pendingImageTarget = "POUCH_CARD"
+                                                val uri = PouchImageHelper.createCameraTempUri(context)
+                                                pendingCameraUri = uri
+                                                sampleCameraLauncher.launch(uri)
+                                            } catch (_: Exception) {}
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Camera", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            pouchCardUrlInput = ScreenGuardCatalog.POUCH_IMAGE_URL
+                                            onSaveConfig(
+                                                config.copy(pouchCardImageUrl = ScreenGuardCatalog.POUCH_IMAGE_URL),
+                                                "Reset Pouches card image to default"
+                                            )
+                                        },
+                                        modifier = Modifier.heightIn(min = 38.dp)
+                                    ) {
+                                        Text("Reset", fontSize = spec.sp(11), color = iCaseRed, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    value = pouchCardUrlInput,
+                                    onValueChange = { pouchCardUrlInput = it },
+                                    label = { Text("Pouches Card Image URL") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        val clean = pouchCardUrlInput.trim().ifBlank { ScreenGuardCatalog.POUCH_IMAGE_URL }
+                                        onSaveConfig(config.copy(pouchCardImageUrl = clean), "Pouches card image saved")
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                                    modifier = Modifier.heightIn(min = 46.dp)
+                                ) {
+                                    Text("Save", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    value = pouchStartPriceInput,
+                                    onValueChange = { pouchStartPriceInput = it },
+                                    label = { Text("Starting Price ₹ (blank/0 = auto)") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = {
+                                        val cleanPrice = (pouchStartPriceInput.trim().toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0)
+                                        onSaveConfig(
+                                            config.copy(pouchCardStartingPrice = cleanPrice),
+                                            if (cleanPrice > 0.0) "Pouches starting price set to ₹${cleanPrice.roundToInt()}" else "Pouches starting price set to Auto"
+                                        )
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
+                                    modifier = Modifier.heightIn(min = 46.dp)
+                                ) {
+                                    Text("Save", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
                         OutlinedButton(
                             onClick = onOpenExportCode,
                             shape = RoundedCornerShape(10.dp),
@@ -555,6 +691,16 @@ fun AdminGlassOffersTab(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
+                                        PouchThumbImage(
+                                            imageUrl = ScreenGuardCatalog.resolveGlassTypeImageUrl(glassType, config),
+                                            contentDescription = glassType,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color.White)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = glassType,
@@ -594,7 +740,10 @@ fun AdminGlassOffersTab(
                                                 color = Color(0xFF475569)
                                             )
                                             Text(
-                                                text = if (gCfg.enabled) "Active for customers" else "Paused (hidden)",
+                                                text = buildString {
+                                                    append(if (gCfg.enabled) "Active for customers" else "Paused (hidden)")
+                                                    if (gCfg.videoUrl.isNotBlank()) append(" • Video set")
+                                                },
                                                 fontSize = spec.sp(10.5f),
                                                 color = if (gCfg.enabled) iCaseGreen else iCaseRed,
                                                 fontWeight = FontWeight.SemiBold
@@ -882,6 +1031,10 @@ fun AdminGlassOffersTab(
                                     if (camPricing.offerBadge.isNotBlank()) {
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(camPricing.offerBadge, fontSize = spec.sp(10.5f), fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                                    }
+                                    if (camDefault.videoUrl.isNotBlank()) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("• Video set", fontSize = spec.sp(10.5f), fontWeight = FontWeight.Bold, color = iCaseGreen)
                                     }
                                 }
                             }
@@ -1351,14 +1504,16 @@ fun AdminGlassOffersTab(
         AddGlassTypeDialog(
             existingNames = allKnownGlassTypes,
             onDismiss = { showAddGlassTypeDialog = false },
-            onAdd = { name, price, helperNote, offer ->
+            onAdd = { name, price, helperNote, imageUrl, videoUrl, offer ->
                 val nextMap = config.glassTypeConfigs.toMutableMap()
                 nextMap[name] = GlassTypeAdminConfig(
                     basePrice = price,
                     enabled = true,
                     deleted = false,
                     offer = offer,
-                    helperNote = helperNote
+                    helperNote = helperNote,
+                    imageUrl = imageUrl,
+                    videoUrl = videoUrl
                 )
                 onSaveConfig(config.copy(glassTypeConfigs = nextMap), "Added glass type $name")
                 showAddGlassTypeDialog = false
@@ -1366,7 +1521,7 @@ fun AdminGlassOffersTab(
         )
     }
 
-    // Edit Glass Type Rate, Helper Note & Offer Dialog
+    // Edit Glass Type Rate, Helper Note, Media & Offer Dialog
     editingGlassType?.let { gType ->
         val currentCfg = config.glassTypeConfigs[gType]
             ?: GlassTypeAdminConfig(basePrice = ScreenGuardAdminConfig.defaultPricesByGlassType[gType] ?: 199.0)
@@ -1376,13 +1531,19 @@ fun AdminGlassOffersTab(
             initialOffer = currentCfg.offer,
             initialHelperNote = currentCfg.helperNote.ifBlank { ScreenGuardCatalog.defaultGlassTypeHelperNote(gType) },
             showHelperNoteField = true,
+            initialImageUrl = currentCfg.imageUrl,
+            defaultImageUrl = ScreenGuardCatalog.resolveTemperedGlassImageUrl(config),
+            initialVideoUrl = currentCfg.videoUrl,
+            showMediaFields = true,
             onDismiss = { editingGlassType = null },
-            onSave = { newPrice, newOffer, newNote ->
+            onSave = { newPrice, newOffer, newNote, newImageUrl, newVideoUrl ->
                 val nextMap = config.glassTypeConfigs.toMutableMap()
                 nextMap[gType] = currentCfg.copy(
                     basePrice = newPrice,
                     offer = newOffer,
-                    helperNote = newNote
+                    helperNote = newNote,
+                    imageUrl = newImageUrl,
+                    videoUrl = newVideoUrl
                 )
                 onSaveConfig(config.copy(glassTypeConfigs = nextMap), "Updated $gType pricing & details")
                 editingGlassType = null
@@ -1390,7 +1551,7 @@ fun AdminGlassOffersTab(
         )
     }
 
-    // Edit Default Camera Lens Rate & Offer Dialog
+    // Edit Default Camera Lens Rate, Media & Offer Dialog
     if (editingCameraDefault) {
         RateAndOfferEditDialog(
             title = "Default Camera Lens Protection",
@@ -1398,11 +1559,22 @@ fun AdminGlassOffersTab(
             initialOffer = config.cameraLensDefault.offer,
             initialHelperNote = "",
             showHelperNoteField = false,
+            initialImageUrl = config.cameraLensImageUrl,
+            defaultImageUrl = ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL,
+            initialVideoUrl = config.cameraLensDefault.videoUrl,
+            showMediaFields = true,
             onDismiss = { editingCameraDefault = false },
-            onSave = { newPrice, newOffer, _ ->
+            onSave = { newPrice, newOffer, _, newImageUrl, newVideoUrl ->
                 onSaveConfig(
-                    config.copy(cameraLensDefault = config.cameraLensDefault.copy(basePrice = newPrice, offer = newOffer)),
-                    "Updated default Camera Lens pricing & offer"
+                    config.copy(
+                        cameraLensImageUrl = newImageUrl.ifBlank { ScreenGuardCatalog.CAMERA_LENS_IMAGE_URL },
+                        cameraLensDefault = config.cameraLensDefault.copy(
+                            basePrice = newPrice,
+                            offer = newOffer,
+                            videoUrl = newVideoUrl
+                        )
+                    ),
+                    "Updated default Camera Lens pricing & media"
                 )
                 editingCameraDefault = false
             }
@@ -1773,21 +1945,68 @@ private fun addModelToCustomMap(
     return next
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddGlassTypeDialog(
     existingNames: List<String>,
     onDismiss: () -> Unit,
-    onAdd: (name: String, price: Double, helperNote: String, offer: ScreenGuardOffer) -> Unit
+    onAdd: (name: String, price: Double, helperNote: String, imageUrl: String, videoUrl: String, offer: ScreenGuardOffer) -> Unit
 ) {
     val spec = LocalResponsiveSpec.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("299") }
     var helperNote by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf("") }
+    var videoUrl by remember { mutableStateOf("") }
+    var isProcessingMedia by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var previewVideoOpen by remember { mutableStateOf(false) }
     var offerActive by remember { mutableStateOf(false) }
     var offerType by remember { mutableStateOf(ScreenGuardOfferType.NONE) }
     var offerValueStr by remember { mutableStateOf("") }
     var badgeText by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val dataUrl = withContext(Dispatchers.IO) { PouchImageHelper.compressImageUriToDataUrl(context, uri) }
+                isProcessingMedia = false
+                if (dataUrl != null) imageUrl = dataUrl else errorMsg = "Could not read selected image."
+            }
+        }
+    }
+    val cameraPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val dataUrl = withContext(Dispatchers.IO) { PouchImageHelper.compressImageUriToDataUrl(context, uri) }
+                isProcessingMedia = false
+                if (dataUrl != null) imageUrl = dataUrl
+            }
+        }
+    }
+    val videoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val (resolved, err) = withContext(Dispatchers.IO) { PouchImageHelper.saveShortVideoUriToUrl(context, uri) }
+                isProcessingMedia = false
+                if (resolved != null) videoUrl = resolved
+                errorMsg = err
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1796,6 +2015,7 @@ private fun AddGlassTypeDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = (spec.availableHeight * 0.65f).coerceIn(260.dp, 540.dp))
                     .verticalScroll(rememberScrollState())
             ) {
                 OutlinedTextField(
@@ -1826,6 +2046,33 @@ private fun AddGlassTypeDialog(
                     placeholder = { Text("e.g. Filters harsh blue light for eye comfort.") },
                     maxLines = 2,
                     modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                MediaPickerBlock(
+                    imageUrl = imageUrl,
+                    fallbackImageUrl = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL,
+                    onImageUrlChange = { imageUrl = it },
+                    onPickImageGallery = {
+                        imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    onPickImageCamera = {
+                        try {
+                            val uri = PouchImageHelper.createCameraTempUri(context)
+                            pendingCameraUri = uri
+                            cameraPicker.launch(uri)
+                        } catch (_: Exception) {
+                            errorMsg = "Camera unavailable."
+                        }
+                    },
+                    onRemoveImage = { imageUrl = "" },
+                    videoUrl = videoUrl,
+                    onVideoUrlChange = { videoUrl = it },
+                    onPickVideo = {
+                        videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                    },
+                    onPreviewVideo = { previewVideoOpen = true },
+                    onRemoveVideo = { videoUrl = "" },
+                    isProcessing = isProcessingMedia
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 OfferEditorSection(
@@ -1866,7 +2113,7 @@ private fun AddGlassTypeDialog(
                         value = (offerValueStr.toDoubleOrNull() ?: 0.0).coerceAtLeast(0.0),
                         badgeText = badgeText.trim()
                     )
-                    onAdd(cleanName, price, helperNote.trim(), offer)
+                    onAdd(cleanName, price, helperNote.trim(), imageUrl.trim(), videoUrl.trim(), offer)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy)
             ) {
@@ -1877,6 +2124,14 @@ private fun AddGlassTypeDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (previewVideoOpen && videoUrl.isNotBlank()) {
+        MediaVideoPlayerDialog(
+            title = name.ifBlank { "Glass Type Preview Video" },
+            videoUrl = videoUrl,
+            onDismiss = { previewVideoOpen = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1954,6 +2209,7 @@ private fun AddCustomModelDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RateAndOfferEditDialog(
     title: String,
@@ -1961,18 +2217,74 @@ private fun RateAndOfferEditDialog(
     initialOffer: ScreenGuardOffer,
     initialHelperNote: String,
     showHelperNoteField: Boolean,
+    initialImageUrl: String = "",
+    defaultImageUrl: String = ScreenGuardCatalog.TEMPERED_GLASS_IMAGE_URL,
+    initialVideoUrl: String = "",
+    showMediaFields: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (Double, ScreenGuardOffer, String) -> Unit
+    onSave: (Double, ScreenGuardOffer, String, String, String) -> Unit
 ) {
     val spec = LocalResponsiveSpec.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var priceStr by remember { mutableStateOf(initialPrice.roundToInt().toString()) }
     var helperNote by remember { mutableStateOf(initialHelperNote) }
+    var imageUrl by remember { mutableStateOf(initialImageUrl) }
+    var videoUrl by remember { mutableStateOf(initialVideoUrl) }
+    var isProcessingMedia by remember { mutableStateOf(false) }
+    var mediaMsg by remember { mutableStateOf<String?>(null) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var previewVideoOpen by remember { mutableStateOf(false) }
     var offerActive by remember { mutableStateOf(initialOffer.active) }
     var offerType by remember { mutableStateOf(initialOffer.type) }
     var offerValueStr by remember {
         mutableStateOf(if (initialOffer.value > 0.0) initialOffer.value.roundToInt().toString() else "")
     }
     var badgeText by remember { mutableStateOf(initialOffer.badgeText) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val dataUrl = withContext(Dispatchers.IO) { PouchImageHelper.compressImageUriToDataUrl(context, uri) }
+                isProcessingMedia = false
+                if (dataUrl != null) {
+                    imageUrl = dataUrl
+                    mediaMsg = null
+                } else {
+                    mediaMsg = "Could not read selected image."
+                }
+            }
+        }
+    }
+    val cameraPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = pendingCameraUri
+        if (success && uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val dataUrl = withContext(Dispatchers.IO) { PouchImageHelper.compressImageUriToDataUrl(context, uri) }
+                isProcessingMedia = false
+                if (dataUrl != null) imageUrl = dataUrl
+            }
+        }
+    }
+    val videoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingMedia = true
+                val (resolved, err) = withContext(Dispatchers.IO) { PouchImageHelper.saveShortVideoUriToUrl(context, uri) }
+                isProcessingMedia = false
+                if (resolved != null) videoUrl = resolved
+                mediaMsg = err
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1981,6 +2293,7 @@ private fun RateAndOfferEditDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = (spec.availableHeight * 0.65f).coerceIn(260.dp, 540.dp))
                     .verticalScroll(rememberScrollState())
             ) {
                 OutlinedTextField(
@@ -2002,6 +2315,39 @@ private fun RateAndOfferEditDialog(
                         maxLines = 2,
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+                if (showMediaFields) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MediaPickerBlock(
+                        imageUrl = imageUrl,
+                        fallbackImageUrl = defaultImageUrl,
+                        onImageUrlChange = { imageUrl = it },
+                        onPickImageGallery = {
+                            imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        onPickImageCamera = {
+                            try {
+                                val uri = PouchImageHelper.createCameraTempUri(context)
+                                pendingCameraUri = uri
+                                cameraPicker.launch(uri)
+                            } catch (_: Exception) {
+                                mediaMsg = "Camera unavailable."
+                            }
+                        },
+                        onRemoveImage = { imageUrl = "" },
+                        videoUrl = videoUrl,
+                        onVideoUrlChange = { videoUrl = it },
+                        onPickVideo = {
+                            videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                        },
+                        onPreviewVideo = { previewVideoOpen = true },
+                        onRemoveVideo = { videoUrl = "" },
+                        isProcessing = isProcessingMedia
+                    )
+                    if (mediaMsg != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(mediaMsg!!, color = iCaseRed, fontSize = spec.sp(11), fontWeight = FontWeight.SemiBold)
+                    }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -2031,7 +2377,7 @@ private fun RateAndOfferEditDialog(
                         value = valNum,
                         badgeText = badgeText.trim()
                     )
-                    onSave(base, cleanOffer, helperNote.trim())
+                    onSave(base, cleanOffer, helperNote.trim(), imageUrl.trim(), videoUrl.trim())
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = iCaseNavy),
                 modifier = Modifier
@@ -2047,6 +2393,134 @@ private fun RateAndOfferEditDialog(
             }
         }
     )
+
+    if (previewVideoOpen && videoUrl.isNotBlank()) {
+        MediaVideoPlayerDialog(
+            title = "$title — Video Preview",
+            videoUrl = videoUrl,
+            onDismiss = { previewVideoOpen = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MediaPickerBlock(
+    imageUrl: String,
+    fallbackImageUrl: String,
+    onImageUrlChange: (String) -> Unit,
+    onPickImageGallery: () -> Unit,
+    onPickImageCamera: () -> Unit,
+    onRemoveImage: () -> Unit,
+    videoUrl: String,
+    onVideoUrlChange: (String) -> Unit,
+    onPickVideo: () -> Unit,
+    onPreviewVideo: () -> Unit,
+    onRemoveVideo: () -> Unit,
+    isProcessing: Boolean
+) {
+    val spec = LocalResponsiveSpec.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF8FAFC))
+            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text("Image & Optional Video", fontSize = spec.sp(12.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PouchThumbImage(
+                imageUrl = imageUrl.ifBlank { fallbackImageUrl },
+                contentDescription = "Media preview",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onPickImageGallery,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 38.dp)
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Photo", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                }
+                OutlinedButton(
+                    onClick = onPickImageCamera,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 38.dp)
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Camera", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+                }
+                if (imageUrl.isNotBlank()) {
+                    TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 38.dp)) {
+                        Text("Remove Photo", fontSize = spec.sp(11), color = iCaseRed, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        OutlinedTextField(
+            value = if (imageUrl.startsWith("data:image", ignoreCase = true)) "" else imageUrl,
+            onValueChange = onImageUrlChange,
+            label = { Text("Image URL (optional)") },
+            placeholder = { Text("https://...") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        HorizontalDivider(color = BorderLight)
+        Text("Optional Video (MP4 / YouTube / Short Clip)", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            OutlinedButton(
+                onClick = onPickVideo,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.heightIn(min = 38.dp)
+            ) {
+                Icon(Icons.Default.Videocam, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Upload Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold)
+            }
+            if (videoUrl.isNotBlank()) {
+                OutlinedButton(
+                    onClick = onPreviewVideo,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 38.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = iCaseGreen, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text("Preview", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseGreen)
+                }
+                TextButton(onClick = onRemoveVideo, modifier = Modifier.heightIn(min = 38.dp)) {
+                    Text("Remove Video", fontSize = spec.sp(11), color = iCaseRed, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (isProcessing) {
+                CircularProgressIndicator(color = iCaseNavy, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            }
+        }
+        OutlinedTextField(
+            value = if (videoUrl.startsWith("data:video", ignoreCase = true)) "" else videoUrl,
+            onValueChange = onVideoUrlChange,
+            label = { Text("Video URL or YouTube Link (optional)") },
+            placeholder = { Text("https://youtu.be/... or https://.../demo.mp4") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
@@ -2130,6 +2604,8 @@ private fun AdminPouchEditDialog(
     var description by remember { mutableStateOf(initial?.description.orEmpty()) }
     var priceStr by remember { mutableStateOf(initial?.basePrice?.roundToInt()?.toString() ?: "349") }
     var imageUrl by remember { mutableStateOf(initial?.imageUrl.orEmpty()) }
+    var videoUrl by remember { mutableStateOf(initial?.videoUrl.orEmpty()) }
+    var previewPouchVideo by remember { mutableStateOf(false) }
     var colorOptions by remember { mutableStateOf(initial?.colorOptions.orEmpty()) }
     var customColorName by remember { mutableStateOf("") }
     var customColorHex by remember { mutableStateOf("#1E293B") }
@@ -2179,6 +2655,22 @@ private fun AdminPouchEditDialog(
     ) { uri ->
         if (uri != null) {
             applyCompressedUri(uri, pendingPickTarget)
+        }
+    }
+
+    val pouchVideoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingPhoto = true
+                val (resolved, err) = withContext(Dispatchers.IO) {
+                    PouchImageHelper.saveShortVideoUriToUrl(context, uri)
+                }
+                isProcessingPhoto = false
+                if (resolved != null) videoUrl = resolved
+                errorMsg = err
+            }
         }
     }
 
@@ -2341,6 +2833,51 @@ private fun AdminPouchEditDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("admin_pouch_image_url_input")
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("Optional Pouch Video (MP4 / YouTube / Short Clip)", fontSize = spec.sp(11.5f), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                pouchVideoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.heightIn(min = 38.dp)
+                        ) {
+                            Icon(Icons.Default.Videocam, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Upload Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                        }
+                        if (videoUrl.isNotBlank()) {
+                            OutlinedButton(
+                                onClick = { previewPouchVideo = true },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.heightIn(min = 38.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = iCaseGreen, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Preview", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseGreen)
+                            }
+                            TextButton(
+                                onClick = { videoUrl = "" },
+                                modifier = Modifier.heightIn(min = 38.dp)
+                            ) {
+                                Text("Remove Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseRed)
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = if (videoUrl.startsWith("data:video", ignoreCase = true)) "" else videoUrl,
+                        onValueChange = { videoUrl = it },
+                        label = { Text("Or Paste Video / YouTube Link (optional)") },
+                        placeholder = { Text("https://youtu.be/... or https://.../demo.mp4") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -2745,6 +3282,7 @@ private fun AdminPouchEditDialog(
                             deleted = false,
                             offer = offer,
                             imageUrl = imageUrl.trim(),
+                            videoUrl = videoUrl.trim(),
                             colorOptions = colorOptions.map {
                                 it.copy(
                                     name = it.name.trim(),
@@ -2768,6 +3306,14 @@ private fun AdminPouchEditDialog(
             TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
         }
     )
+
+    if (previewPouchVideo && videoUrl.isNotBlank()) {
+        MediaVideoPlayerDialog(
+            title = name.ifBlank { "Pouch Preview Video" },
+            videoUrl = videoUrl,
+            onDismiss = { previewPouchVideo = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

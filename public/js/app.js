@@ -13,6 +13,7 @@ import {
   INITIAL_PRODUCTS,
   MAJOR_DEVICE_BRANDS,
   ORDER_STATUSES,
+  OTHER_ANDROID_POPULAR_MODELS,
   OTHER_ANDROID_POUCHES_OPTION,
   OTHER_MODEL_OPTION,
   POUCH_BRANDS,
@@ -29,6 +30,7 @@ import {
   buildCameraLensCartProduct,
   buildCameraLensWhatsAppMessage,
   buildComboCartProduct,
+  buildOtherAndroidPouchWhatsAppMessage,
   buildPouchCartProduct,
   buildTemperedGlassCartProduct,
   buildTemperedGlassWhatsAppMessage,
@@ -40,6 +42,7 @@ import {
   formatTimestamp,
   generateDefaultCodeExport,
   getActiveCameraLensBrands,
+  getActiveGlassTypes,
   getActivePouchesForBrand,
   getActiveScreenGuardBrands,
   getAllGlassTypes,
@@ -53,12 +56,14 @@ import {
   getPopularGlassModels,
   getPouchModelsForBrand,
   getStartingCameraLensPrice,
+  getStartingPouchPrice,
   getStartingTemperedGlassPrice,
   guardModelKey,
   isCameraLensSectionAvailable,
   isDeviceEligibleForCameraLens,
   isOrderCompleted,
   isRepairCompleted,
+  isYouTubeUrl,
   normalizeHexColor,
   normalizePhoneToE164,
   parseColorOptions,
@@ -66,10 +71,15 @@ import {
   parseDeletedProductIds,
   parseOrderItems,
   parseScreenGuardConfig,
+  parseYouTubeEmbedUrl,
+  readShortVideoFileToDataUrl,
   repriceOrNullCartProduct,
   resolveCameraLensImageUrl,
   resolveCameraLensPrice,
   resolveComboPrice,
+  resolveGlassTypeImageUrl,
+  resolveGlassTypeVideoUrl,
+  resolvePouchCardImageUrl,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolvePouchSelectedColor,
@@ -295,6 +305,8 @@ const state = {
   pouchSearch: '',
   pouchDropdownOpen: false,
   pouchError: '',
+  otherAndroidPouchModel: '',
+  otherAndroidPouchPref: 'Any Matching Design',
   selectedPouchColors: {},
   selectedHomePouchColors: {},
 
@@ -331,6 +343,8 @@ const state = {
   editingProductColors: [],
   editingColorIdx: null,
   adminGlassAddingType: false,
+  adminNewGtImageUrl: '',
+  adminNewGtVideoUrl: '',
   adminGlassModelBrand: 'iPhone',
   adminGlassModelSearch: '',
   adminGlassAddModelOpen: false,
@@ -560,6 +574,11 @@ function renderProductCardHtml(product) {
         <img src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
         ${discountPct > 0 ? `<span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">${discountPct}% OFF</span>` : ''}
         ${oneHourEnabled && product.isOneHourEligible ? `<span class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-navy/90 text-amber-300 text-[11px] font-bold">⚡ 1-Hour Eligible</span>` : ''}
+        ${
+          product.videoUrl
+            ? `<button type="button" data-open-video="${escapeHtml(product.videoUrl)}" data-video-title="${escapeHtml(product.name)}" class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-full bg-slate-950/85 hover:bg-icase-red text-white text-[11px] font-extrabold shadow transition">▶ Video</button>`
+            : ''
+        }
         ${!product.inStock ? `<span class="absolute inset-0 bg-slate-950/60 flex items-center justify-center text-white text-xs font-extrabold uppercase tracking-wider">Out of Stock</span>` : ''}
       </div>
 
@@ -631,23 +650,27 @@ function renderHomeGuardSampleCards() {
   const config = state.screenGuardConfig || createDefaultScreenGuardConfig();
   const startingGlass = getStartingTemperedGlassPrice(config);
   const startingLens = getStartingCameraLensPrice(config);
+  const startingPouch = getStartingPouchPrice(config);
   const glassImg = resolveTemperedGlassImageUrl(config);
   const lensImg = resolveCameraLensImageUrl(config);
+  const pouchImg = resolvePouchCardImageUrl(config);
   const camEnabled = isCameraLensSectionAvailable(config);
+  const activeGlassTypes = getActiveGlassTypes(config);
 
   host.innerHTML = `
-    <div class="space-y-3">
+    <div class="space-y-4">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h2 class="text-xl font-extrabold text-icase-navy">Tempered Glass &amp; Camera Lens Protection</h2>
-          <p class="text-xs text-slate-500">Tap a sample card to pick your exact phone model &amp; glass type</p>
+          <h2 class="text-xl font-extrabold text-icase-navy">Tempered Glass, Camera Lens &amp; Pouches</h2>
+          <p class="text-xs text-slate-500">Tap a protection card to pick your exact phone model and order directly</p>
         </div>
         <button type="button" data-nav="guards" class="text-sm font-bold text-icase-blue hover:underline shrink-0">Open Finder →</button>
       </div>
-      <div class="grid sm:grid-cols-2 gap-4">
-        <button type="button" data-home-guard-card="glass" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col sm:flex-row transition">
-          <div class="w-full sm:w-40 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <button type="button" data-home-guard-card="glass" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+          <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
           </div>
           <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
             <div class="space-y-1.5">
@@ -658,7 +681,7 @@ function renderHomeGuardSampleCards() {
               <p class="text-xs text-slate-600">Privacy, Matte, Borderless, 360 Privacy &amp; Normal 5D edge-to-edge guards with shop installation.</p>
             </div>
             <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-              <span class="text-sm sm:text-base font-black text-icase-navy">Starting ${formatINR(startingGlass)}</span>
+              <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingGlass)}</span>
               <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
             </div>
           </div>
@@ -667,9 +690,10 @@ function renderHomeGuardSampleCards() {
         ${
           camEnabled
             ? `
-          <button type="button" data-home-guard-card="camera" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col sm:flex-row transition">
-            <div class="w-full sm:w-40 h-44 sm:h-auto bg-slate-100 shrink-0 overflow-hidden">
+          <button type="button" data-home-guard-card="camera" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+            <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
               <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+              <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-navy text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
             </div>
             <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
               <div class="space-y-1.5">
@@ -677,10 +701,10 @@ function renderHomeGuardSampleCards() {
                   <span class="px-2.5 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
                 </div>
                 <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Camera Lens Protector</h3>
-                <p class="text-xs text-slate-600">9H Sapphire metal ring lens guard for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
+                <p class="text-xs text-slate-600">9H Sapphire individual lens rings for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
               </div>
               <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span class="text-sm sm:text-base font-black text-icase-navy">Starting ${formatINR(startingLens)}</span>
+                <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingLens)}</span>
                 <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
               </div>
             </div>
@@ -688,7 +712,76 @@ function renderHomeGuardSampleCards() {
         `
             : ''
         }
+
+        <button type="button" data-home-guard-card="pouch" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+          <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+            <img src="${escapeHtml(pouchImg)}" alt="Pouches &amp; Back Cases Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-teal-700 text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
+          </div>
+          <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-extrabold">iPhone, Samsung S Series &amp; Other Android Models</span>
+              </div>
+              <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
+              <p class="text-xs text-slate-600">MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick WhatsApp Android stock checks.</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingPouch)}</span>
+              <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Pouch →</span>
+            </div>
+          </div>
+        </button>
       </div>
+
+      ${
+        activeGlassTypes.length > 0
+          ? `
+        <div class="pt-1 space-y-2.5">
+          <div>
+            <h3 class="text-sm sm:text-base font-extrabold text-icase-navy">Tempered Glass Types — Tap to Select Style</h3>
+            <p class="text-xs text-slate-500">Synced live with store rates &amp; offers. Tap any style to open Tempered Glass with it pre-selected.</p>
+          </div>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            ${activeGlassTypes
+              .map((gt) => {
+                const pricing = resolveTemperedGlassPrice('iPhone', '__default__', gt, {
+                  ...config,
+                  modelConfigs: {}
+                });
+                const gtImg = resolveGlassTypeImageUrl(gt, config);
+                const gtVid = resolveGlassTypeVideoUrl(gt, config);
+                const note = getGlassTypeHelperNote(gt, config);
+                return `
+                  <div role="button" tabindex="0" data-home-glass-type="${escapeHtml(gt)}" class="bg-white rounded-2xl border border-slate-200 hover:border-icase-red hover:shadow-sm p-3 flex items-center gap-3 cursor-pointer transition">
+                    <img src="${escapeHtml(gtImg)}" alt="${escapeHtml(gt)}" loading="lazy" class="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0" />
+                    <div class="min-w-0 flex-1 space-y-1">
+                      <div class="flex items-center justify-between gap-1.5">
+                        <strong class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">${escapeHtml(gt)}</strong>
+                        ${pricing.offerBadge ? `<span class="px-1.5 py-0.5 rounded bg-amber-300 text-icase-navy text-[9px] font-black shrink-0">${escapeHtml(pricing.offerBadge)}</span>` : ''}
+                      </div>
+                      <div class="text-[11px] text-slate-500 truncate" title="${escapeHtml(note)}">${escapeHtml(note)}</div>
+                      <div class="flex items-center justify-between gap-2 pt-0.5">
+                        <div class="flex items-baseline gap-1.5">
+                          <span class="text-xs sm:text-sm font-black text-icase-red">${formatINR(pricing.finalPrice)}</span>
+                          ${pricing.basePrice > pricing.finalPrice ? `<span class="text-[10px] text-slate-400 line-through font-semibold">${formatINR(pricing.basePrice)}</span>` : ''}
+                        </div>
+                        ${
+                          gtVid
+                            ? `<button type="button" data-open-video="${escapeHtml(gtVid)}" data-video-title="${escapeHtml(`${gt} Tempered Glass`)}" class="px-2 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[10px] font-extrabold transition shrink-0">▶ Video</button>`
+                            : ''
+                        }
+                      </div>
+                    </div>
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        </div>
+      `
+          : ''
+      }
     </div>
   `;
 }
@@ -800,6 +893,11 @@ function renderHomeFeaturedPouches() {
                   ${
                     pricing.hasOffer && pricing.offerBadge
                       ? `<span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">${escapeHtml(pricing.offerBadge)}</span>`
+                      : ''
+                  }
+                  ${
+                    pouch.videoUrl
+                      ? `<button type="button" data-open-video="${escapeHtml(pouch.videoUrl)}" data-video-title="${escapeHtml(pouch.name)}" class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-slate-950/85 hover:bg-icase-red text-white text-[11px] font-extrabold shadow transition">▶ Video</button>`
                       : ''
                   }
                 </div>
@@ -920,7 +1018,8 @@ function renderTemperedGlassFinder() {
     'Hi iCASE Edappal! I have a curved-display Samsung S series phone (S20 / S21 Ultra / S22 Ultra / S23 Ultra). Please share UV tempered glass options & pricing.'
   );
 
-  const glassImgUrl = resolveTemperedGlassImageUrl(config);
+  const glassImgUrl = resolveGlassTypeImageUrl(state.glassType, config);
+  const activeGlassVideoUrl = resolveGlassTypeVideoUrl(state.glassType, config);
   const glassFocused = state.guardsFocusTarget === 'glass';
 
   const popularGlassModels = getPopularGlassModels(state.glassBrand, config);
@@ -935,10 +1034,21 @@ function renderTemperedGlassFinder() {
           <div class="flex flex-wrap items-center gap-2">
             <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Tempered Glass</h2>
             <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
+            ${
+              activeGlassVideoUrl
+                ? `<button type="button" data-open-video="${escapeHtml(activeGlassVideoUrl)}" data-video-title="${escapeHtml(`${state.glassType} Tempered Glass`)}" class="px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[11px] font-extrabold transition">▶ Watch ${escapeHtml(state.glassType)} Video</button>`
+                : ''
+            }
           </div>
           <p class="text-xs sm:text-sm text-slate-600">Select your brand &amp; model for exact tempered glass (Samsung curved S20 / S21–S23 Ultra UV glass via WhatsApp).</p>
         </div>
       </div>
+
+      ${
+        !state.glassModel && state.glassType
+          ? `<div class="px-3.5 py-2 rounded-xl bg-icase-blueLight/60 border border-icase-blue/20 text-xs font-semibold text-icase-navy">Pre-selected style: <strong>${escapeHtml(state.glassType)}</strong> — pick your phone model below to see exact availability &amp; price.</div>`
+          : ''
+      }
 
       <div class="flex flex-wrap gap-2">
         <button type="button" data-glass-brand="" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ${
@@ -1222,6 +1332,7 @@ function renderCameraLensFinder() {
       : null;
 
   const camImgUrl = resolveCameraLensImageUrl(config);
+  const camVideoUrl = String(config?.cameraLensDefault?.videoUrl || '').trim();
   const camFocused = state.guardsFocusTarget === 'camera';
   const popularCameraModels = getPopularCameraLensModels(state.cameraBrand, config);
   const effectiveGlassModel =
@@ -1243,6 +1354,11 @@ function renderCameraLensFinder() {
           <div class="flex flex-wrap items-center gap-2">
             <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Camera Lens Protection</h2>
             <span class="px-2.5 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
+            ${
+              camVideoUrl
+                ? `<button type="button" data-open-video="${escapeHtml(camVideoUrl)}" data-video-title="Camera Lens Protection" class="px-2.5 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[11px] font-extrabold transition">▶ Watch Video</button>`
+                : ''
+            }
           </div>
           <p class="text-xs sm:text-sm text-slate-600">Supported exclusively for iPhone &amp; Samsung Galaxy S Series (S20–S25 / Ultra). Not stocked for Redmi, Oppo, Realme, Vivo, OnePlus, Nothing, or Galaxy A/M series.</p>
         </div>
@@ -1467,15 +1583,31 @@ function renderPouchesFinder() {
   const isOtherAndroid = state.pouchBrand === OTHER_ANDROID_POUCHES_OPTION;
   const models = isOtherAndroid ? [] : searchPouchCatalog(state.pouchBrand, state.pouchSearch, config);
   const pouches = isOtherAndroid ? [] : getActivePouchesForBrand(state.pouchBrand, config);
+  const allActivePouches = (Array.isArray(config?.pouchItems) ? config.pouchItems : []).filter(
+    (p) => p && !p.deleted && p.enabled !== false
+  );
+  const pouchHeaderImg = resolvePouchCardImageUrl(config);
+  const pouchFocused = state.guardsFocusTarget === 'pouch';
   const otherWaUrl = getStoreWaUrl(
-    'Hi iCASE Edappal! Looking for protective pouches for my Android phone. Please share current stock photos and pricing.'
+    buildOtherAndroidPouchWhatsAppMessage({
+      modelName: state.otherAndroidPouchModel,
+      pouchName: state.otherAndroidPouchPref
+    })
   );
 
   container.innerHTML = `
-    <div id="pouch-wrapper" class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
-      <div>
-        <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Pouches</h2>
-        <p class="text-xs sm:text-sm text-slate-600 mt-0.5">Custom-fit protective pouches for iPhone &amp; Samsung S Series</p>
+    <div id="pouch-wrapper" class="bg-white rounded-2xl border ${
+      pouchFocused ? 'border-icase-navy ring-2 ring-icase-navy/25' : 'border-slate-200'
+    } p-5 sm:p-6 shadow-sm space-y-4">
+      <div class="flex items-start gap-3.5">
+        <img src="${escapeHtml(pouchHeaderImg)}" alt="Pouches &amp; Back Cases" class="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0" />
+        <div class="min-w-0 flex-1 space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Pouches &amp; Back Cases</h2>
+            <span class="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-extrabold">iPhone, Samsung S Series &amp; Other Android Models</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-600">Custom-fit protective pouches for iPhone &amp; Samsung S Series, plus instant WhatsApp enquiry for all Other Android models.</p>
+        </div>
       </div>
 
       <div class="flex flex-wrap gap-2">
@@ -1493,13 +1625,47 @@ function renderPouchesFinder() {
       ${
         isOtherAndroid
           ? `
-        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-          <div class="text-xs sm:text-sm font-semibold text-icase-navy">
-            Stock for Redmi, Oppo, Realme, Vivo, OnePlus, Nothing &amp; other Android models varies daily. Message us on WhatsApp to see live pouch photos for your exact phone!
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5">
+          <div class="text-xs sm:text-sm font-bold text-icase-navy">
+            Enter or pick your Android phone model for instant WhatsApp pouch photos &amp; price:
           </div>
-          <a href="${otherWaUrl}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs sm:text-sm font-extrabold transition min-h-[46px]">
-            Enquire on WhatsApp for Stock Photos →
-          </a>
+
+          <div class="space-y-1.5">
+            <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">Popular Android Models (Quick Pick)</div>
+            <div class="flex flex-wrap gap-1.5">
+              ${OTHER_ANDROID_POPULAR_MODELS.map((m) => {
+                const active = state.otherAndroidPouchModel === m;
+                return `<button type="button" data-other-android-chip="${escapeHtml(m)}" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                  active ? 'bg-icase-navy text-white border-icase-navy' : 'bg-white text-icase-navy border-slate-300 hover:border-icase-navy'
+                }">${escapeHtml(m)}</button>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <div>
+            <label for="pouch-other-android-input" class="block text-xs font-bold text-icase-navy mb-1">Your Android Phone Model *</label>
+            <input id="pouch-other-android-input" type="text" value="${escapeHtml(state.otherAndroidPouchModel)}" placeholder="e.g. Redmi Note 13 Pro, OnePlus 12R, Vivo V40, Motorola Edge 50" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:border-icase-blue focus:outline-none text-sm font-medium" />
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="text-[10px] font-black uppercase tracking-wider text-slate-500">Preferred Pouch Style</div>
+            <div class="flex flex-wrap gap-1.5">
+              ${['Any Matching Design', ...allActivePouches.map((p) => p.name)]
+                .map((styleName) => {
+                  const active = state.otherAndroidPouchPref === styleName;
+                  return `<button type="button" data-other-android-style="${escapeHtml(styleName)}" class="px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    active ? 'bg-icase-red text-white border-icase-red' : 'bg-white text-icase-navy border-slate-300 hover:border-icase-navy'
+                  }">${escapeHtml(styleName)}</button>`;
+                })
+                .join('')}
+            </div>
+          </div>
+
+          <div>
+            <a id="btn-other-android-pouch-wa" href="${escapeHtml(otherWaUrl)}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-green hover:bg-emerald-700 text-white text-xs sm:text-sm font-extrabold transition min-h-[46px] shadow-sm">
+              💬 Ask / Order on WhatsApp →
+            </a>
+          </div>
         </div>
       `
           : `
@@ -1558,6 +1724,11 @@ function renderPouchesFinder() {
                       <div class="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-white border border-slate-200">
                         <img src="${escapeHtml(activeImageUrl)}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover" />
                         ${pr.offerBadge ? `<span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-icase-red text-white text-[10px] font-extrabold shadow-sm">${escapeHtml(pr.offerBadge)}</span>` : ''}
+                        ${
+                          p.videoUrl
+                            ? `<button type="button" data-open-video="${escapeHtml(p.videoUrl)}" data-video-title="${escapeHtml(p.name)}" class="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/85 hover:bg-icase-red text-white text-[10px] font-extrabold shadow transition">▶ Video</button>`
+                            : ''
+                        }
                       </div>
                       <div>
                         <div class="text-sm font-extrabold text-icase-navy">${escapeHtml(p.name)}</div>
@@ -1618,6 +1789,31 @@ function renderPouchesFinder() {
       }
     </div>
   `;
+
+  document.getElementById('pouch-other-android-input')?.addEventListener('input', (e) => {
+    state.otherAndroidPouchModel = e.target.value;
+    const waLink = document.getElementById('btn-other-android-pouch-wa');
+    if (waLink) {
+      waLink.href = getStoreWaUrl(
+        buildOtherAndroidPouchWhatsAppMessage({
+          modelName: state.otherAndroidPouchModel,
+          pouchName: state.otherAndroidPouchPref
+        })
+      );
+    }
+  });
+  container.querySelectorAll('[data-other-android-chip]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      state.otherAndroidPouchModel = btn.dataset.otherAndroidChip || '';
+      renderPouchesFinder();
+    })
+  );
+  container.querySelectorAll('[data-other-android-style]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      state.otherAndroidPouchPref = btn.dataset.otherAndroidStyle || 'Any Matching Design';
+      renderPouchesFinder();
+    })
+  );
 
   const pSearch = document.getElementById('pouch-search-input');
   pSearch?.addEventListener('focus', () => {
@@ -1710,17 +1906,56 @@ function renderGuardInstallationOption() {
   `;
 }
 
-function openVideoModal() {
+function openVideoModal(titleOrEvent = 'Tempered Glass & Camera Lens Demo', rawUrl = SAMPLE_GUARD_VIDEO_URL) {
   const modal = document.getElementById('video-demo-modal');
+  const titleEl = document.getElementById('video-modal-title');
+  const ytFrame = document.getElementById('sample-guard-youtube-frame');
   const video = document.getElementById('sample-guard-video');
   const errEl = document.getElementById('video-demo-error');
   const toggleBtn = document.getElementById('btn-video-play-pause');
+  const extLink = document.getElementById('btn-video-external-link');
   if (!modal || !video) return;
 
+  const title =
+    typeof titleOrEvent === 'string' && titleOrEvent.trim()
+      ? titleOrEvent.trim()
+      : 'Tempered Glass & Camera Lens Demo';
+  const targetUrl = String(typeof titleOrEvent === 'string' ? rawUrl : SAMPLE_GUARD_VIDEO_URL || '').trim() || SAMPLE_GUARD_VIDEO_URL;
+  if (titleEl) titleEl.textContent = title;
   errEl?.classList.add('hidden');
-  if (!video.getAttribute('src')) {
-    video.setAttribute('src', SAMPLE_GUARD_VIDEO_URL);
+
+  const isHttp = /^https?:\/\//i.test(targetUrl);
+  if (extLink) {
+    if (isHttp) {
+      extLink.href = targetUrl;
+      extLink.classList.remove('hidden');
+    } else {
+      extLink.classList.add('hidden');
+    }
   }
+
+  const ytEmbed = isYouTubeUrl(targetUrl) ? parseYouTubeEmbedUrl(targetUrl) : '';
+  if (ytEmbed && ytFrame) {
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    } catch {}
+    video.classList.add('hidden');
+    toggleBtn?.classList.add('hidden');
+    ytFrame.src = ytEmbed;
+    ytFrame.classList.remove('hidden');
+    modal.classList.remove('hidden');
+    return;
+  }
+
+  if (ytFrame) {
+    ytFrame.src = '';
+    ytFrame.classList.add('hidden');
+  }
+  video.classList.remove('hidden');
+  toggleBtn?.classList.remove('hidden');
+  video.setAttribute('src', targetUrl);
   video.loop = true;
   modal.classList.remove('hidden');
 
@@ -1738,6 +1973,11 @@ function openVideoModal() {
 function closeVideoModal() {
   const modal = document.getElementById('video-demo-modal');
   const video = document.getElementById('sample-guard-video');
+  const ytFrame = document.getElementById('sample-guard-youtube-frame');
+  if (ytFrame) {
+    ytFrame.src = '';
+    ytFrame.classList.add('hidden');
+  }
   if (video) {
     try {
       video.pause();
@@ -2158,6 +2398,11 @@ function renderProductModal() {
           ? `<span class="px-3 py-1 rounded-full text-xs font-bold bg-icase-blueLight text-icase-blue">⚡ 1-Hour Express Delivery Eligible</span>`
           : ''
       }
+      ${
+        product.videoUrl
+          ? `<button type="button" data-open-video="${escapeHtml(product.videoUrl)}" data-video-title="${escapeHtml(product.name)}" class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-900 hover:bg-icase-red text-white transition">▶ Watch Product Video</button>`
+          : ''
+      }
     </div>
 
     <div class="flex flex-wrap gap-2.5 pt-2">
@@ -2375,7 +2620,8 @@ function reconcileCartWithLiveCatalog() {
         repriced.originalPrice !== item.product.originalPrice ||
         repriced.name !== item.product.name ||
         repriced.description !== item.product.description ||
-        repriced.imageUrl !== item.product.imageUrl
+        repriced.imageUrl !== item.product.imageUrl ||
+        String(repriced.videoUrl || '') !== String(item.product.videoUrl || '')
       ) {
         changed = true;
       }
@@ -3907,7 +4153,7 @@ function renderAdminSection() {
   } else if (state.adminTab === 'PRODUCTS') {
     const editingProd =
       state.editingProductId === 'NEW'
-        ? { id: '', name: '', category: 'Cases', price: '', originalPrice: '', stockCount: 25, imageUrl: 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&auto=format&fit=crop&q=80', description: '', inStock: true, isPopular: false, isOneHourEligible: true }
+        ? { id: '', name: '', category: 'Cases', price: '', originalPrice: '', stockCount: 25, imageUrl: 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&auto=format&fit=crop&q=80', videoUrl: '', description: '', inStock: true, isPopular: false, isOneHourEligible: true }
         : state.products.find((p) => p.id === state.editingProductId) || null;
 
     content.innerHTML = `
@@ -3976,6 +4222,18 @@ function renderAdminSection() {
                   </div>
                 </div>
               </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-slate-600 mb-1.5">Optional Product Video (Direct Video URL, YouTube Link, or Short Video &le; 350 KB)</label>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label for="ap-video-file" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-icase-navy text-white text-xs font-bold cursor-pointer">Upload Short Video</label>
+                    <input id="ap-video-file" type="file" accept="video/*" class="hidden" />
+                    <button id="ap-video-preview-btn" type="button" class="px-3 py-1.5 rounded-lg bg-icase-blueLight text-icase-blue text-xs font-bold ${editingProd.videoUrl ? '' : 'hidden'}">▶ Preview Video</button>
+                    <button id="ap-video-clear" type="button" class="px-3 py-1.5 rounded-lg bg-icase-redLight text-icase-red text-xs font-bold ${editingProd.videoUrl ? '' : 'hidden'}">Remove Video</button>
+                  </div>
+                  <input id="ap-video" type="text" value="${escapeHtml(editingProd.videoUrl || '')}" placeholder="https://youtube.com/... or https://.../demo.mp4 (optional)" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm" />
+                </div>
+              </div>
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-600 mb-1">Description</label>
@@ -4041,6 +4299,7 @@ function renderAdminSection() {
                   <div class="flex items-center gap-1.5">
                     <div class="text-sm font-extrabold text-icase-navy truncate">${escapeHtml(p.name)}</div>
                     ${p.isPopular ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black shrink-0">HOME</span>` : ''}
+                    ${p.videoUrl ? `<span class="px-1.5 py-0.5 rounded bg-slate-900 text-white text-[9px] font-black shrink-0">VIDEO</span>` : ''}
                   </div>
                   <div class="text-xs text-slate-500">${escapeHtml(p.category)} • ${formatINR(p.price)}${Number(p.originalPrice || 0) > Number(p.price || 0) ? ` <span class="line-through">${formatINR(p.originalPrice)}</span>` : ''}</div>
                 </div>
@@ -4092,6 +4351,37 @@ function renderAdminSection() {
         showToast(err?.message || 'Unable to process selected image');
       }
       e.target.value = '';
+    });
+    const syncProductVideoButtons = () => {
+      const hasVid = Boolean(document.getElementById('ap-video')?.value?.trim());
+      document.getElementById('ap-video-preview-btn')?.classList.toggle('hidden', !hasVid);
+      document.getElementById('ap-video-clear')?.classList.toggle('hidden', !hasVid);
+    };
+    document.getElementById('ap-video')?.addEventListener('input', syncProductVideoButtons);
+    document.getElementById('ap-video-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readShortVideoFileToDataUrl(file);
+        const inp = document.getElementById('ap-video');
+        if (inp) inp.value = dataUrl;
+        syncProductVideoButtons();
+        showToast('Product video uploaded! Click Save & Sync Product.');
+      } catch (err) {
+        showToast(err?.message || 'Unable to read selected video');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('ap-video-preview-btn')?.addEventListener('click', () => {
+      const url = document.getElementById('ap-video')?.value?.trim();
+      if (!url) return;
+      const title = document.getElementById('ap-name')?.value?.trim() || 'Product Video';
+      openVideoModal(title, url);
+    });
+    document.getElementById('ap-video-clear')?.addEventListener('click', () => {
+      const inp = document.getElementById('ap-video');
+      if (inp) inp.value = '';
+      syncProductVideoButtons();
     });
     content.querySelectorAll('[data-quick-discount]').forEach((b) =>
       b.addEventListener('click', () => {
@@ -4168,6 +4458,7 @@ function renderAdminSection() {
         originalPrice: origNum,
         stockCount: Number(document.getElementById('ap-stock')?.value || 25),
         imageUrl: document.getElementById('ap-img')?.value?.trim() || '',
+        videoUrl: document.getElementById('ap-video')?.value?.trim() || '',
         inStock: Boolean(document.getElementById('ap-instock')?.checked),
         isOneHourEligible: Boolean(document.getElementById('ap-onehr')?.checked),
         isPopular: Boolean(document.getElementById('ap-popular')?.checked),
@@ -4237,12 +4528,12 @@ function renderAdminSection() {
         <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 class="font-extrabold text-icase-navy text-base">Sample Card &amp; Item Images (Home &amp; Finder)</h3>
-              <p class="text-xs text-slate-500">Upload or paste custom images for the Tempered Glass &amp; Camera Lens Protector sample cards, finder headers, and cart items.</p>
+              <h3 class="font-extrabold text-icase-navy text-base">Sample Card Images &amp; Starting Prices (Home &amp; Finder)</h3>
+              <p class="text-xs text-slate-500">Upload or paste custom images for Tempered Glass, Camera Lens Protector, and Pouches &amp; Back Cases cards.</p>
             </div>
             <button type="button" data-open-export-code="true" class="px-3.5 py-2 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs font-extrabold transition">Export Default Code for GitHub</button>
           </div>
-          <div class="grid sm:grid-cols-2 gap-4">
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
               <div class="text-xs font-extrabold text-icase-navy">Tempered Glass Image</div>
               <div class="flex items-center gap-3">
@@ -4274,15 +4565,35 @@ function renderAdminSection() {
                 <button id="adm-cl-img-save" type="button" class="px-3.5 py-1.5 rounded-xl bg-icase-blue text-white text-xs font-bold shrink-0">Save</button>
               </div>
             </div>
+
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div class="text-xs font-extrabold text-icase-navy">Pouches &amp; Back Cases Card</div>
+              <div class="flex items-center gap-3">
+                <img id="adm-pcard-img-preview" src="${escapeHtml(resolvePouchCardImageUrl(cfg))}" alt="Pouches Card Preview" class="w-16 h-16 rounded-xl object-cover border border-slate-300 bg-white shrink-0" />
+                <div class="flex flex-wrap gap-1.5">
+                  <label for="adm-pcard-img-file" class="px-3 py-1.5 rounded-lg bg-icase-navy hover:bg-icase-dark text-white text-xs font-bold cursor-pointer">Upload Photo</label>
+                  <input id="adm-pcard-img-file" type="file" accept="image/*" class="hidden" />
+                  <button id="adm-pcard-img-reset" type="button" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100">Reset Default</button>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <input id="adm-pcard-img-url" type="text" value="${escapeHtml(cfg.pouchCardImageUrl || '')}" placeholder="Custom Image URL (blank = default)" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs" />
+                <button id="adm-pcard-img-save" type="button" class="px-3.5 py-1.5 rounded-xl bg-icase-blue text-white text-xs font-bold shrink-0">Save</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="adm-pcard-start-price" type="number" min="0" value="${escapeHtml(cfg.pouchCardStartingPrice || '')}" placeholder="Starting ₹ (0 = Auto ${getStartingPouchPrice({ ...cfg, pouchCardStartingPrice: 0 })})" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold" />
+                <button id="adm-pcard-price-save" type="button" class="px-3 py-1.5 rounded-xl bg-icase-navy text-white text-xs font-bold shrink-0">Save ₹</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- 1. Glass Type Rates, Helper Notes, Offers & Add/Delete -->
+        <!-- 1. Glass Type Rates, Helper Notes, Offers, Images & Videos -->
         <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 class="font-extrabold text-icase-navy text-base">Tempered Glass Types — Add, Rates, Offers &amp; Delete</h3>
-              <p class="text-xs text-slate-500">Changes immediately update customer selection and active shopping cart totals.</p>
+              <h3 class="font-extrabold text-icase-navy text-base">Tempered Glass Types — Add, Rates, Media, Offers &amp; Delete</h3>
+              <p class="text-xs text-slate-500">Active glass types automatically sync to the Home quick-select strip and customer picker.</p>
             </div>
             <button id="btn-adm-toggle-add-gt" type="button" class="px-3.5 py-2 rounded-xl bg-icase-red text-white text-xs font-bold">+ Add Glass Type</button>
           </div>
@@ -4294,6 +4605,30 @@ function renderAdminSection() {
               <input id="adm-new-gt-name" type="text" placeholder="Type name (e.g. Anti-Blue 9H)" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold" />
               <input id="adm-new-gt-price" type="number" value="299" placeholder="Rate ₹" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold" />
               <input id="adm-new-gt-note" type="text" placeholder="1-line helper note (optional)" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs" />
+              <div class="sm:col-span-3 grid sm:grid-cols-2 gap-2.5">
+                <div class="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-[11px] font-bold text-slate-600">Optional Type Image</span>
+                    <div class="flex items-center gap-1.5">
+                      <label for="adm-new-gt-img-file" class="px-2.5 py-1 rounded-lg bg-icase-navy text-white text-[10px] font-bold cursor-pointer">Upload</label>
+                      <input id="adm-new-gt-img-file" type="file" accept="image/*" class="hidden" />
+                      <button id="adm-new-gt-img-clear" type="button" class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold ${state.adminNewGtImageUrl ? '' : 'hidden'}">Clear</button>
+                    </div>
+                  </div>
+                  <input id="adm-new-gt-img-url" type="text" value="${escapeHtml(state.adminNewGtImageUrl || '')}" placeholder="Optional image URL (blank = Tempered Glass default)" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs" />
+                </div>
+                <div class="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-[11px] font-bold text-slate-600">Optional Video (URL, YouTube, &le; 350 KB)</span>
+                    <div class="flex items-center gap-1.5">
+                      <label for="adm-new-gt-vid-file" class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">Upload Video</label>
+                      <input id="adm-new-gt-vid-file" type="file" accept="video/*" class="hidden" />
+                      <button id="adm-new-gt-vid-clear" type="button" class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold ${state.adminNewGtVideoUrl ? '' : 'hidden'}">Clear</button>
+                    </div>
+                  </div>
+                  <input id="adm-new-gt-vid-url" type="text" value="${escapeHtml(state.adminNewGtVideoUrl || '')}" placeholder="YouTube or .mp4 URL (optional)" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs" />
+                </div>
+              </div>
               <div class="sm:col-span-3 flex gap-2">
                 <button id="btn-adm-save-new-gt" type="button" class="px-4 py-1.5 rounded-xl bg-icase-navy text-white text-xs font-bold">Add Glass Type</button>
                 <button id="btn-adm-cancel-new-gt" type="button" class="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold">Cancel</button>
@@ -4311,24 +4646,32 @@ function renderAdminSection() {
                   enabled: true,
                   deleted: false,
                   offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
-                  helperNote: ''
+                  helperNote: '',
+                  imageUrl: '',
+                  videoUrl: ''
                 };
                 const offer = gCfg.offer || { active: false, type: 'NONE', value: 0, badgeText: '' };
                 const preview = resolveTemperedGlassPrice('iPhone', '__default__', gt, {
                   ...cfg,
                   modelConfigs: {}
                 });
+                const resolvedGtImg = resolveGlassTypeImageUrl(gt, cfg);
+                const hasGtVid = Boolean(String(gCfg.videoUrl || '').trim());
                 return `
                   <div class="p-4 rounded-2xl border ${gCfg.deleted ? 'bg-rose-50/40 border-rose-200' : 'bg-slate-50 border-slate-200'} space-y-2.5">
                     <div class="flex items-center justify-between gap-2">
-                      <div>
-                        <div class="text-sm font-extrabold text-icase-navy">${escapeHtml(gt)}</div>
-                        <div class="text-[11px] font-bold ${gCfg.deleted ? 'text-icase-red' : gCfg.enabled ? 'text-icase-green' : 'text-amber-700'}">
-                          ${gCfg.deleted ? 'DELETED (Hidden)' : gCfg.enabled ? `LIVE: ${formatINR(preview.finalPrice)}` : 'PAUSED'}
-                          ${!gCfg.deleted && preview.offerBadge ? ` • ${escapeHtml(preview.offerBadge)}` : ''}
+                      <div class="flex items-center gap-2.5 min-w-0">
+                        <img id="gt-img-preview-${idx}" src="${escapeHtml(resolvedGtImg)}" alt="${escapeHtml(gt)}" class="w-10 h-10 rounded-xl object-cover border border-slate-300 bg-white shrink-0" />
+                        <div class="min-w-0">
+                          <div class="text-sm font-extrabold text-icase-navy truncate">${escapeHtml(gt)}</div>
+                          <div class="text-[11px] font-bold ${gCfg.deleted ? 'text-icase-red' : gCfg.enabled ? 'text-icase-green' : 'text-amber-700'}">
+                            ${gCfg.deleted ? 'DELETED (Hidden)' : gCfg.enabled ? `LIVE: ${formatINR(preview.finalPrice)}` : 'PAUSED'}
+                            ${!gCfg.deleted && preview.offerBadge ? ` • ${escapeHtml(preview.offerBadge)}` : ''}
+                            ${!gCfg.deleted && hasGtVid ? ' • Video set' : ''}
+                          </div>
                         </div>
                       </div>
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 shrink-0">
                         ${
                           gCfg.deleted
                             ? `<button type="button" data-gt-restore="${idx}" class="px-3 py-1 rounded-lg bg-icase-blueLight text-icase-blue text-xs font-bold">Restore</button>`
@@ -4366,7 +4709,32 @@ function renderAdminSection() {
                         </div>
                       </div>
                       <input id="gt-note-${idx}" type="text" value="${escapeHtml(gCfg.helperNote || '')}" placeholder="1-line helper note: ${escapeHtml(getGlassTypeHelperNote(gt, cfg))}" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs" />
-                      <button type="button" data-gt-save="${idx}" class="px-3.5 py-1.5 rounded-lg bg-icase-navy text-white text-xs font-bold">Save Rate, Note &amp; Offer</button>
+                      <div class="grid sm:grid-cols-2 gap-2">
+                        <div class="p-2 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                          <div class="flex items-center justify-between gap-1.5">
+                            <span class="text-[10px] font-bold text-slate-500">Type Image</span>
+                            <div class="flex items-center gap-1">
+                              <label for="gt-img-file-${idx}" class="px-2 py-0.5 rounded bg-icase-navy text-white text-[10px] font-bold cursor-pointer">Upload</label>
+                              <input id="gt-img-file-${idx}" data-gt-img-file="${idx}" type="file" accept="image/*" class="hidden" />
+                              ${gCfg.imageUrl ? `<button type="button" data-gt-img-reset="${idx}" class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">Reset</button>` : ''}
+                            </div>
+                          </div>
+                          <input id="gt-img-${idx}" type="text" value="${escapeHtml(gCfg.imageUrl || '')}" placeholder="Custom Image URL (blank = default)" class="w-full px-2 py-1 rounded-lg border border-slate-300 text-[11px]" />
+                        </div>
+                        <div class="p-2 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                          <div class="flex items-center justify-between gap-1.5">
+                            <span class="text-[10px] font-bold text-slate-500">Optional Video (&le; 350 KB)</span>
+                            <div class="flex items-center gap-1">
+                              <label for="gt-vid-file-${idx}" class="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold cursor-pointer">Upload</label>
+                              <input id="gt-vid-file-${idx}" data-gt-vid-file="${idx}" type="file" accept="video/*" class="hidden" />
+                              <button id="gt-vid-prev-${idx}" type="button" data-gt-vid-preview="${idx}" class="px-2 py-0.5 rounded bg-icase-blueLight text-icase-blue text-[10px] font-bold ${hasGtVid ? '' : 'hidden'}">▶</button>
+                              <button id="gt-vid-clr-${idx}" type="button" data-gt-vid-clear="${idx}" class="px-2 py-0.5 rounded bg-icase-redLight text-icase-red text-[10px] font-bold ${hasGtVid ? '' : 'hidden'}">Clear</button>
+                            </div>
+                          </div>
+                          <input id="gt-vid-${idx}" data-gt-vid-input="${idx}" type="text" value="${escapeHtml(gCfg.videoUrl || '')}" placeholder="YouTube or .mp4 URL (optional)" class="w-full px-2 py-1 rounded-lg border border-slate-300 text-[11px]" />
+                        </div>
+                      </div>
+                      <button type="button" data-gt-save="${idx}" class="px-3.5 py-1.5 rounded-lg bg-icase-navy text-white text-xs font-bold">Save Rate, Media &amp; Offer</button>
                     `
                         : ''
                     }
@@ -4528,6 +4896,20 @@ function renderAdminSection() {
               <label class="block text-[10px] font-bold text-slate-500">Promo Badge</label>
               <input id="adm-cam-def-obadge" type="text" value="${escapeHtml(cfg.cameraLensDefault.offer?.badgeText || '')}" placeholder="e.g. LENS DEAL" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs" />
             </div>
+            <div class="col-span-2 sm:col-span-4 pt-1">
+              <div class="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-[10px] font-bold text-slate-600">Optional Camera Lens Demo Video (YouTube, URL, or Short Video &le; 350 KB)</span>
+                  <div class="flex items-center gap-1.5">
+                    <label for="adm-cam-def-vid-file" class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">Upload Video</label>
+                    <input id="adm-cam-def-vid-file" type="file" accept="video/*" class="hidden" />
+                    <button id="adm-cam-def-vid-preview" type="button" class="px-2.5 py-1 rounded-lg bg-icase-blueLight text-icase-blue text-[10px] font-bold ${cfg.cameraLensDefault.videoUrl ? '' : 'hidden'}">▶ Preview</button>
+                    <button id="adm-cam-def-vid-clear" type="button" class="px-2.5 py-1 rounded-lg bg-icase-redLight text-icase-red text-[10px] font-bold ${cfg.cameraLensDefault.videoUrl ? '' : 'hidden'}">Remove</button>
+                  </div>
+                </div>
+                <input id="adm-cam-def-vid-url" type="text" value="${escapeHtml(cfg.cameraLensDefault.videoUrl || '')}" placeholder="YouTube link or direct .mp4 URL (optional)" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs" />
+              </div>
+            </div>
             <div class="col-span-2 sm:col-span-4">
               <button id="adm-cam-def-save" type="button" class="px-4 py-1.5 rounded-lg bg-icase-navy text-white text-xs font-bold">Save Camera Lens Defaults</button>
             </div>
@@ -4688,6 +5070,7 @@ function renderAdminSection() {
                         <div class="flex items-center gap-1.5">
                           <div class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">${escapeHtml(p.name)}</div>
                           ${p.showOnHomePage && !p.deleted ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-black shrink-0">HOME</span>` : ''}
+                          ${p.videoUrl && !p.deleted ? `<span class="px-1.5 py-0.5 rounded bg-slate-900 text-white text-[9px] font-black shrink-0">VIDEO</span>` : ''}
                         </div>
                         <div class="text-[11px] font-bold ${p.deleted ? 'text-icase-red' : p.enabled ? 'text-icase-green' : 'text-amber-700'}">
                           ${p.deleted ? 'DELETED' : `${formatINR(pr.finalPrice)}${p.enabled ? '' : ' • PAUSED'}`}
@@ -4780,6 +5163,36 @@ function renderAdminSection() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  <!-- 1b. Optional Pouch Video -->
+                  <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span class="text-xs font-extrabold text-icase-navy uppercase tracking-wide">Optional Pouch Video</span>
+                        <p class="text-[11px] text-slate-500">Direct video URL, YouTube link, or short video file (&le; 350 KB)</p>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        ${
+                          draftPouch.videoUrl
+                            ? `<button id="btn-adm-p-preview-vid" type="button" class="px-2.5 py-1 rounded-lg bg-icase-blueLight text-icase-blue text-[11px] font-bold">▶ Preview</button>
+                               <button id="btn-adm-p-remove-vid" type="button" class="px-2.5 py-1 rounded-lg bg-icase-redLight text-icase-red text-[11px] font-bold">Remove Video</button>`
+                            : ''
+                        }
+                      </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer hover:opacity-95">
+                        <span>${draftPouch.videoUrl ? 'Replace Short Video' : 'Upload Short Video'}</span>
+                        <input id="adm-p-vid-file" type="file" accept="video/*" class="hidden" />
+                      </label>
+                      ${
+                        draftPouch.videoUrl && String(draftPouch.videoUrl).startsWith('data:')
+                          ? `<span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold">Short video file attached</span>`
+                          : ''
+                      }
+                    </div>
+                    <input id="adm-p-vid-url" type="text" value="${draftPouch.videoUrl && !String(draftPouch.videoUrl).startsWith('data:') ? escapeHtml(draftPouch.videoUrl) : ''}" placeholder="YouTube link or direct .mp4/.webm URL (optional)" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs" />
                   </div>
 
                   <!-- 2. Pouch Details -->
@@ -5070,20 +5483,95 @@ function renderAdminSection() {
       next.cameraLensImageUrl = '';
       saveGuardConfig(next, 'Camera Lens image reset to default');
     });
+    document.getElementById('adm-pcard-img-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file);
+        const next = parseScreenGuardConfig(cfg);
+        next.pouchCardImageUrl = dataUrl;
+        saveGuardConfig(next, 'Pouches card sample image updated!');
+      } catch (err) {
+        showToast(err?.message || 'Unable to process image');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-pcard-img-save')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.pouchCardImageUrl = document.getElementById('adm-pcard-img-url')?.value?.trim() || '';
+      saveGuardConfig(next, 'Pouches card image saved!');
+    });
+    document.getElementById('adm-pcard-img-reset')?.addEventListener('click', () => {
+      const next = parseScreenGuardConfig(cfg);
+      next.pouchCardImageUrl = '';
+      saveGuardConfig(next, 'Pouches card image reset to default');
+    });
+    document.getElementById('adm-pcard-price-save')?.addEventListener('click', () => {
+      const raw = Number(document.getElementById('adm-pcard-start-price')?.value || 0);
+      const next = parseScreenGuardConfig(cfg);
+      next.pouchCardStartingPrice = Number.isFinite(raw) && raw > 0 ? raw : 0;
+      saveGuardConfig(next, 'Pouches starting price updated!');
+    });
 
-    // 1. Glass Type Events (Add + Save + Toggle + Delete + Restore)
+    // 1. Glass Type Events (Add + Save + Toggle + Delete + Restore + Media)
     document.getElementById('btn-adm-toggle-add-gt')?.addEventListener('click', () => {
       state.adminGlassAddingType = !state.adminGlassAddingType;
       renderAdminSection();
     });
     document.getElementById('btn-adm-cancel-new-gt')?.addEventListener('click', () => {
       state.adminGlassAddingType = false;
+      state.adminNewGtImageUrl = '';
+      state.adminNewGtVideoUrl = '';
       renderAdminSection();
+    });
+    document.getElementById('adm-new-gt-img-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file);
+        state.adminNewGtImageUrl = dataUrl;
+        const inp = document.getElementById('adm-new-gt-img-url');
+        if (inp) inp.value = dataUrl;
+        document.getElementById('adm-new-gt-img-clear')?.classList.remove('hidden');
+        showToast('Glass type image ready!');
+      } catch (err) {
+        showToast(err?.message || 'Unable to process image');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-new-gt-img-clear')?.addEventListener('click', () => {
+      state.adminNewGtImageUrl = '';
+      const inp = document.getElementById('adm-new-gt-img-url');
+      if (inp) inp.value = '';
+      document.getElementById('adm-new-gt-img-clear')?.classList.add('hidden');
+    });
+    document.getElementById('adm-new-gt-vid-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readShortVideoFileToDataUrl(file);
+        state.adminNewGtVideoUrl = dataUrl;
+        const inp = document.getElementById('adm-new-gt-vid-url');
+        if (inp) inp.value = dataUrl;
+        document.getElementById('adm-new-gt-vid-clear')?.classList.remove('hidden');
+        showToast('Glass type video ready!');
+      } catch (err) {
+        showToast(err?.message || 'Unable to read video');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-new-gt-vid-clear')?.addEventListener('click', () => {
+      state.adminNewGtVideoUrl = '';
+      const inp = document.getElementById('adm-new-gt-vid-url');
+      if (inp) inp.value = '';
+      document.getElementById('adm-new-gt-vid-clear')?.classList.add('hidden');
     });
     document.getElementById('btn-adm-save-new-gt')?.addEventListener('click', () => {
       const name = document.getElementById('adm-new-gt-name')?.value?.trim();
       const basePrice = Math.max(0, Number(document.getElementById('adm-new-gt-price')?.value || 299));
       const helperNote = document.getElementById('adm-new-gt-note')?.value?.trim() || '';
+      const imageUrl = document.getElementById('adm-new-gt-img-url')?.value?.trim() || state.adminNewGtImageUrl || '';
+      const videoUrl = document.getElementById('adm-new-gt-vid-url')?.value?.trim() || state.adminNewGtVideoUrl || '';
       if (!name) return;
       const next = parseScreenGuardConfig(cfg);
       next.glassTypeConfigs[name] = {
@@ -5091,30 +5579,104 @@ function renderAdminSection() {
         enabled: true,
         deleted: false,
         offer: { active: false, type: 'NONE', value: 0, badgeText: '' },
-        helperNote
+        helperNote,
+        imageUrl,
+        videoUrl
       };
       state.adminGlassAddingType = false;
+      state.adminNewGtImageUrl = '';
+      state.adminNewGtVideoUrl = '';
       saveGuardConfig(next, `${name} glass type added!`);
     });
 
+    const readGlassTypeRowAndSave = (idx, overrideFields = {}, customToast = null) => {
+      const gt = glassTypesList[idx];
+      if (!gt) return;
+      const basePrice = Math.max(0, Number(document.getElementById(`gt-price-${idx}`)?.value || DEFAULT_GLASS_TYPE_PRICES[gt] || 199));
+      const type = document.getElementById(`gt-otype-${idx}`)?.value || 'NONE';
+      const value = Math.max(0, Number(document.getElementById(`gt-oval-${idx}`)?.value || 0));
+      const badgeText = document.getElementById(`gt-obadge-${idx}`)?.value?.trim() || '';
+      const helperNote = document.getElementById(`gt-note-${idx}`)?.value?.trim() || '';
+      const imageUrl =
+        overrideFields.imageUrl !== undefined
+          ? overrideFields.imageUrl
+          : document.getElementById(`gt-img-${idx}`)?.value?.trim() || '';
+      const videoUrl =
+        overrideFields.videoUrl !== undefined
+          ? overrideFields.videoUrl
+          : document.getElementById(`gt-vid-${idx}`)?.value?.trim() || '';
+      const next = parseScreenGuardConfig(cfg);
+      next.glassTypeConfigs[gt] = {
+        ...next.glassTypeConfigs[gt],
+        basePrice,
+        deleted: false,
+        offer: { active: type !== 'NONE', type, value, badgeText },
+        helperNote,
+        imageUrl,
+        videoUrl
+      };
+      saveGuardConfig(next, customToast || `${gt} rate, media & offer synced!`);
+    };
+
     content.querySelectorAll('[data-gt-save]').forEach((b) =>
       b.addEventListener('click', () => {
-        const idx = Number(b.dataset.gtSave);
+        readGlassTypeRowAndSave(Number(b.dataset.gtSave));
+      })
+    );
+    content.querySelectorAll('[data-gt-img-file]').forEach((inp) =>
+      inp.addEventListener('change', async (e) => {
+        const idx = Number(inp.dataset.gtImgFile);
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          const dataUrl = await compressImageFileToDataUrl(file);
+          readGlassTypeRowAndSave(idx, { imageUrl: dataUrl }, `${glassTypesList[idx]} image uploaded & saved!`);
+        } catch (err) {
+          showToast(err?.message || 'Unable to process image');
+        }
+        e.target.value = '';
+      })
+    );
+    content.querySelectorAll('[data-gt-img-reset]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const idx = Number(b.dataset.gtImgReset);
+        readGlassTypeRowAndSave(idx, { imageUrl: '' }, `${glassTypesList[idx]} image reset to default`);
+      })
+    );
+    content.querySelectorAll('[data-gt-vid-file]').forEach((inp) =>
+      inp.addEventListener('change', async (e) => {
+        const idx = Number(inp.dataset.gtVidFile);
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          const dataUrl = await readShortVideoFileToDataUrl(file);
+          readGlassTypeRowAndSave(idx, { videoUrl: dataUrl }, `${glassTypesList[idx]} video uploaded & saved!`);
+        } catch (err) {
+          showToast(err?.message || 'Unable to read selected video');
+        }
+        e.target.value = '';
+      })
+    );
+    content.querySelectorAll('[data-gt-vid-input]').forEach((inp) =>
+      inp.addEventListener('input', () => {
+        const idx = Number(inp.dataset.gtVidInput);
+        const has = Boolean(inp.value.trim());
+        document.getElementById(`gt-vid-prev-${idx}`)?.classList.toggle('hidden', !has);
+        document.getElementById(`gt-vid-clr-${idx}`)?.classList.toggle('hidden', !has);
+      })
+    );
+    content.querySelectorAll('[data-gt-vid-preview]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const idx = Number(b.dataset.gtVidPreview);
         const gt = glassTypesList[idx];
-        const basePrice = Math.max(0, Number(document.getElementById(`gt-price-${idx}`)?.value || DEFAULT_GLASS_TYPE_PRICES[gt] || 199));
-        const type = document.getElementById(`gt-otype-${idx}`)?.value || 'NONE';
-        const value = Math.max(0, Number(document.getElementById(`gt-oval-${idx}`)?.value || 0));
-        const badgeText = document.getElementById(`gt-obadge-${idx}`)?.value?.trim() || '';
-        const helperNote = document.getElementById(`gt-note-${idx}`)?.value?.trim() || '';
-        const next = parseScreenGuardConfig(cfg);
-        next.glassTypeConfigs[gt] = {
-          ...next.glassTypeConfigs[gt],
-          basePrice,
-          deleted: false,
-          offer: { active: type !== 'NONE', type, value, badgeText },
-          helperNote
-        };
-        saveGuardConfig(next, `${gt} rate, note & offer synced!`);
+        const url = document.getElementById(`gt-vid-${idx}`)?.value?.trim();
+        if (url) openVideoModal(`${gt} Tempered Glass`, url);
+      })
+    );
+    content.querySelectorAll('[data-gt-vid-clear]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const idx = Number(b.dataset.gtVidClear);
+        readGlassTypeRowAndSave(idx, { videoUrl: '' }, `${glassTypesList[idx]} video removed`);
       })
     );
     content.querySelectorAll('[data-gt-toggle]').forEach((chk) =>
@@ -5264,19 +5826,50 @@ function renderAdminSection() {
       next.cameraLensDefault = { ...next.cameraLensDefault, enabled: Boolean(e.target.checked), deleted: false };
       saveGuardConfig(next, `Camera Lens Protection ${e.target.checked ? 'enabled' : 'paused'}`);
     });
+    const syncCamDefVideoBtns = () => {
+      const has = Boolean(document.getElementById('adm-cam-def-vid-url')?.value?.trim());
+      document.getElementById('adm-cam-def-vid-preview')?.classList.toggle('hidden', !has);
+      document.getElementById('adm-cam-def-vid-clear')?.classList.toggle('hidden', !has);
+    };
+    document.getElementById('adm-cam-def-vid-url')?.addEventListener('input', syncCamDefVideoBtns);
+    document.getElementById('adm-cam-def-vid-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readShortVideoFileToDataUrl(file);
+        const inp = document.getElementById('adm-cam-def-vid-url');
+        if (inp) inp.value = dataUrl;
+        syncCamDefVideoBtns();
+        showToast('Camera Lens video uploaded! Click Save Camera Lens Defaults.');
+      } catch (err) {
+        showToast(err?.message || 'Unable to read selected video');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-cam-def-vid-preview')?.addEventListener('click', () => {
+      const url = document.getElementById('adm-cam-def-vid-url')?.value?.trim();
+      if (url) openVideoModal('Camera Lens Protection Demo', url);
+    });
+    document.getElementById('adm-cam-def-vid-clear')?.addEventListener('click', () => {
+      const inp = document.getElementById('adm-cam-def-vid-url');
+      if (inp) inp.value = '';
+      syncCamDefVideoBtns();
+    });
     document.getElementById('adm-cam-def-save')?.addEventListener('click', () => {
       const basePrice = Math.max(0, Number(document.getElementById('adm-cam-def-price')?.value || DEFAULT_CAMERA_LENS_PRICE));
       const type = document.getElementById('adm-cam-def-otype')?.value || 'NONE';
       const value = Math.max(0, Number(document.getElementById('adm-cam-def-oval')?.value || 0));
       const badgeText = document.getElementById('adm-cam-def-obadge')?.value?.trim() || '';
+      const videoUrl = document.getElementById('adm-cam-def-vid-url')?.value?.trim() || '';
       const next = parseScreenGuardConfig(cfg);
       next.cameraLensDefault = {
         ...next.cameraLensDefault,
         basePrice,
         deleted: false,
-        offer: { active: type !== 'NONE', type, value, badgeText }
+        offer: { active: type !== 'NONE', type, value, badgeText },
+        videoUrl
       };
-      saveGuardConfig(next, 'Camera Lens default rate & offer saved!');
+      saveGuardConfig(next, 'Camera Lens defaults & media saved!');
     });
     document.getElementById('adm-combo-enable')?.addEventListener('change', (e) => {
       const next = parseScreenGuardConfig(cfg);
@@ -5412,6 +6005,7 @@ function renderAdminSection() {
           description: pouchObj.description || '',
           basePrice: pouchObj.basePrice ?? 349,
           imageUrl: pouchObj.imageUrl || '',
+          videoUrl: pouchObj.videoUrl || '',
           colorOptions: Array.isArray(pouchObj.colorOptions)
             ? pouchObj.colorOptions.map((c) => ({ ...c }))
             : [],
@@ -5434,6 +6028,7 @@ function renderAdminSection() {
           description: '',
           basePrice: 349,
           imageUrl: '',
+          videoUrl: '',
           colorOptions: [],
           compatibleBrands: ['iPhone', 'Samsung S Series'],
           showOnHomePage: false,
@@ -5453,6 +6048,7 @@ function renderAdminSection() {
       const priceEl = document.getElementById('adm-p-price');
       const descEl = document.getElementById('adm-p-desc');
       const imgUrlEl = document.getElementById('adm-p-img-url');
+      const vidUrlEl = document.getElementById('adm-p-vid-url');
       const iphEl = document.getElementById('adm-p-brand-iphone');
       const samEl = document.getElementById('adm-p-brand-samsung');
       const showHomeEl = document.getElementById('adm-p-show-home');
@@ -5467,6 +6063,11 @@ function renderAdminSection() {
         d.imageUrl = imgUrlEl.value.trim();
       } else if (imgUrlEl && imgUrlEl.value.trim()) {
         d.imageUrl = imgUrlEl.value.trim();
+      }
+      if (vidUrlEl && !String(d.videoUrl || '').startsWith('data:')) {
+        d.videoUrl = vidUrlEl.value.trim();
+      } else if (vidUrlEl && vidUrlEl.value.trim()) {
+        d.videoUrl = vidUrlEl.value.trim();
       }
       if (iphEl || samEl) {
         const compat = [];
@@ -5517,6 +6118,41 @@ function renderAdminSection() {
       if (!state.adminPouchDraft) return;
       syncDraftFieldsFromDom();
       state.adminPouchDraft.imageUrl = '';
+      renderAdminSection();
+    });
+
+    // Pouch Optional Video Upload / URL / Preview / Remove
+    document.getElementById('adm-p-vid-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !state.adminPouchDraft) return;
+      syncDraftFieldsFromDom();
+      try {
+        const dataUrl = await readShortVideoFileToDataUrl(file);
+        state.adminPouchDraft.videoUrl = dataUrl;
+        renderAdminSection();
+        showToast('Pouch video ready!');
+      } catch (err) {
+        showToast(err?.message || 'Could not read selected video', 'error');
+      }
+      e.target.value = '';
+    });
+    document.getElementById('adm-p-vid-url')?.addEventListener('change', (e) => {
+      if (!state.adminPouchDraft) return;
+      syncDraftFieldsFromDom();
+      state.adminPouchDraft.videoUrl = e.target.value.trim();
+      renderAdminSection();
+    });
+    document.getElementById('btn-adm-p-preview-vid')?.addEventListener('click', () => {
+      if (!state.adminPouchDraft) return;
+      syncDraftFieldsFromDom();
+      if (state.adminPouchDraft.videoUrl) {
+        openVideoModal(state.adminPouchDraft.name || 'Pouch Video Preview', state.adminPouchDraft.videoUrl);
+      }
+    });
+    document.getElementById('btn-adm-p-remove-vid')?.addEventListener('click', () => {
+      if (!state.adminPouchDraft) return;
+      syncDraftFieldsFromDom();
+      state.adminPouchDraft.videoUrl = '';
       renderAdminSection();
     });
 
@@ -5672,6 +6308,7 @@ function renderAdminSection() {
         showOnHomePage: Boolean(d.showOnHomePage),
         offer: { active: type !== 'NONE', type, value, badgeText },
         imageUrl: String(d.imageUrl || '').trim(),
+        videoUrl: String(d.videoUrl || '').trim(),
         colorOptions: (d.colorOptions || []).map((c) => ({
           name: String(c.name || '').trim(),
           hex: normalizeHexColor(c.hex || '#1E293B'),
@@ -6255,6 +6892,24 @@ function closeExportCodeModal() {
 // ==================== GLOBAL EVENT DELEGATION & INIT ====================
 function bindGlobalEvents() {
   document.addEventListener('click', (e) => {
+    const openVidBtn = e.target.closest('[data-open-video]');
+    if (openVidBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      openVideoModal(openVidBtn.dataset.videoTitle || 'Video Preview', openVidBtn.dataset.openVideo);
+      return;
+    }
+
+    const homeGlassTypeBtn = e.target.closest('[data-home-glass-type]');
+    if (homeGlassTypeBtn) {
+      const gt = homeGlassTypeBtn.dataset.homeGlassType;
+      if (gt) {
+        state.glassType = gt;
+        setActiveTab('guards', 'glass');
+      }
+      return;
+    }
+
     const guardSampleBtn = e.target.closest('[data-home-guard-card]');
     if (guardSampleBtn) {
       setActiveTab('guards', guardSampleBtn.dataset.homeGuardCard);

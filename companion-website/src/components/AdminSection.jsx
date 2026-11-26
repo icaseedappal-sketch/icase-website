@@ -11,7 +11,9 @@ import {
   Copy,
   Download,
   X,
-  Check
+  Check,
+  Play,
+  Film
 } from 'lucide-react';
 import { deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -28,10 +30,12 @@ import {
   parseColorOptions,
   parseComplaints,
   parseOrderItems,
+  readShortVideoFileToDataUrl,
   serializeColorOptions
 } from '../data/constants';
 import AdminGlassOffersTab from './AdminGlassOffersTab';
 import AdminReviewsTab from './AdminReviewsTab';
+import MediaVideoModal from './MediaVideoModal';
 
 export default function AdminSection({
   isAdminLoggedIn,
@@ -89,6 +93,9 @@ export default function AdminSection({
   const [colorNameInput, setColorNameInput] = useState('');
   const [colorHexInput, setColorHexInput] = useState('#1B2A4A');
   const [prodImgUploadErr, setProdImgUploadErr] = useState('');
+  const [prodVideoUrl, setProdVideoUrl] = useState('');
+  const [prodVidUploadErr, setProdVidUploadErr] = useState('');
+  const [adminVideoPreview, setAdminVideoPreview] = useState({ open: false, title: '', url: '' });
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportCopied, setExportCopied] = useState(false);
 
@@ -510,6 +517,8 @@ export default function AdminSection({
       p?.imageUrl ||
         'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500&auto=format&fit=crop&q=80'
     );
+    setProdVideoUrl(p?.videoUrl || '');
+    setProdVidUploadErr('');
     setProdDesc(p?.description || '');
     setProdInStock(p ? Boolean(p.inStock) : true);
     setProdPopular(p ? Boolean(p.isPopular) : false);
@@ -561,6 +570,7 @@ export default function AdminSection({
       price: Number(prodPrice),
       originalPrice: Number(prodOriginalPrice || prodPrice),
       imageUrl: prodImageUrl.trim(),
+      videoUrl: prodVideoUrl.trim(),
       inStock: prodInStock,
       stockCount: Number(prodStockCount || 0),
       isOneHourEligible: prodOneHour,
@@ -979,6 +989,90 @@ export default function AdminSection({
                   )}
                 </div>
               </div>
+
+              <div
+                className="form-group"
+                style={{
+                  background: '#F8FAFC',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  padding: 12
+                }}
+              >
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Film size={15} /> Optional Product Video (MP4 URL, YouTube Link, or Clip ≤ 350 KB)
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                    <Upload size={14} /> Upload Short Video (≤ 350 KB)
+                    <input
+                      type="file"
+                      accept="video/*"
+                      hidden
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        try {
+                          setProdVidUploadErr('');
+                          const dataUrl = await readShortVideoFileToDataUrl(f);
+                          setProdVideoUrl(dataUrl);
+                        } catch (err) {
+                          setProdVidUploadErr(err.message || 'Video upload failed');
+                        }
+                      }}
+                    />
+                  </label>
+                  {prodVideoUrl.trim() && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-navy btn-sm"
+                        onClick={() =>
+                          setAdminVideoPreview({
+                            open: true,
+                            title: prodName.trim() || 'Product Video Preview',
+                            url: prodVideoUrl.trim()
+                          })
+                        }
+                      >
+                        <Play size={13} fill="currentColor" /> Preview Video
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ color: '#E50914' }}
+                        onClick={() => {
+                          setProdVideoUrl('');
+                          setProdVidUploadErr('');
+                        }}
+                      >
+                        Remove Video
+                      </button>
+                    </>
+                  )}
+                </div>
+                <input
+                  className="input"
+                  placeholder="Optional MP4 video URL or YouTube link (https://youtube.com/...)"
+                  value={prodVideoUrl.startsWith('data:video') ? '' : prodVideoUrl}
+                  onChange={(e) => {
+                    setProdVideoUrl(e.target.value);
+                    setProdVidUploadErr('');
+                  }}
+                />
+                {prodVideoUrl.startsWith('data:video') && (
+                  <div style={{ fontSize: 11.5, color: 'var(--icase-green)', fontWeight: 700, marginTop: 4 }}>
+                    ✓ Short video clip uploaded ({Math.round((prodVideoUrl.length * 0.75) / 1024)} KB)
+                  </div>
+                )}
+                {prodVidUploadErr && (
+                  <div style={{ color: '#E50914', fontSize: 12, fontWeight: 700, marginTop: 4 }}>
+                    {prodVidUploadErr}
+                  </div>
+                )}
+              </div>
+
               <div className="form-group">
                 <label>Description</label>
                 <textarea
@@ -1190,7 +1284,10 @@ export default function AdminSection({
                     style={{ width: 54, height: 54, borderRadius: 10, objectFit: 'cover' }}
                   />
                   <div>
-                    <strong style={{ color: 'var(--icase-navy)' }}>{product.name}</strong>
+                    <strong style={{ color: 'var(--icase-navy)' }}>
+                      {product.name}
+                      {product.videoUrl ? ' • Video set' : ''}
+                    </strong>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                       {product.category} • {formatINR(product.price)} •{' '}
                       {product.inStock ? 'In Stock' : 'Out of Stock'}
@@ -1540,6 +1637,13 @@ export default function AdminSection({
           </div>
         </div>
       )}
+
+      <MediaVideoModal
+        isOpen={adminVideoPreview.open}
+        title={adminVideoPreview.title}
+        url={adminVideoPreview.url}
+        onClose={() => setAdminVideoPreview({ open: false, title: '', url: '' })}
+      />
     </div>
   );
 }

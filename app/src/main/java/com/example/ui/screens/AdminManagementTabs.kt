@@ -40,9 +40,11 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -985,9 +987,13 @@ fun AddEditProductDialog(
     var priceStr by remember { mutableStateOf(product?.price?.toInt()?.toString() ?: "499") }
     var originalPriceStr by remember { mutableStateOf(product?.originalPrice?.toInt()?.toString() ?: "799") }
     var imageUrl by remember { mutableStateOf(product?.imageUrl ?: defaultProductImageUrl) }
+    var videoUrl by remember { mutableStateOf(product?.videoUrl ?: "") }
     var isProcessingPhoto by remember { mutableStateOf(false) }
+    var isProcessingVideo by remember { mutableStateOf(false) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var photoError by remember { mutableStateOf<String?>(null) }
+    var videoStatus by remember { mutableStateOf<String?>(null) }
+    var showVideoPreviewDialog by remember { mutableStateOf(false) }
     var inStock by remember { mutableStateOf(product?.inStock ?: true) }
     var stockCountStr by remember { mutableStateOf(product?.stockCount?.toString() ?: "25") }
     var isOneHourEligible by remember { mutableStateOf(product?.isOneHourEligible ?: true) }
@@ -1021,6 +1027,27 @@ fun AddEditProductDialog(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) applyCompressedPhoto(uri)
+    }
+
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isProcessingVideo = true
+                videoStatus = null
+                val (resolvedUrl, msg) = withContext(Dispatchers.IO) {
+                    PouchImageHelper.saveShortVideoUriToUrl(context, uri)
+                }
+                if (resolvedUrl != null) {
+                    videoUrl = resolvedUrl
+                    videoStatus = msg ?: "Short video ready."
+                } else {
+                    videoStatus = msg ?: "Could not load video."
+                }
+                isProcessingVideo = false
+            }
+        }
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -1222,6 +1249,80 @@ fun AddEditProductDialog(
                             onValueChange = { imageUrl = it },
                             label = { Text("Or Paste Image URL") },
                             placeholder = { Text("https://...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Optional Product Video Block (URL / YouTube / Short Clip)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFF8FAFC))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                            .testTag("admin_product_video_upload_box")
+                    ) {
+                        Text(
+                            text = "Optional Product Video (MP4 URL, YouTube, or Short Clip)",
+                            fontSize = spec.sp(12),
+                            fontWeight = FontWeight.Bold,
+                            color = iCaseNavy
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    videoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
+                                },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.heightIn(min = 38.dp)
+                            ) {
+                                if (isProcessingVideo) {
+                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.Videocam, contentDescription = null, tint = iCaseNavy, modifier = Modifier.size(15.dp))
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Upload Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseNavy)
+                            }
+                            if (videoUrl.isNotBlank()) {
+                                OutlinedButton(
+                                    onClick = { showVideoPreviewDialog = true },
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier.heightIn(min = 38.dp)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = iCaseBlue, modifier = Modifier.size(15.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Preview Video", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseBlue)
+                                }
+                                TextButton(
+                                    onClick = {
+                                        videoUrl = ""
+                                        videoStatus = null
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.heightIn(min = 38.dp)
+                                ) {
+                                    Text("Remove", fontSize = spec.sp(11), fontWeight = FontWeight.Bold, color = iCaseRed)
+                                }
+                            }
+                        }
+                        if (videoStatus != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(videoStatus!!, fontSize = spec.sp(11), color = Color(0xFF475569))
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = if (videoUrl.startsWith("data:video", ignoreCase = true)) "" else videoUrl,
+                            onValueChange = { videoUrl = it },
+                            label = { Text("Video URL or YouTube Link (Optional)") },
+                            placeholder = { Text("https://youtu.be/... or https://.../demo.mp4") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -1515,6 +1616,7 @@ fun AddEditProductDialog(
                         price = priceStr.toDoubleOrNull() ?: 499.0,
                         originalPrice = originalPriceStr.toDoubleOrNull() ?: 799.0,
                         imageUrl = imageUrl.trim().ifBlank { "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500" },
+                        videoUrl = videoUrl.trim(),
                         inStock = inStock,
                         stockCount = stockCountStr.toIntOrNull() ?: 20,
                         isOneHourEligible = isOneHourEligible,
@@ -1536,6 +1638,14 @@ fun AddEditProductDialog(
             }
         }
     )
+
+    if (showVideoPreviewDialog && videoUrl.isNotBlank()) {
+        com.example.ui.components.MediaVideoPlayerDialog(
+            title = name.ifBlank { "Product Video Preview" },
+            videoUrl = videoUrl,
+            onDismiss = { showVideoPreviewDialog = false }
+        )
+    }
 }
 
 @Composable

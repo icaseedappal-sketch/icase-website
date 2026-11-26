@@ -1330,7 +1330,7 @@ textarea {
 /* Home Sample Cards & Compatibility Badges */
 .guard-sample-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 16px;
 }
 
@@ -1355,8 +1355,8 @@ textarea {
 }
 
 .guard-sample-thumb {
-  width: 126px;
-  min-height: 136px;
+  width: 120px;
+  min-height: 142px;
   flex-shrink: 0;
   background: #F1F5F9;
   position: relative;
@@ -1371,12 +1371,67 @@ textarea {
 }
 
 .guard-sample-body {
-  padding: 14px 16px;
+  padding: 14px 15px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 6px;
   flex: 1;
+}
+
+.glass-type-examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.glass-type-example-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glass-type-example-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--icase-navy);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-type-example-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: #F8FAFC;
+  flex-shrink: 0;
+}
+
+.media-video-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(11, 23, 40, 0.88);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.media-video-pill:hover {
+  background: var(--icase-red);
 }
 
 .compat-pill {
@@ -1400,6 +1455,12 @@ textarea {
   background: #EAF2FF;
   color: #1D4ED8;
   border: 1px solid #BFDBFE;
+}
+
+.compat-pill.pouch {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
 }
 
 .compat-warning-box {

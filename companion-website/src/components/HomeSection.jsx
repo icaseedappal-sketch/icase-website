@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Heart,
   Award,
-  X
+  X,
+  Play
 } from 'lucide-react';
 import {
   CATEGORIES,
@@ -23,15 +24,22 @@ import {
   computeProductRatingSummary,
   formatINR,
   formatTimestamp,
+  getActiveGlassTypes,
+  getGlassTypeHelperNote,
   getHomeFeaturedPouches,
   getStartingCameraLensPrice,
+  getStartingPouchPrice,
   getStartingTemperedGlassPrice,
   isCameraLensSectionAvailable,
   resolveCameraLensImageUrl,
+  resolveGlassTypeImageUrl,
+  resolveGlassTypeVideoUrl,
+  resolvePouchCardImageUrl,
   resolvePouchImageUrl,
   resolvePouchPrice,
   resolvePouchSelectedColor,
-  resolveTemperedGlassImageUrl
+  resolveTemperedGlassImageUrl,
+  resolveTemperedGlassPrice
 } from '../data/constants';
 
 export default function HomeSection({
@@ -49,6 +57,8 @@ export default function HomeSection({
   onOpenAccount,
   onOpenGuardsPouch,
   onOpenGuardsSection,
+  onOpenGuardsGlassType,
+  onOpenVideo,
   onOpenReviewModal
 }) {
   const [homeSearch, setHomeSearch] = useState('');
@@ -91,6 +101,10 @@ export default function HomeSection({
     () => getStartingCameraLensPrice(screenGuardConfig),
     [screenGuardConfig]
   );
+  const pouchStartingPrice = useMemo(
+    () => getStartingPouchPrice(screenGuardConfig),
+    [screenGuardConfig]
+  );
   const cameraSectionActive = useMemo(
     () => isCameraLensSectionAvailable(screenGuardConfig),
     [screenGuardConfig]
@@ -101,6 +115,14 @@ export default function HomeSection({
   );
   const cameraLensSampleImg = useMemo(
     () => resolveCameraLensImageUrl(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const pouchSampleImg = useMemo(
+    () => resolvePouchCardImageUrl(screenGuardConfig),
+    [screenGuardConfig]
+  );
+  const activeGlassTypes = useMemo(
+    () => getActiveGlassTypes(screenGuardConfig),
     [screenGuardConfig]
   );
 
@@ -142,6 +164,19 @@ export default function HomeSection({
             <span className="express-badge">
               <Zap size={11} /> 1-Hour Eligible
             </span>
+          )}
+          {product.videoUrl && onOpenVideo && (
+            <button
+              type="button"
+              className="media-video-pill"
+              style={{ position: 'absolute', bottom: 8, left: 8 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVideo(product.name, product.videoUrl);
+              }}
+            >
+              <Play size={10} fill="currentColor" /> Video
+            </button>
           )}
           {!product.inStock && <span className="stock-pill-out">Out of Stock</span>}
         </div>
@@ -516,7 +551,180 @@ export default function HomeSection({
               </div>
             </button>
           )}
+
+          {/* 3rd Main Sample Card: Pouches & Back Cases */}
+          <button
+            type="button"
+            className="guard-sample-card"
+            onClick={() => {
+              if (onOpenGuardsPouch) onOpenGuardsPouch();
+              else if (onOpenGuardsSection) onOpenGuardsSection('pouch');
+              else onNavigate('guards');
+            }}
+          >
+            <div className="guard-sample-thumb">
+              <img src={pouchSampleImg} alt="Pouches & Back Cases" loading="lazy" />
+              <span className="discount-badge" style={{ background: '#0F766E' }}>
+                Starting {formatINR(pouchStartingPrice)}
+              </span>
+            </div>
+            <div className="guard-sample-body">
+              <div>
+                <div className="compat-pill pouch" style={{ marginBottom: 6 }}>
+                  iPhone, Samsung S Series &amp; Other Android Models
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
+                  Pouches &amp; Back Cases
+                </div>
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                  MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick
+                  WhatsApp Android stock checks.
+                </p>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 6
+                }}
+              >
+                <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
+                  From {formatINR(pouchStartingPrice)}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
+                  Select Pouch →
+                </span>
+              </div>
+            </div>
+          </button>
         </div>
+
+        {/* Dynamic Tempered Glass Types Quick-Select Examples */}
+        {activeGlassTypes.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <div className="section-header" style={{ marginBottom: 8 }}>
+              <div>
+                <h3 style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-navy)' }}>
+                  Tempered Glass Types — Tap to Select Style
+                </h3>
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  Synced live with store rates &amp; offers. Tap a style to jump straight to Tempered Glass.
+                </p>
+              </div>
+            </div>
+            <div className="glass-type-examples-grid">
+              {activeGlassTypes.map((gt) => {
+                const pricing = resolveTemperedGlassPrice('iPhone', '__default__', gt, {
+                  ...(screenGuardConfig || {}),
+                  modelConfigs: {}
+                });
+                const gtImg = resolveGlassTypeImageUrl(gt, screenGuardConfig);
+                const gtVideo = resolveGlassTypeVideoUrl(gt, screenGuardConfig);
+                const note = getGlassTypeHelperNote(gt, screenGuardConfig);
+
+                return (
+                  <div
+                    key={gt}
+                    role="button"
+                    tabIndex={0}
+                    className="glass-type-example-card"
+                    onClick={() => {
+                      if (onOpenGuardsGlassType) onOpenGuardsGlassType(gt);
+                      else if (onOpenGuardsSection) onOpenGuardsSection('glass');
+                      else onNavigate('guards');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (onOpenGuardsGlassType) onOpenGuardsGlassType(gt);
+                        else onNavigate('guards');
+                      }
+                    }}
+                  >
+                    <img src={gtImg} alt={gt} className="glass-type-example-thumb" loading="lazy" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 6,
+                          marginBottom: 2
+                        }}
+                      >
+                        <strong
+                          style={{
+                            fontSize: 13.5,
+                            color: 'var(--icase-navy)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {gt}
+                        </strong>
+                        {pricing.offerBadge && (
+                          <span
+                            style={{
+                              padding: '1px 5px',
+                              borderRadius: 5,
+                              background: '#FDE047',
+                              color: '#0B1728',
+                              fontSize: 9.5,
+                              fontWeight: 900,
+                              flexShrink: 0
+                            }}
+                          >
+                            {pricing.offerBadge}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11.5,
+                          color: 'var(--text-secondary)',
+                          lineHeight: 1.35,
+                          marginBottom: 5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {note}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 13.5, fontWeight: 900, color: 'var(--icase-red)' }}>
+                            {formatINR(pricing.finalPrice)}
+                          </span>
+                          {pricing.basePrice > pricing.finalPrice && (
+                            <span style={{ fontSize: 11, color: '#94A3B8', textDecoration: 'line-through' }}>
+                              {formatINR(pricing.basePrice)}
+                            </span>
+                          )}
+                        </div>
+                        {gtVideo && onOpenVideo && (
+                          <button
+                            type="button"
+                            className="media-video-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenVideo(`${gt} Tempered Glass`, gtVideo);
+                            }}
+                          >
+                            <Play size={9} fill="currentColor" /> Video
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Featured Pouches (Admin "Show on Home Page") */}
@@ -556,6 +764,19 @@ export default function HomeSection({
                     <img src={thumbUrl} alt={pouch.name} loading="lazy" />
                     {pricing.hasOffer && pricing.offerBadge && (
                       <span className="discount-badge">{pricing.offerBadge}</span>
+                    )}
+                    {pouch.videoUrl && onOpenVideo && (
+                      <button
+                        type="button"
+                        className="media-video-pill"
+                        style={{ position: 'absolute', bottom: 8, left: 8 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenVideo(pouch.name, pouch.videoUrl);
+                        }}
+                      >
+                        <Play size={10} fill="currentColor" /> Video
+                      </button>
                     )}
                   </div>
                   <div className="product-body">

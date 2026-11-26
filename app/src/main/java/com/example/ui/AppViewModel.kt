@@ -26,7 +26,10 @@ import kotlinx.coroutines.launch
 sealed class Screen {
     object Home : Screen()
     object Shop : Screen()
-    data class ScreenGuards(val initialSection: String = "") : Screen()
+    data class ScreenGuards(
+        val initialSection: String = "",
+        val initialGlassType: String = ""
+    ) : Screen()
     data class ProductDetail(val product: ProductEntity) : Screen()
     object Cart : Screen()
     object RepairPickup : Screen()

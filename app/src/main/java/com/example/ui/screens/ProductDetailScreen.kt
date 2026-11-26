@@ -757,6 +757,33 @@ private fun ProductDetailContentBody(
             }
         }
 
+        if (liveProduct.videoUrl.isNotBlank()) {
+            var showProductVideoDialog by remember { mutableStateOf(false) }
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = { showProductVideoDialog = true },
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("detail_watch_video_button")
+            ) {
+                Text(
+                    text = "▶ Watch Product Video",
+                    fontSize = spec.sp(14),
+                    fontWeight = FontWeight.Bold,
+                    color = iCaseNavy
+                )
+            }
+            if (showProductVideoDialog) {
+                com.example.ui.components.MediaVideoPlayerDialog(
+                    title = liveProduct.name,
+                    videoUrl = liveProduct.videoUrl,
+                    onDismiss = { showProductVideoDialog = false }
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(20.dp))
 
         // Delivery Assurance Card

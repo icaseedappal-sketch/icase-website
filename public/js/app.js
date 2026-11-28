@@ -429,7 +429,7 @@ function syncMobileBottomNavActive() {
     const isActive = state.accountOpen
       ? isAccountBtn
       : Boolean(btn.dataset.nav && btn.dataset.nav === state.activeTab);
-    btn.className = `mobile-nav-btn min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] leading-tight transition ${
+    btn.className = `mobile-nav-btn min-w-0 min-h-[46px] flex flex-col items-center justify-center gap-0.5 px-0.5 py-1 rounded-xl text-[10px] leading-tight transition ${
       isActive ? 'bg-[#FFF1F2] text-icase-red font-extrabold' : 'text-slate-500 font-semibold'
     }`;
   });
@@ -643,15 +643,15 @@ function renderHomeGuardSampleCards() {
         <div role="button" tabindex="0" data-home-guard-card="glass" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
           <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
+            <span class="absolute top-2 left-2 px-1.5 sm:px-2 py-0.5 rounded-lg bg-icase-red text-white text-[9.5px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
           </div>
           <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
-            <div class="flex flex-col gap-1.5">
-              <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Tempered Glass</h3>
-              <span class="inline-flex items-center px-2 py-1 rounded-md bg-sky-100 text-sky-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">Available for iPhone &amp; All Android Models</span>
-              <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">Privacy, Matte, Borderless, 360 &amp; Normal 5D</p>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <h3 class="text-[13px] sm:text-[15px] font-extrabold text-icase-navy leading-tight min-h-[33px] break-words">Tempered Glass</h3>
+              <span class="inline-flex items-center w-full px-1.5 sm:px-2 py-1 rounded-md bg-sky-100 text-sky-800 text-[9.5px] sm:text-[10.5px] font-bold leading-tight min-h-[34px] break-words">Available for iPhone &amp; All Android Models</span>
+              <p class="text-[10.5px] sm:text-[11.5px] text-slate-500 line-clamp-2 min-h-[28px] leading-snug">Privacy, Matte, Borderless, 360 &amp; Normal 5D</p>
             </div>
-            <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Glass →</span>
+            <span class="mt-auto w-full min-h-[38px] sm:min-h-[40px] py-2 px-1.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-[11.5px] sm:text-xs font-extrabold whitespace-nowrap transition">Select Glass →</span>
           </div>
         </div>
 
@@ -661,33 +661,33 @@ function renderHomeGuardSampleCards() {
           <div role="button" tabindex="0" data-home-guard-card="camera" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
             <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
               <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
+              <span class="absolute top-2 left-2 px-1.5 sm:px-2 py-0.5 rounded-lg bg-icase-red text-white text-[9.5px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
             </div>
             <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
-              <div class="flex flex-col gap-1.5">
-                <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Camera Lens Protector</h3>
-                <span class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">iPhone &amp; Samsung S Series Only</span>
-                <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone</p>
+              <div class="flex flex-col gap-1.5 min-w-0">
+                <h3 class="text-[13px] sm:text-[15px] font-extrabold text-icase-navy leading-tight min-h-[33px] break-words">Camera Lens Protector</h3>
+                <span class="inline-flex items-center w-full px-1.5 sm:px-2 py-1 rounded-md bg-amber-100 text-amber-800 text-[9.5px] sm:text-[10.5px] font-bold leading-tight min-h-[34px] break-words">iPhone &amp; Samsung S Series Only</span>
+                <p class="text-[10.5px] sm:text-[11.5px] text-slate-500 line-clamp-2 min-h-[28px] leading-snug">9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone</p>
               </div>
-              <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Lens →</span>
+              <span class="mt-auto w-full min-h-[38px] sm:min-h-[40px] py-2 px-1.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-[11.5px] sm:text-xs font-extrabold whitespace-nowrap transition">Select Lens →</span>
             </div>
           </div>
         `
             : ''
         }
 
-        <div role="button" tabindex="0" data-home-guard-card="pouch" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+        <div role="button" tabindex="0" data-home-guard-card="pouch" class="${camEnabled ? 'icase-guard-full-mobile ' : ''}icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
           <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(pouchImg)}" alt="Pouches &amp; Back Cases Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
+            <span class="absolute top-2 left-2 px-1.5 sm:px-2 py-0.5 rounded-lg bg-icase-red text-white text-[9.5px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
           </div>
           <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
-            <div class="flex flex-col gap-1.5">
-              <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Pouches &amp; Back Cases</h3>
-              <span class="inline-flex items-center px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">iPhone, Samsung S &amp; Other Android</span>
-              <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases</p>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <h3 class="text-[13px] sm:text-[15px] font-extrabold text-icase-navy leading-tight min-h-[33px] break-words">Pouches &amp; Back Cases</h3>
+              <span class="inline-flex items-center w-full px-1.5 sm:px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[9.5px] sm:text-[10.5px] font-bold leading-tight min-h-[34px] break-words">iPhone, Samsung S &amp; Other Android</span>
+              <p class="text-[10.5px] sm:text-[11.5px] text-slate-500 line-clamp-2 min-h-[28px] leading-snug">MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases</p>
             </div>
-            <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Pouch →</span>
+            <span class="mt-auto w-full min-h-[38px] sm:min-h-[40px] py-2 px-1.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-[11.5px] sm:text-xs font-extrabold whitespace-nowrap transition">Select Pouch →</span>
           </div>
         </div>
       </div>

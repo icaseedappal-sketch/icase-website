@@ -502,7 +502,7 @@ export default function HomeSection({
           <div
             role="button"
             tabIndex={0}
-            className="guard-sample-card"
+            className={`guard-sample-card ${cameraSectionActive ? 'guard-sample-card-full-mobile' : ''}`}
             onClick={() => {
               if (onOpenGuardsPouch) onOpenGuardsPouch();
               else if (onOpenGuardsSection) onOpenGuardsSection('pouch');

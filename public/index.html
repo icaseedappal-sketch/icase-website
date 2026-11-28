@@ -54,7 +54,8 @@
 
     /* Responsive Breakpoint Rules: <=768px Compact Mobile App UI vs >=769px Spacious Desktop */
     .icase-mobile-bottom-nav { display: none; }
-    .icase-home-top-stack { display: flex; flex-direction: column; gap: 24px; }
+    .icase-mobile-menu-btn { display: none; }
+    .icase-home-top-stack { display: flex; flex-direction: column; gap: 22px; }
     .icase-home-top-stack .icase-hero-card { order: 1; }
     .icase-home-top-stack .icase-home-search { order: 2; }
     .icase-home-top-stack .icase-quick-grid { order: 3; }
@@ -62,6 +63,18 @@
     .icase-guard-sample-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .icase-glass-styles-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+      gap: 10px;
+    }
+
+    .icase-carousel-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 16px;
     }
 
@@ -84,6 +97,7 @@
       .icase-desktop-account-btn { display: inline-flex !important; }
       .icase-cart-label { display: inline !important; }
       .icase-mobile-bottom-nav { display: none !important; }
+      .icase-mobile-menu-btn { display: none !important; }
       .icase-toast { bottom: 24px !important; }
     }
 
@@ -93,41 +107,89 @@
       .icase-desktop-nav { display: none !important; }
       .icase-desktop-account-btn { display: none !important; }
       .icase-cart-label { display: none !important; }
-      .icase-header-inner { height: 56px !important; }
-      .icase-cart-btn { padding: 8px 11px !important; min-width: 44px; min-height: 44px; justify-content: center; }
-      .icase-main { padding: 12px 12px 24px !important; }
+      .icase-mobile-menu-btn { display: inline-flex !important; }
+      .icase-header-inner { height: 60px !important; }
+      .icase-cart-btn {
+        padding: 8px !important;
+        min-width: 44px;
+        min-height: 44px;
+        justify-content: center;
+        background: transparent !important;
+        color: #0B1728 !important;
+        box-shadow: none !important;
+        position: relative;
+      }
+      .icase-cart-btn #header-cart-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background: #E50914 !important;
+        color: #FFFFFF !important;
+        min-width: 17px !important;
+        height: 17px !important;
+        font-size: 10px !important;
+        border: 2px solid #FFFFFF;
+      }
+      .icase-main { padding: 12px 14px 24px !important; }
       .icase-home-top-stack { gap: 12px; }
       .icase-home-top-stack .icase-home-search { order: 1; }
       .icase-home-top-stack .icase-hero-card {
         order: 2;
         padding: 18px 16px !important;
-        border-radius: 18px !important;
+        border-radius: 16px !important;
       }
       .icase-home-top-stack .icase-quick-grid {
         order: 3;
         display: grid !important;
         grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        gap: 8px !important;
+        gap: 10px !important;
       }
-      .icase-hero-snapshot { display: none !important; }
-      .icase-hero-kicker { padding: 4px 10px !important; font-size: 11px !important; }
-      .icase-hero-title { font-size: 21px !important; line-height: 1.18 !important; }
-      .icase-hero-sub { font-size: 12.5px !important; line-height: 1.45 !important; }
-      .icase-hero-ctas { gap: 8px !important; }
-      .icase-hero-ctas > * { padding: 8px 12px !important; font-size: 12px !important; min-height: 40px !important; }
+      .icase-hero-snapshot,
+      .icase-hero-secondary { display: none !important; }
+      .icase-hero-title { font-size: 20px !important; line-height: 1.22 !important; }
+      .icase-hero-sub { font-size: 12.5px !important; line-height: 1.4 !important; }
+      .icase-hero-ctas .icase-hero-primary { padding: 9px 16px !important; font-size: 12.5px !important; min-height: 40px !important; }
       .icase-quick-tile {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
         padding: 11px 6px !important;
         gap: 6px !important;
-        border-radius: 14px !important;
+        border-radius: 12px !important;
       }
       .icase-quick-tile-copy { width: 100%; min-width: 0; }
-      .icase-guard-sample-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
-      .icase-guard-sample-card { flex-direction: row !important; align-items: stretch !important; border-radius: 16px !important; }
-      .icase-guard-thumb { width: 108px !important; height: auto !important; min-height: 128px !important; }
-      .icase-guard-body { padding: 11px 12px !important; }
+      .icase-guard-sample-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+      .icase-guard-full-mobile { grid-column: 1 / -1; }
+      .icase-guard-thumb { height: 114px !important; }
+      .icase-guard-body { padding: 10px !important; }
+      .icase-glass-styles-row {
+        display: flex !important;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      .icase-glass-styles-row::-webkit-scrollbar { display: none; }
+      .icase-glass-style-card { flex: 0 0 184px; }
+      .icase-carousel-row {
+        display: flex !important;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      .icase-carousel-row::-webkit-scrollbar { display: none; }
+      .icase-carousel-row > article { flex: 0 0 166px; }
+      #home-top-brands {
+        display: flex !important;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      #home-top-brands::-webkit-scrollbar { display: none; }
+      #home-top-brands > button { flex: 0 0 auto; min-width: 88px; }
+      #home-all-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+      }
       .icase-mobile-bottom-nav {
         display: grid !important;
         grid-template-columns: repeat(5, 1fr);
@@ -135,8 +197,9 @@
       }
       .icase-toast { bottom: 84px !important; }
     }
-    @media (max-width: 400px) {
-      .icase-guard-thumb { width: 92px !important; }
+    @media (max-width: 360px) {
+      .icase-guard-sample-grid { grid-template-columns: 1fr !important; }
+      #home-all-products-grid { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
@@ -167,10 +230,15 @@
     </div>
   </div>
 
-  <!-- Main Sticky Header -->
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+  <!-- Main Sticky Header matching Android AppTopBar -->
+  <header class="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
     <div class="icase-header-inner max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-      <!-- Official iCASE Branding Logo -->
+      <!-- Mobile Menu Button (<=768px only) -->
+      <button id="btn-open-mobile-menu" type="button" aria-label="Open Navigation Menu" class="icase-mobile-menu-btn items-center justify-center w-11 h-11 rounded-xl text-icase-navy hover:bg-slate-100 transition">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+      </button>
+
+      <!-- Official iCASE Curved-Arch Branding Logo -->
       <button type="button" data-nav="home" class="flex items-center gap-3 text-left group focus:outline-none">
         <div class="relative flex flex-col items-center justify-center">
           <svg class="w-16 h-6 -mb-2.5" viewBox="0 0 80 30" fill="none" aria-hidden="true">
@@ -183,9 +251,6 @@
             YOUR PHONE, OUR CARE
           </div>
         </div>
-        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-icase-blueLight text-icase-blue">
-          Edappal
-        </span>
       </button>
 
       <!-- Desktop Navigation -->
@@ -226,6 +291,34 @@
     </div>
   </header>
 
+  <!-- Mobile Slide-Over Menu Drawer -->
+  <div id="mobile-menu-drawer" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex justify-start">
+    <aside class="w-[82%] max-w-[300px] h-full bg-white flex flex-col shadow-2xl">
+      <div class="bg-icase-navy px-5 py-4 flex items-center justify-between">
+        <div class="flex flex-col items-center">
+          <svg class="w-14 h-5 -mb-2" viewBox="0 0 80 30" fill="none" aria-hidden="true">
+            <path d="M10 26 C16 4, 64 4, 70 26" stroke="#E50914" stroke-width="3.2" stroke-linecap="round" />
+          </svg>
+          <div class="text-xl font-extrabold leading-none text-white">
+            <span class="text-icase-red">i</span>CASE
+          </div>
+          <div class="text-[7.5px] font-bold tracking-[0.14em] text-slate-400 uppercase mt-0.5">YOUR PHONE, OUR CARE</div>
+        </div>
+        <button id="btn-close-mobile-menu" type="button" class="w-9 h-9 rounded-xl bg-white/15 text-white text-sm font-bold flex items-center justify-center" aria-label="Close Menu">✕</button>
+      </div>
+      <div class="p-3 space-y-1 overflow-y-auto flex-1">
+        <button type="button" data-nav="home" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Home</button>
+        <button type="button" data-nav="catalog" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Shop Catalog</button>
+        <button type="button" data-nav="guards" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Tempered Glass, Lens &amp; Pouches</button>
+        <button type="button" data-nav="repair" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Repair Services &amp; Pickup</button>
+        <button type="button" data-nav="track" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Track Order / Repair</button>
+        <button id="mobile-drawer-account-btn" type="button" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Account &amp; Saved</button>
+        <button type="button" data-nav="admin" data-close-menu="true" class="w-full px-3.5 py-3 rounded-xl text-left text-sm font-bold text-icase-navy hover:bg-slate-100 flex items-center gap-3">Admin Panel</button>
+        <a id="drawer-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="mt-2 w-full px-3.5 py-3 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-extrabold flex items-center gap-3">WhatsApp Support</a>
+      </div>
+    </aside>
+  </div>
+
   <!-- Main Content Area -->
   <main class="icase-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
@@ -236,70 +329,65 @@
     </div>
 
     <!-- ==================== SECTION: HOME ==================== -->
-    <section id="section-home" class="space-y-8">
+    <section id="section-home" class="space-y-6">
       <div class="icase-home-top-stack">
-        <!-- Hero Banner -->
-        <div class="icase-hero-card relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#071220] via-icase-navy to-[#183052] text-white p-6 sm:p-10 shadow-xl">
-          <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-icase-red/15 blur-3xl pointer-events-none"></div>
-          <div class="absolute -left-16 -bottom-24 w-72 h-72 rounded-full bg-icase-blue/20 blur-3xl pointer-events-none"></div>
+        <!-- Hero Banner matching Android HomeScreen -->
+        <div class="icase-hero-card relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#0B1728] to-[#162544] text-white p-6 sm:p-9 shadow-xl">
+          <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-icase-red/20 blur-3xl pointer-events-none"></div>
 
           <div class="relative grid lg:grid-cols-12 gap-8 items-center">
-            <div class="lg:col-span-7 space-y-4 sm:space-y-5">
-              <div class="icase-hero-kicker inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-xs font-bold text-amber-300">
-                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                <span id="hero-express-kicker">Express 1-Hour Doorstep Delivery in Edappal</span>
-              </div>
-
-              <h1 class="icase-hero-title text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.12]">
-                iCASE (Edappal) — <span class="text-icase-red">Mobile Accessories</span> &amp; Expert Repair Care
+            <div class="lg:col-span-7 space-y-3 sm:space-y-4">
+              <h1 class="icase-hero-title text-2xl sm:text-4xl font-extrabold tracking-tight leading-[1.18]">
+                Mobile Accessories &amp;<br />
+                <span class="text-icase-gold">Repair Service</span>
               </h1>
 
-              <p class="icase-hero-sub text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
-                <strong class="text-white">YOUR PHONE, OUR CARE.</strong> Shop shockproof mobile pouches, 9H privacy tempered glass, GaN fast chargers, and ANC audio—or book doorstep repair pickup synced in real time with the iCASE mobile app &amp; admin hub.
+              <p class="icase-hero-sub text-[#BAC7D5] text-sm sm:text-base max-w-2xl leading-relaxed">
+                Quality Products. Reliable Service.
+                <span class="icase-hero-secondary"> — Express 1-hour doorstep delivery &amp; repair pickup in Edappal, Malappuram.</span>
               </p>
 
-              <div class="icase-hero-ctas flex flex-wrap gap-3 pt-1">
-                <button type="button" data-nav="catalog" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-red hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/30 transition min-h-[46px]">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
-                  Explore Shop Catalog
+              <div class="icase-hero-ctas flex flex-wrap gap-2.5 pt-1">
+                <button type="button" data-nav="catalog" class="icase-hero-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-icase-gold hover:bg-amber-400 text-black font-extrabold text-sm shadow-lg transition min-h-[44px]">
+                  <span>Explore Shop</span>
+                  <span>→</span>
                 </button>
-                <button type="button" data-nav="repair" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-icase-navy hover:bg-slate-100 font-bold text-sm transition min-h-[46px]">
-                  <svg class="w-4 h-4 text-icase-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
+                <button type="button" data-nav="guards" class="icase-hero-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm transition min-h-[44px]">
+                  Tempered Glass &amp; Lens
+                </button>
+                <button type="button" data-nav="repair" class="icase-hero-secondary inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm transition min-h-[44px]">
                   Book Repair Pickup
                 </button>
-                <a id="hero-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-whatsapp hover:bg-emerald-600 text-white font-bold text-sm transition min-h-[46px]">
-                  WhatsApp Support
-                </a>
               </div>
             </div>
 
             <!-- Services Snapshot Card (Desktop) -->
             <div class="icase-hero-snapshot lg:col-span-5 bg-white/10 backdrop-blur border border-white/15 rounded-2xl p-5 space-y-4">
               <div class="flex items-start gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-icase-red/20 text-red-300 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-icase-gold flex items-center justify-center shrink-0">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
                 </div>
                 <div>
-                  <h3 class="font-bold text-sm sm:text-base text-white">Premium Pouches &amp; Accessories</h3>
-                  <p class="text-xs text-slate-300 mt-0.5">MagSafe shockproof cases, 9H privacy glass, 65W GaN chargers &amp; ANC audio.</p>
+                  <h3 class="font-bold text-sm sm:text-base text-white">Trusted Quality Accessories</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Original MagSafe cases, 9H glass &amp; certified GaN fast chargers.</p>
                 </div>
               </div>
               <div class="flex items-start gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-icase-gold flex items-center justify-center shrink-0">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
                 </div>
                 <div>
-                  <h3 class="font-bold text-sm sm:text-base text-white">Express 1-Hour Local Delivery</h3>
-                  <p class="text-xs text-slate-300 mt-0.5">Lightning-fast doorstep dispatch across Edappal &amp; nearby Malappuram areas.</p>
+                  <h3 class="font-bold text-sm sm:text-base text-white">1-Hour Local Express</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Direct doorstep delivery across Edappal &amp; nearby Malappuram areas.</p>
                 </div>
               </div>
               <div class="flex items-start gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-sky-400/20 text-sky-300 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-icase-gold flex items-center justify-center shrink-0">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
                 </div>
                 <div>
-                  <h3 class="font-bold text-sm sm:text-base text-white">Doorstep Chip-Level &amp; Glass Repair</h3>
-                  <p class="text-xs text-slate-300 mt-0.5">Free inspection for display, battery, charging &amp; water damage with live tracking.</p>
+                  <h3 class="font-bold text-sm sm:text-base text-white">Doorstep Repair &amp; Pickup</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Free diagnosis for display, battery &amp; charging issues with live tracking.</p>
                 </div>
               </div>
             </div>
@@ -309,93 +397,84 @@
         <!-- Home Search Bar -->
         <div class="icase-home-search relative">
           <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-          <input id="home-search-input" type="text" placeholder="Search for products (pouches, tempered glass, chargers, audio)..." class="w-full pl-11 pr-20 py-3 rounded-2xl border border-slate-200 bg-white focus:border-icase-blue focus:outline-none text-sm font-medium shadow-sm" />
+          <input id="home-search-input" type="text" placeholder="Search cases, chargers, tempered glass..." class="w-full pl-11 pr-20 py-3 rounded-xl border border-slate-200 bg-white focus:border-icase-navy focus:outline-none text-sm font-medium shadow-sm" />
           <button id="home-search-clear" type="button" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600">Clear</button>
         </div>
 
-        <!-- Quick Action Tiles (3-Column Grid on Mobile App, 6 Columns on Wide Desktop) -->
+        <!-- Quick Action Tiles matching exact Android HomeScreen colors & labels -->
         <div class="icase-quick-grid grid grid-cols-3 lg:grid-cols-6 gap-3">
-          <button type="button" data-nav="catalog" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-navy/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-icase-blueLight text-icase-blue flex items-center justify-center shrink-0">
+          <button type="button" data-nav="catalog" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#FEF3C7] text-[#D97706] flex items-center justify-center shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Shop</div>
-              <div id="home-product-count" class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Browse all</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">Shop</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Browse &amp; Buy</div>
             </div>
           </button>
 
-          <button type="button" data-nav="repair" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-blue/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+          <button type="button" data-nav="repair" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#E0E7FF] text-[#4338CA] flex items-center justify-center shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63"/></svg>
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Repair</div>
-              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Doorstep care</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">Repair</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Get Expert Service</div>
             </div>
           </button>
 
-          <button type="button" data-nav="guards" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-red/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-icase-redLight text-icase-red flex items-center justify-center shrink-0">
+          <button type="button" data-nav="guards" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#FFECEE] text-[#E50914] flex items-center justify-center shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Tempered Glass</div>
-              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Glass &amp; Lens</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">Tempered Glass</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Screen Guards &amp; Lens</div>
             </div>
           </button>
 
-          <button type="button" data-nav="track" class="icase-quick-tile bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-icase-green flex items-center justify-center shrink-0">
+          <button type="button" data-nav="track" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#DCFCE7] text-[#15803D] flex items-center justify-center shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Track Order</div>
-              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Live ORD / REP</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">Track Order</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Know Your Order</div>
             </div>
           </button>
 
-          <button id="quick-account-btn" type="button" class="icase-quick-tile bg-white border border-slate-200 hover:border-indigo-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <button id="quick-account-btn" type="button" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#F1F5F9] text-[#0F172A] flex items-center justify-center shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Account</div>
-              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Orders &amp; saved</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">Account</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Profile &amp; Sync</div>
             </div>
           </button>
 
-          <a id="quick-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="icase-quick-tile bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-icase-whatsapp flex items-center justify-center shrink-0 font-black text-base">
+          <a id="quick-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="icase-quick-tile bg-white border border-slate-200 hover:shadow-md rounded-xl p-3.5 flex flex-col items-center text-center gap-2 transition">
+            <div class="w-10 h-10 rounded-full bg-[#E8F9EE] text-[#25D366] flex items-center justify-center shrink-0 font-black text-base">
               💬
             </div>
             <div class="icase-quick-tile-copy min-w-0">
-              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">WhatsApp</div>
-              <div id="quick-whatsapp-text" class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">+91 9961454059</div>
+              <div class="font-extrabold text-icase-navy text-xs sm:text-[13px] truncate">WhatsApp</div>
+              <div class="text-[10px] sm:text-[11px] text-slate-500 truncate">Order Now</div>
             </div>
           </a>
         </div>
       </div>
 
-      <!-- Browse Categories -->
-      <div>
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h2 class="text-xl font-extrabold text-icase-navy">Browse by Category</h2>
-          <button type="button" data-nav="catalog" class="text-sm font-bold text-icase-blue hover:underline">View Full Catalog →</button>
-        </div>
-        <div id="home-category-chips" class="flex flex-wrap gap-2"></div>
-      </div>
-
-      <!-- Tempered Glass & Camera Lens Sample Cards -->
+      <!-- Screen, Lens & Pouch Protection Cards + Tempered Glass Styles -->
       <div id="home-guard-sample-cards"></div>
 
-      <!-- Popular Products Showcase -->
+      <!-- Popular Products Showcase (Horizontal LazyRow on mobile, grid on desktop) -->
       <div>
-        <div class="flex items-center justify-between gap-2 mb-4">
-          <h2 class="text-xl font-extrabold text-icase-navy">Popular Mobile Pouches &amp; Accessories</h2>
-          <button type="button" data-nav="catalog" class="text-sm font-bold text-icase-blue hover:underline">See All Accessories →</button>
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Popular Products</h2>
+          <button type="button" data-nav="catalog" class="text-xs sm:text-sm font-bold text-icase-red hover:underline">See All →</button>
         </div>
-        <div id="home-popular-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+        <div id="home-popular-grid" class="icase-carousel-row"></div>
       </div>
 
       <!-- Admin-Featured Pouches & Cases on Home Page -->
@@ -404,99 +483,99 @@
       <!-- Top Brands Section -->
       <div id="home-top-brands-section">
         <div class="flex items-center justify-between gap-2 mb-3">
-          <h2 class="text-xl font-extrabold text-icase-navy">Top Brands</h2>
-          <button type="button" data-nav="catalog" class="text-sm font-bold text-icase-blue hover:underline">View All →</button>
+          <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Top Brands</h2>
+          <button type="button" data-nav="catalog" class="text-xs sm:text-sm font-bold text-icase-red hover:underline">View All →</button>
         </div>
-        <div id="home-top-brands" class="grid grid-cols-3 sm:grid-cols-6 gap-3"></div>
+        <div id="home-top-brands" class="grid grid-cols-6 gap-2.5"></div>
       </div>
 
-      <!-- Best Quality / Best Price Banner -->
-      <div class="rounded-2xl bg-gradient-to-r from-icase-blueLight via-white to-icase-redLight border border-slate-200 px-5 py-4 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-icase-navy text-icase-gold flex items-center justify-center font-black shrink-0">★</div>
-          <div>
-            <div class="text-sm font-extrabold text-icase-navy">Best Quality • Best Price</div>
-            <div class="text-xs text-slate-600">Genuine mobile accessories &amp; 6-month repair warranty in Edappal.</div>
-          </div>
+      <!-- Best Quality / Best Price Navy Crown Banner matching Android HomeScreen -->
+      <button type="button" data-nav="guards" class="w-full text-left rounded-2xl bg-icase-navy text-white px-5 py-4 flex items-center justify-between gap-4 shadow-sm hover:bg-[#14243B] transition">
+        <div>
+          <div class="text-lg font-extrabold text-icase-gold leading-tight">Best Quality</div>
+          <div class="text-lg font-extrabold text-white leading-tight">Best Price</div>
+          <div class="text-xs text-[#BAC7D5] mt-1">Genuine mobile accessories &amp; 6-month repair warranty in Edappal</div>
         </div>
-        <button type="button" data-nav="guards" class="px-4 py-2 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs font-extrabold transition shrink-0">
-          Shop Glass &amp; Lens →
-        </button>
-      </div>
+        <div class="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center text-icase-gold text-2xl shrink-0">
+          ★
+        </div>
+      </button>
 
       <!-- All Accessories Section (Live Filtered by Home Search Bar) -->
-      <div id="home-all-products-section" class="space-y-4">
+      <div id="home-all-products-section" class="space-y-3">
         <div class="flex items-center justify-between gap-2">
-          <div>
-            <h2 class="text-xl font-extrabold text-icase-navy">All Accessories</h2>
-            <p class="text-xs text-slate-500">Ready-to-ship mobile pouches, guards, chargers &amp; audio from iCASE Edappal</p>
-          </div>
-          <span id="home-all-products-count" class="px-3 py-1 rounded-full bg-slate-100 text-icase-navy text-xs font-extrabold shrink-0"></span>
+          <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">
+            All Accessories <span id="home-all-products-count" class="text-sm font-bold text-slate-500"></span>
+          </h2>
+          <button type="button" data-nav="catalog" class="text-xs sm:text-sm font-bold text-icase-red hover:underline">Filter All →</button>
         </div>
-        <div id="home-all-products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+        <div id="home-category-chips" class="flex flex-wrap gap-2"></div>
+        <div id="home-all-products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5"></div>
         <div id="home-all-products-empty" class="hidden bg-white rounded-2xl border border-slate-200 p-8 text-center">
           <h3 class="text-base font-extrabold text-icase-navy">No Matching Products</h3>
           <p class="text-xs text-slate-500 mt-1">Try another search keyword or explore the full Shop Catalog.</p>
         </div>
       </div>
 
-      <!-- Repair Services Highlight Banner -->
-      <div class="rounded-3xl bg-icase-navy text-white p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-lg">
-        <div class="max-w-2xl space-y-2">
-          <div class="text-xs font-extrabold uppercase tracking-wider text-amber-300">Expert Mobile Care &amp; Doorstep Pickup</div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold">Cracked Display, Weak Battery or Charging Port Fault?</h2>
-          <p class="text-slate-300 text-sm sm:text-base">
-            Book a technician pickup anywhere around Edappal. Repair diagnosis is free, and your repair ticket syncs live across the iCASE mobile app, website, and technician panel.
-          </p>
-        </div>
-        <button type="button" data-nav="repair" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-icase-red hover:bg-red-700 text-white font-bold text-sm shrink-0 transition min-h-[48px]">
-          Book Repair &amp; Pickup Now →
-        </button>
-      </div>
-
       <!-- Verified Customer Reviews (Public Approved Product Reviews Only) -->
       <div id="home-reviews-section"></div>
 
-      <!-- Contact & Store Support Card -->
-      <div id="contact-support" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-          <h2 class="text-xl sm:text-2xl font-extrabold text-icase-navy">Contact &amp; Support — iCASE Edappal</h2>
-          <span class="px-3 py-1 rounded-full bg-emerald-50 text-icase-green text-xs font-bold">Open Daily • Free Diagnosis</span>
+      <!-- Repair Services Highlight Banner -->
+      <div class="rounded-2xl bg-gradient-to-r from-icase-navy to-[#162544] text-white p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 shadow-lg">
+        <div class="max-w-2xl space-y-1.5">
+          <div class="text-xs font-extrabold uppercase tracking-wider text-icase-gold">Expert Mobile Care &amp; Doorstep Pickup</div>
+          <h2 class="text-xl sm:text-2xl font-extrabold">Cracked Display, Weak Battery or Charging Port Fault?</h2>
+          <p class="text-[#BAC7D5] text-xs sm:text-sm">
+            Book a technician pickup anywhere around Edappal. Repair diagnosis is free, and your repair ticket syncs live across the iCASE mobile app, website, and technician panel.
+          </p>
         </div>
-        <p class="text-sm text-slate-600 mb-6">Need assistance with an accessory order, pouch compatibility, warranty, or urgent repair pickup? Reach our Edappal store directly.</p>
+        <button type="button" data-nav="repair" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-icase-gold hover:bg-amber-400 text-black font-extrabold text-sm shrink-0 transition min-h-[44px]">
+          Book Repair &amp; Pickup →
+        </button>
+      </div>
 
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a id="contact-phone-card" href="tel:+919961454059" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-icase-red transition flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-icase-redLight text-icase-red flex items-center justify-center shrink-0 font-bold">☎</div>
-            <div class="min-w-0">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Support Phone</div>
-              <div id="contact-phone-val" class="text-sm font-extrabold text-icase-navy mt-0.5">+91 9961454059</div>
+      <!-- Customer Support & Store Contact Card matching Android CustomerSupportCard -->
+      <div id="contact-support" class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+        <div class="flex items-center gap-3 mb-2.5">
+          <div class="w-11 h-11 rounded-full bg-icase-blueLight text-icase-blue flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-6a9 9 0 0118 0v6"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-icase-navy">Customer Support &amp; Store</h2>
+            <p class="text-xs text-slate-500">
+              <span id="contact-address-val">Main Road, Near Town Square, Edappal, Malappuram, Kerala</span> • <span id="contact-hours-val">9:00 AM - 10:00 PM (Daily)</span>
+            </p>
+          </div>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-500 mb-3.5">Need help with your order, warranty or product details? Reach out to our team:</p>
+
+        <div class="grid md:grid-cols-3 gap-2.5">
+          <a id="contact-phone-card" href="tel:+919961454059" class="p-3 rounded-xl bg-slate-100 hover:bg-slate-200/70 transition flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-icase-blue text-white flex items-center justify-center shrink-0 text-sm font-bold">☎</div>
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] font-bold text-icase-navy">Phone Support</div>
+              <div id="contact-phone-val" class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">+91 9961454059</div>
             </div>
+            <span class="text-[11px] font-black text-icase-blue shrink-0">CALL NOW</span>
           </a>
 
-          <a id="contact-email-card" href="mailto:icaseedappal@gmail.com" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-icase-blue transition flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-icase-blueLight text-icase-blue flex items-center justify-center shrink-0 font-bold">✉</div>
-            <div class="min-w-0">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Support Email</div>
-              <div id="contact-email-val" class="text-sm font-extrabold text-icase-navy mt-0.5 break-all">icaseedappal@gmail.com</div>
+          <a id="contact-whatsapp-card" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="p-3 rounded-xl bg-[#E8F9EE] hover:bg-emerald-100 transition flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-icase-whatsapp text-white flex items-center justify-center shrink-0 text-sm font-bold">💬</div>
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] font-bold text-icase-navy">WhatsApp Support</div>
+              <div id="contact-whatsapp-val" class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">+91 9961454059</div>
             </div>
+            <span class="text-[11px] font-black text-emerald-600 shrink-0">CHAT</span>
           </a>
 
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-icase-green flex items-center justify-center shrink-0 font-bold">📍</div>
-            <div class="min-w-0">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Store Location</div>
-              <div id="contact-address-val" class="text-xs sm:text-sm font-bold text-icase-navy mt-0.5">Main Road, Near Town Square, Edappal, Malappuram, Kerala</div>
+          <a id="contact-email-card" href="mailto:icaseedappal@gmail.com" class="p-3 rounded-xl bg-rose-50 hover:bg-rose-100 transition flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-icase-red text-white flex items-center justify-center shrink-0 text-sm font-bold">✉</div>
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] font-bold text-icase-navy">Official Gmail</div>
+              <div id="contact-email-val" class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">icaseedappal@gmail.com</div>
             </div>
-          </div>
-
-          <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 font-bold">🕒</div>
-            <div class="min-w-0">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Working Hours</div>
-              <div id="contact-hours-val" class="text-xs sm:text-sm font-bold text-icase-navy mt-0.5">9:00 AM - 10:00 PM (Daily)</div>
-            </div>
-          </div>
+            <span class="text-[11px] font-black text-icase-red shrink-0">EMAIL</span>
+          </a>
         </div>
       </div>
     </section>
@@ -807,28 +886,44 @@
 
   </main>
 
-  <!-- Brand Footer -->
-  <footer class="bg-icase-navy text-slate-300 border-t border-white/10 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 grid md:grid-cols-3 gap-6 items-center">
-      <div>
-        <div class="text-2xl font-extrabold text-white"><span class="text-icase-red">i</span>CASE</div>
-        <div class="text-xs text-slate-400 font-semibold tracking-wider mt-0.5">YOUR PHONE, OUR CARE • Edappal, Malappuram, Kerala</div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-4 text-xs font-bold">
-        <span class="inline-flex items-center gap-1.5 text-emerald-400">✓ Trusted Service</span>
-        <span class="inline-flex items-center gap-1.5 text-amber-300">⚡ Express 1-Hour Delivery</span>
-        <span class="inline-flex items-center gap-1.5 text-rose-400">★ Quality Accessories</span>
-      </div>
-
-      <div class="text-xs sm:text-sm md:text-right space-y-1.5">
-        <div>Support: <a id="footer-phone-link" href="tel:+919961454059" class="text-white font-bold hover:underline">+91 9961454059</a></div>
-        <div>Email: <a id="footer-email-link" href="mailto:icaseedappal@gmail.com" class="text-white font-bold hover:underline">icaseedappal@gmail.com</a></div>
-        <div>
-          <button type="button" data-nav="admin" class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/15 transition">
-            Admin Panel
-          </button>
+  <!-- Curved BrandFooterBanner matching Mobile App -->
+  <footer class="bg-icase-navy text-white rounded-t-3xl mt-4 pt-8 pb-7">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center gap-5">
+      <div class="flex flex-col items-center">
+        <svg class="w-16 h-6 -mb-2.5" viewBox="0 0 80 30" fill="none" aria-hidden="true">
+          <path d="M10 26 C16 4, 64 4, 70 26" stroke="#E50914" stroke-width="3.2" stroke-linecap="round" />
+        </svg>
+        <div class="text-2xl font-extrabold leading-none text-white">
+          <span class="text-icase-red">i</span>CASE
         </div>
+        <div class="text-[8.5px] font-bold tracking-[0.14em] text-slate-400 uppercase mt-1">YOUR PHONE, OUR CARE</div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-7 sm:gap-12">
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white text-lg">✓</div>
+          <span class="text-xs font-bold">Trusted Service</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-white text-lg">⚡</div>
+          <span class="text-xs font-bold">Fast Delivery</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5">
+          <div class="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-icase-gold text-lg">★</div>
+          <span class="text-xs font-bold">Best Quality Products</span>
+        </div>
+      </div>
+
+      <div class="inline-flex items-center gap-2 text-base font-bold italic text-white">
+        <span>🛍️</span>
+        <span>Shop Smart... Live Better...</span>
+      </div>
+
+      <div class="w-full pt-3 border-t border-white/10 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
+        <span>Edappal, Malappuram, Kerala • Support: <a id="footer-phone-link" href="tel:+919961454059" class="text-white font-bold hover:underline">+91 9961454059</a> • <a id="footer-email-link" href="mailto:icaseedappal@gmail.com" class="text-white font-bold hover:underline">icaseedappal@gmail.com</a></span>
+        <button type="button" data-nav="admin" class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/15 transition">
+          Admin Panel
+        </button>
       </div>
     </div>
   </footer>

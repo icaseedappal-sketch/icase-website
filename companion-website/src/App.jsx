@@ -23,7 +23,7 @@ import {
   serializeDeletedProductIds,
   serializeScreenGuardConfig
 } from './data/constants';
-import Navbar from './components/Navbar';
+import Navbar, { ICaseArchLogo } from './components/Navbar';
 import HomeSection from './components/HomeSection';
 import CatalogSection from './components/CatalogSection';
 import ScreenGuardsSection from './components/ScreenGuardsSection';
@@ -731,46 +731,47 @@ export default function App() {
       </main>
 
       <footer className="brand-footer">
-        <div className="container footer-grid">
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 900 }}>
-              <span style={{ color: '#E50914' }}>i</span>CASE
+        <div className="container brand-footer-inner">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <ICaseArchLogo darkBg showTagline />
+          </div>
+
+          <div className="footer-trust-row">
+            <div className="footer-trust-badge">
+              <div className="footer-trust-circle">
+                <ShieldCheck size={20} color="#FFFFFF" />
+              </div>
+              <span>Trusted Service</span>
             </div>
-            <div style={{ fontSize: 12, color: '#94A3B8' }}>
-              YOUR PHONE, OUR CARE • Edappal, Malappuram, Kerala
+            <div className="footer-trust-badge">
+              <div className="footer-trust-circle">
+                <Zap size={20} color="#FFFFFF" />
+              </div>
+              <span>Fast Delivery</span>
+            </div>
+            <div className="footer-trust-badge">
+              <div className="footer-trust-circle">
+                <Award size={20} color="#FFB800" />
+              </div>
+              <span>Best Quality Products</span>
             </div>
           </div>
 
-          <div className="footer-badges">
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <ShieldCheck size={16} color="#10B981" /> Trusted Service
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Zap size={16} color="#FDE047" /> Fast Delivery
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Award size={16} color="#FF4D57" /> Best Quality Products
-            </span>
+          <div className="footer-slogan-row">
+            <span className="footer-slogan-bag">🛍️</span>
+            <span className="footer-slogan-text">Shop Smart... Live Better...</span>
           </div>
 
-          <div style={{ fontSize: 13, color: '#CBD5E1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+          <div className="footer-bottom-meta">
             <span>
-              Support: <strong>+91 {settings.store_phone || '9961454059'}</strong> •{' '}
+              Edappal, Malappuram, Kerala • Support:{' '}
+              <strong>+91 {settings.store_phone || '9961454059'}</strong> •{' '}
               <strong>{settings.store_email || 'icaseedappal@gmail.com'}</strong>
             </span>
             <button
               type="button"
               onClick={() => navigateTab('admin')}
-              style={{
-                background: 'rgba(255,255,255,0.12)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 999,
-                padding: '4px 11px',
-                fontSize: 11.5,
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
+              className="footer-admin-btn"
             >
               Admin Panel
             </button>

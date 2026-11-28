@@ -429,8 +429,8 @@ function syncMobileBottomNavActive() {
     const isActive = state.accountOpen
       ? isAccountBtn
       : Boolean(btn.dataset.nav && btn.dataset.nav === state.activeTab);
-    btn.className = `mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold ${
-      isActive ? 'text-icase-red bg-icase-redLight' : 'text-slate-500'
+    btn.className = `mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] ${
+      isActive ? 'text-icase-red font-extrabold' : 'text-slate-500 font-semibold'
     }`;
   });
 }
@@ -510,23 +510,13 @@ function applySettingsToDom() {
   setHref('top-email-link', `mailto:${email}`);
   setText('top-email-text', email);
 
-  setHref('quick-call-link', `tel:+91${digits}`);
-  setText('quick-call-text', `+91 ${phone}`);
-  setHref(
-    'quick-whatsapp-link',
-    `https://api.whatsapp.com/send?phone=91${waDigits}&text=${encodeURIComponent('Hi iCASE Edappal! I would like to enquire about mobile accessories or repair.')}`
-  );
-  setText('quick-whatsapp-text', `+91 ${s.store_whatsapp || phone}`);
-  setHref(
-    'hero-whatsapp-link',
-    `https://api.whatsapp.com/send?phone=91${waDigits}&text=${encodeURIComponent('Hi iCASE Edappal! I would like to enquire about an accessory order or mobile repair.')}`
-  );
-  setText(
-    'hero-express-kicker',
-    oneHourEnabled
-      ? 'Express 1-Hour Doorstep Delivery in Edappal'
-      : 'Fast Local Home Delivery & Expert Mobile Care'
-  );
+  const waHref = `https://api.whatsapp.com/send?phone=91${waDigits}&text=${encodeURIComponent(
+    'Hi iCASE Edappal! I would like to place an order or enquire about a repair.'
+  )}`;
+  setHref('quick-whatsapp-link', waHref);
+  setHref('drawer-whatsapp-link', waHref);
+  setHref('contact-whatsapp-card', waHref);
+  setText('contact-whatsapp-val', `+91 ${s.store_whatsapp || phone}`);
 
   setHref('contact-phone-card', `tel:+91${digits}`);
   setText('contact-phone-val', `+91 ${phone}`);
@@ -570,81 +560,57 @@ function renderProductCardHtml(product) {
   const oneHourEnabled = state.settings.one_hour_delivery_enabled !== 'false';
   const price = Number(product.price || 0);
   const orig = Number(product.originalPrice || 0);
-  const discountPct = orig > price ? Math.round(((orig - price) / orig) * 100) : 0;
-  const colors = parseColorOptions(product.colorOptionsJson);
   const isWishlisted = (state.profile.wishlistIds || []).includes(product.id);
   const ratingSummary = computeProductRatingSummary(state.publicProductReviews, product);
 
   return `
-    <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-lg transition group">
-      <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden cursor-pointer" data-open-product="${escapeHtml(product.id)}">
+    <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition group">
+      <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden cursor-pointer" data-open-product="${escapeHtml(product.id)}">
         <img src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-        ${discountPct > 0 ? `<span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">${discountPct}% OFF</span>` : ''}
-        ${oneHourEnabled && product.isOneHourEligible ? `<span class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-navy/90 text-amber-300 text-[11px] font-bold">⚡ 1-Hour Eligible</span>` : ''}
+        ${oneHourEnabled && product.isOneHourEligible ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-icase-red text-white text-[10px] font-extrabold shadow">⚡ 1-Hour</span>` : ''}
+        ${product.isPopular ? `<span class="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-icase-navy text-white text-[9.5px] font-extrabold tracking-wide">POPULAR</span>` : ''}
+        ${!product.inStock ? `<span class="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-slate-700/90 text-white text-[9.5px] font-extrabold">OUT OF STOCK</span>` : ''}
         ${
           product.videoUrl
-            ? `<button type="button" data-open-video="${escapeHtml(product.videoUrl)}" data-video-title="${escapeHtml(product.name)}" class="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-full bg-slate-950/85 hover:bg-icase-red text-white text-[11px] font-extrabold shadow transition">▶ Video</button>`
+            ? `<button type="button" data-open-video="${escapeHtml(product.videoUrl)}" data-video-title="${escapeHtml(product.name)}" class="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-slate-950/90 hover:bg-icase-red text-white text-[10px] font-extrabold shadow transition">▶ Video</button>`
             : ''
         }
-        ${!product.inStock ? `<span class="absolute inset-0 bg-slate-950/60 flex items-center justify-center text-white text-xs font-extrabold uppercase tracking-wider">Out of Stock</span>` : ''}
       </div>
 
-      <div class="p-4 flex-1 flex flex-col">
-        <div class="flex items-center justify-between gap-2 mb-1">
-          <span class="text-[11px] font-bold uppercase tracking-wider text-icase-blue truncate">${escapeHtml(product.category)}</span>
-          <div class="flex items-center gap-1.5 shrink-0">
+      <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-2">
+        <div>
+          <div class="flex items-center justify-between gap-1.5 mb-1">
+            <span class="text-[10.5px] font-bold text-icase-blue truncate">${escapeHtml(product.category)}</span>
             ${
               ratingSummary.reviewCount > 0
-                ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 text-[10px] font-extrabold border border-amber-200">★ ${ratingSummary.averageRating.toFixed(1)} (${ratingSummary.reviewCount})</span>`
-                : ''
-            }
-            ${
-              colors.length > 0
-                ? `<div class="flex items-center gap-1" title="${colors.length} color options">
-                    ${colors
-                      .slice(0, 4)
-                      .map(
-                        (c) =>
-                          `<span class="w-3 h-3 rounded-full border border-slate-300 inline-block" style="background:${escapeHtml(c.hex)}" title="${escapeHtml(c.name)}"></span>`
-                      )
-                      .join('')}
-                    ${colors.length > 4 ? `<span class="text-[10px] font-bold text-slate-400">+${colors.length - 4}</span>` : ''}
-                  </div>`
+                ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 text-[9.5px] font-extrabold border border-amber-200 shrink-0">★ ${ratingSummary.averageRating.toFixed(1)}</span>`
                 : ''
             }
           </div>
+          <h3 data-open-product="${escapeHtml(product.id)}" class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] leading-snug line-clamp-2 cursor-pointer hover:text-icase-red transition">
+            ${escapeHtml(product.name)}
+          </h3>
         </div>
 
-        <h3 data-open-product="${escapeHtml(product.id)}" class="font-extrabold text-icase-navy text-sm sm:text-base line-clamp-2 cursor-pointer hover:text-icase-red transition">
-          ${escapeHtml(product.name)}
-        </h3>
-        <p class="text-xs text-slate-500 line-clamp-2 mt-1 mb-3 flex-1">${escapeHtml(product.description || '')}</p>
-
-        <div class="flex items-baseline gap-2 mb-3">
-          <span class="text-lg font-black text-icase-navy">${formatINR(price)}</span>
-          ${orig > price ? `<span class="text-xs text-slate-400 line-through font-semibold">${formatINR(orig)}</span>` : ''}
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button type="button" data-add-cart="${escapeHtml(product.id)}" ${!product.inStock ? 'disabled' : ''} class="flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold transition min-h-[40px] ${
-            product.inStock
-              ? 'bg-icase-red hover:bg-red-700 text-white'
-              : 'bg-slate-200 text-slate-500 cursor-not-allowed'
-          }">
-            ${product.inStock ? 'Add to Cart' : 'Out of Stock'}
-          </button>
-          <button type="button" data-buy-now="${escapeHtml(product.id)}" ${!product.inStock ? 'disabled' : ''} class="py-2.5 px-3 rounded-xl text-xs font-extrabold transition min-h-[40px] ${
-            product.inStock
-              ? 'bg-icase-navy hover:bg-icase-dark text-white'
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-          }">
-            Buy
-          </button>
-          <button type="button" data-toggle-wishlist="${escapeHtml(product.id)}" title="Toggle Wishlist" class="p-2.5 rounded-xl border transition min-h-[40px] min-w-[40px] flex items-center justify-center ${
-            isWishlisted ? 'border-icase-red bg-icase-redLight text-icase-red' : 'border-slate-200 text-slate-500 hover:border-icase-red hover:text-icase-red'
-          }">
-            ${isWishlisted ? '♥' : '♡'}
-          </button>
+        <div class="flex items-center justify-between gap-1.5 pt-1">
+          <div class="flex flex-col leading-none">
+            <span class="text-sm sm:text-base font-black text-icase-red">${formatINR(price)}</span>
+            ${orig > price ? `<span class="text-[10.5px] text-slate-400 line-through mt-0.5">${formatINR(orig)}</span>` : ''}
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" data-toggle-wishlist="${escapeHtml(product.id)}" title="Toggle Wishlist" aria-label="Toggle Wishlist" class="w-7 h-7 rounded-lg border flex items-center justify-center text-xs transition ${
+              isWishlisted ? 'border-icase-red bg-icase-redLight text-icase-red' : 'border-slate-200 text-slate-400 hover:border-icase-red hover:text-icase-red'
+            }">
+              ${isWishlisted ? '♥' : '♡'}
+            </button>
+            <button type="button" data-add-cart="${escapeHtml(product.id)}" ${!product.inStock ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition flex items-center gap-1 ${
+              product.inStock
+                ? 'bg-icase-red hover:bg-red-700 text-white'
+                : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+            }">
+              ${product.inStock ? '🛒 Add' : 'Out'}
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -668,88 +634,70 @@ function renderHomeGuardSampleCards() {
     <div class="space-y-4">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h2 class="text-xl font-extrabold text-icase-navy">Tempered Glass, Camera Lens &amp; Pouches</h2>
-          <p class="text-xs text-slate-500">Tap a protection card to pick your exact phone model and order directly</p>
+          <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">🛡️ Screen, Lens &amp; Pouch Protection</h2>
+          <p class="text-xs text-slate-500">Tap a card or glass style to choose your phone model</p>
         </div>
-        <button type="button" data-nav="guards" class="text-sm font-bold text-icase-blue hover:underline shrink-0">Open Finder →</button>
+        <button type="button" data-nav="guards" class="text-xs sm:text-sm font-bold text-icase-red hover:underline shrink-0">Explore All →</button>
       </div>
       <div class="icase-guard-sample-grid">
-        <button type="button" data-home-guard-card="glass" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-          <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+        <div role="button" tabindex="0" data-home-guard-card="glass" class="group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+          <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
+            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
           </div>
-          <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+          <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
             <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[10px] sm:text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
-              </div>
-              <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Tempered Glass</h3>
-              <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">Privacy, Matte, Borderless, 360 Privacy &amp; Normal 5D edge-to-edge guards with shop installation.</p>
+              <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Tempered Glass</h3>
+              <span class="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[9.5px] sm:text-[10.5px] font-bold">Available for iPhone &amp; All Android Models</span>
+              <p class="text-[11px] text-slate-500 line-clamp-2">Privacy, Matte, Borderless, 360 &amp; Normal 5D</p>
             </div>
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingGlass)}</span>
-              <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Model →</span>
-            </div>
+            <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Glass →</span>
           </div>
-        </button>
+        </div>
 
         ${
           camEnabled
             ? `
-          <button type="button" data-home-guard-card="camera" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-            <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+          <div role="button" tabindex="0" data-home-guard-card="camera" class="group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+            <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
               <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-icase-navy text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
             </div>
-            <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+            <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
               <div class="space-y-1">
-                <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="px-2 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[10px] sm:text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
-                </div>
-                <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Camera Lens Protector</h3>
-                <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">9H Sapphire individual lens rings for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
+                <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Camera Lens Protector</h3>
+                <span class="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9.5px] sm:text-[10.5px] font-bold">iPhone &amp; Samsung S Series Only</span>
+                <p class="text-[11px] text-slate-500 line-clamp-2">9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone</p>
               </div>
-              <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingLens)}</span>
-                <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Model →</span>
-              </div>
+              <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Lens →</span>
             </div>
-          </button>
+          </div>
         `
             : ''
         }
 
-        <button type="button" data-home-guard-card="pouch" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-          <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+        <div role="button" tabindex="0" data-home-guard-card="pouch" class="${camEnabled ? 'icase-guard-full-mobile ' : ''}group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+          <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(pouchImg)}" alt="Pouches &amp; Back Cases Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-teal-700 text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
+            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
           </div>
-          <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+          <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
             <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <span class="px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[10px] sm:text-[11px] font-extrabold">iPhone, Samsung S Series &amp; Other Android Models</span>
-              </div>
-              <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
-              <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick WhatsApp Android stock checks.</p>
+              <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
+              <span class="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9.5px] sm:text-[10.5px] font-bold">iPhone, Samsung S Series &amp; Other Android Models</span>
+              <p class="text-[11px] text-slate-500 line-clamp-2">MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases</p>
             </div>
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingPouch)}</span>
-              <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Pouch →</span>
-            </div>
+            <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Pouch →</span>
           </div>
-        </button>
+        </div>
       </div>
 
       ${
         activeGlassTypes.length > 0
           ? `
-        <div class="pt-1 space-y-2.5">
-          <div>
-            <h3 class="text-sm sm:text-base font-extrabold text-icase-navy">Tempered Glass Types — Tap to Select Style</h3>
-            <p class="text-xs text-slate-500">Synced live with store rates &amp; offers. Tap any style to open Tempered Glass with it pre-selected.</p>
-          </div>
-          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="pt-1 space-y-2">
+          <h3 class="text-sm sm:text-base font-extrabold text-icase-navy">Tempered Glass Styles (Quick Select)</h3>
+          <div class="icase-glass-styles-row">
             ${activeGlassTypes
               .map((gt) => {
                 const pricing = resolveTemperedGlassPrice('iPhone', '__default__', gt, {
@@ -760,25 +708,25 @@ function renderHomeGuardSampleCards() {
                 const gtVid = resolveGlassTypeVideoUrl(gt, config);
                 const note = getGlassTypeHelperNote(gt, config);
                 return `
-                  <div role="button" tabindex="0" data-home-glass-type="${escapeHtml(gt)}" class="bg-white rounded-2xl border border-slate-200 hover:border-icase-red hover:shadow-sm p-3 flex items-center gap-3 cursor-pointer transition">
-                    <img src="${escapeHtml(gtImg)}" alt="${escapeHtml(gt)}" loading="lazy" class="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0" />
-                    <div class="min-w-0 flex-1 space-y-1">
-                      <div class="flex items-center justify-between gap-1.5">
-                        <strong class="text-xs sm:text-sm font-extrabold text-icase-navy truncate">${escapeHtml(gt)}</strong>
-                        ${pricing.offerBadge ? `<span class="px-1.5 py-0.5 rounded bg-amber-300 text-icase-navy text-[9px] font-black shrink-0">${escapeHtml(pricing.offerBadge)}</span>` : ''}
-                      </div>
-                      <div class="text-[11px] text-slate-500 truncate" title="${escapeHtml(note)}">${escapeHtml(note)}</div>
-                      <div class="flex items-center justify-between gap-2 pt-0.5">
+                  <div role="button" tabindex="0" data-home-glass-type="${escapeHtml(gt)}" class="icase-glass-style-card bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-sm p-2.5 flex flex-col justify-between gap-1.5 cursor-pointer transition">
+                    <div class="flex items-center gap-2.5">
+                      <img src="${escapeHtml(gtImg)}" alt="${escapeHtml(gt)}" loading="lazy" class="w-11 h-11 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0" />
+                      <div class="min-w-0 flex-1">
+                        <strong class="block text-xs font-extrabold text-icase-navy truncate">${escapeHtml(gt)}</strong>
                         <div class="flex items-baseline gap-1.5">
                           <span class="text-xs sm:text-sm font-black text-icase-red">${formatINR(pricing.finalPrice)}</span>
-                          ${pricing.basePrice > pricing.finalPrice ? `<span class="text-[10px] text-slate-400 line-through font-semibold">${formatINR(pricing.basePrice)}</span>` : ''}
+                          ${pricing.basePrice > pricing.finalPrice ? `<span class="text-[10px] text-slate-400 line-through">${formatINR(pricing.basePrice)}</span>` : ''}
                         </div>
-                        ${
-                          gtVid
-                            ? `<button type="button" data-open-video="${escapeHtml(gtVid)}" data-video-title="${escapeHtml(`${gt} Tempered Glass`)}" class="px-2 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[10px] font-extrabold transition shrink-0">▶ Video</button>`
-                            : ''
-                        }
                       </div>
+                    </div>
+                    <div class="text-[10.5px] text-slate-500 line-clamp-2 leading-tight">${escapeHtml(note)}</div>
+                    <div class="flex items-center justify-between gap-1.5 pt-0.5">
+                      ${pricing.offerBadge ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold">${escapeHtml(pricing.offerBadge)}</span>` : '<span></span>'}
+                      ${
+                        gtVid
+                          ? `<button type="button" data-open-video="${escapeHtml(gtVid)}" data-video-title="${escapeHtml(`${gt} Tempered Glass`)}" class="px-2 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[9.5px] font-extrabold transition shrink-0">▶ Video</button>`
+                          : ''
+                      }
                     </div>
                   </div>
                 `;
@@ -875,15 +823,15 @@ function renderHomeFeaturedPouches() {
   }
 
   host.innerHTML = `
-    <div class="space-y-4">
+    <div class="space-y-3">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h2 class="text-xl font-extrabold text-icase-navy">✨ Featured Pouches &amp; Cases</h2>
-          <p class="text-xs text-slate-500">Handpicked pouches featured from iCASE Store</p>
+          <h2 class="text-lg sm:text-xl font-extrabold text-icase-navy">Featured Pouches &amp; Cases</h2>
+          <p class="text-xs text-slate-500">Pick your phone brand &amp; case color</p>
         </div>
-        <button type="button" id="home-featured-pouches-nav" class="text-sm font-bold text-icase-blue hover:underline shrink-0">Choose Phone Model →</button>
+        <button type="button" id="home-featured-pouches-nav" class="text-xs sm:text-sm font-bold text-icase-red hover:underline shrink-0">All Pouches →</button>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="icase-carousel-row">
         ${featuredPouches
           .map((pouch) => {
             const pricing = resolvePouchPrice(pouch);
@@ -894,45 +842,46 @@ function renderHomeFeaturedPouches() {
             const thumbUrl = resolvePouchImageUrl(pouch, activeColor?.name || '');
             const colors = Array.isArray(pouch.colorOptions) ? pouch.colorOptions : [];
             return `
-              <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-lg transition">
-                <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+              <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition">
+                <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden">
                   <img src="${escapeHtml(thumbUrl)}" alt="${escapeHtml(pouch.name)}" loading="lazy" class="w-full h-full object-cover" />
                   ${
                     pricing.hasOffer && pricing.offerBadge
-                      ? `<span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">${escapeHtml(pricing.offerBadge)}</span>`
+                      ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-icase-red text-white text-[10px] font-extrabold shadow">${escapeHtml(pricing.offerBadge)}</span>`
                       : ''
                   }
                   ${
                     pouch.videoUrl
-                      ? `<button type="button" data-open-video="${escapeHtml(pouch.videoUrl)}" data-video-title="${escapeHtml(pouch.name)}" class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-slate-950/85 hover:bg-icase-red text-white text-[11px] font-extrabold shadow transition">▶ Video</button>`
+                      ? `<button type="button" data-open-video="${escapeHtml(pouch.videoUrl)}" data-video-title="${escapeHtml(pouch.name)}" class="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-slate-950/90 hover:bg-icase-red text-white text-[10px] font-extrabold shadow transition">▶ Video</button>`
                       : ''
                   }
                 </div>
-                <div class="p-4 flex-1 flex flex-col gap-2">
-                  <div class="text-[11px] font-bold uppercase tracking-wider text-icase-blue truncate">${escapeHtml((pouch.compatibleBrands || []).join(' • '))}</div>
-                  <h3 class="font-extrabold text-icase-navy text-sm sm:text-base line-clamp-2">${escapeHtml(pouch.name)}</h3>
-                  ${pouch.description ? `<p class="text-xs text-slate-500 line-clamp-2 flex-1">${escapeHtml(pouch.description)}</p>` : '<div class="flex-1"></div>'}
-                  <div class="flex items-baseline gap-2">
-                    <span class="text-lg font-black text-icase-red">${formatINR(pricing.finalPrice)}</span>
-                    ${pricing.hasOffer && pricing.basePrice > pricing.finalPrice ? `<span class="text-xs text-slate-400 line-through font-semibold">${formatINR(pricing.basePrice)}</span>` : ''}
+                <div class="p-3 flex-1 flex flex-col justify-between gap-2">
+                  <div>
+                    <div class="text-[10.5px] font-bold text-icase-blue truncate">${escapeHtml((pouch.compatibleBrands || []).join(' • '))}</div>
+                    <h3 class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] line-clamp-2 mt-0.5">${escapeHtml(pouch.name)}</h3>
+                  </div>
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-sm sm:text-base font-black text-icase-red">${formatINR(pricing.finalPrice)}</span>
+                    ${pricing.hasOffer && pricing.basePrice > pricing.finalPrice ? `<span class="text-[10.5px] text-slate-400 line-through">${formatINR(pricing.basePrice)}</span>` : ''}
                   </div>
                   ${
                     colors.length > 0
-                      ? `<div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      ? `<div class="flex flex-wrap items-center gap-1.5">
                           ${colors
-                            .slice(0, 7)
+                            .slice(0, 6)
                             .map((c) => {
                               const selected = activeColor?.name?.toLowerCase() === c.name.toLowerCase();
-                              return `<button type="button" data-home-pouch-color="${escapeHtml(pouch.id)}" data-color-name="${escapeHtml(c.name)}" title="${escapeHtml(c.name)}" class="w-6 h-6 rounded-full p-0.5 bg-white border transition flex items-center justify-center ${
-                                selected ? 'ring-2 ring-icase-navy ring-offset-1 border-icase-navy' : 'border-slate-300'
+                              return `<button type="button" data-home-pouch-color="${escapeHtml(pouch.id)}" data-color-name="${escapeHtml(c.name)}" title="${escapeHtml(c.name)}" class="w-5 h-5 rounded-full p-0.5 bg-white border transition flex items-center justify-center ${
+                                selected ? 'ring-2 ring-icase-navy border-icase-navy' : 'border-slate-300'
                               }"><span class="w-full h-full rounded-full block" style="background:${escapeHtml(c.hex || '#1E293B')}"></span></button>`;
                             })
                             .join('')}
                         </div>`
                       : ''
                   }
-                  <button type="button" data-home-pouch-open="${escapeHtml(pouch.id)}" class="mt-1 w-full py-2.5 px-3 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs font-extrabold transition min-h-[42px]">
-                    Select Model &amp; Buy →
+                  <button type="button" data-home-pouch-open="${escapeHtml(pouch.id)}" class="w-full py-2 px-2.5 rounded-lg bg-icase-navy hover:bg-[#162944] text-white text-[11px] sm:text-xs font-extrabold transition">
+                    Choose Model &amp; Buy →
                   </button>
                 </div>
               </article>
@@ -6947,6 +6896,9 @@ function bindGlobalEvents() {
 
     const navTarget = e.target.closest('[data-nav]');
     if (navTarget) {
+      if (navTarget.dataset.closeMenu === 'true') {
+        document.getElementById('mobile-menu-drawer')?.classList.add('hidden');
+      }
       setActiveTab(navTarget.dataset.nav);
       return;
     }
@@ -7282,6 +7234,21 @@ function bindGlobalEvents() {
 
   document.getElementById('btn-open-account')?.addEventListener('click', openAccountModal);
   document.getElementById('mobile-nav-account')?.addEventListener('click', openAccountModal);
+  document.getElementById('mobile-drawer-account-btn')?.addEventListener('click', () => {
+    document.getElementById('mobile-menu-drawer')?.classList.add('hidden');
+    openAccountModal();
+  });
+  document.getElementById('btn-open-mobile-menu')?.addEventListener('click', () => {
+    document.getElementById('mobile-menu-drawer')?.classList.remove('hidden');
+  });
+  document.getElementById('btn-close-mobile-menu')?.addEventListener('click', () => {
+    document.getElementById('mobile-menu-drawer')?.classList.add('hidden');
+  });
+  document.getElementById('mobile-menu-drawer')?.addEventListener('click', (e) => {
+    if (e.target.id === 'mobile-menu-drawer') {
+      document.getElementById('mobile-menu-drawer')?.classList.add('hidden');
+    }
+  });
   document.getElementById('account-modal-close')?.addEventListener('click', closeAccountModal);
   document.getElementById('account-modal-overlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'account-modal-overlay') closeAccountModal();

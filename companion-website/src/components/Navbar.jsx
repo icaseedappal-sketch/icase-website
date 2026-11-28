@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Home,
   ShoppingBag,
@@ -10,8 +10,61 @@ import {
   ShoppingCart,
   Phone,
   Mail,
-  Bike
+  Bike,
+  Menu,
+  X,
+  MessageCircle
 } from 'lucide-react';
+
+export function ICaseArchLogo({ darkBg = false, showTagline = true, compact = false }) {
+  const caseColor = darkBg ? '#FFFFFF' : '#0B1728';
+  const subColor = darkBg ? '#94A3B8' : '#64748B';
+  return (
+    <div className="icase-arch-logo" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg
+        width={compact ? 56 : 64}
+        height={compact ? 20 : 23}
+        viewBox="0 0 80 30"
+        fill="none"
+        aria-hidden="true"
+        style={{ marginBottom: compact ? -8 : -9 }}
+      >
+        <path
+          d="M10 26 C16 4, 64 4, 70 26"
+          stroke="#E50914"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+        />
+      </svg>
+      <div
+        style={{
+          fontSize: compact ? 20 : 23,
+          fontWeight: 900,
+          letterSpacing: '-0.02em',
+          lineHeight: 1.05,
+          color: caseColor
+        }}
+      >
+        <span style={{ color: '#E50914' }}>i</span>CASE
+      </div>
+      {showTagline && (
+        <div
+          className="brand-text-sub"
+          style={{
+            fontSize: compact ? 7.5 : 8.5,
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            color: subColor,
+            textTransform: 'uppercase',
+            marginTop: 1
+          }}
+        >
+          YOUR PHONE, OUR CARE
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar({
   activeTab,
@@ -24,8 +77,21 @@ export default function Navbar({
   settings,
   isAdminLoggedIn
 }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const supportPhone = settings.store_phone || '9961454059';
+  const supportWhatsapp = settings.store_whatsapp || supportPhone;
   const supportEmail = settings.store_email || 'icaseedappal@gmail.com';
+  const waUrl = `https://api.whatsapp.com/send?phone=91${supportWhatsapp.replace(
+    /\D/g,
+    ''
+  )}&text=${encodeURIComponent(
+    'Hi iCASE Edappal! I would like to place an order or enquire about a repair.'
+  )}`;
+
+  function handleMobileNav(tab) {
+    setMobileMenuOpen(false);
+    onSelectTab(tab);
+  }
 
   return (
     <>
@@ -50,23 +116,28 @@ export default function Navbar({
 
       <header className="navbar">
         <div className="container navbar-inner">
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            aria-label="Open Navigation Menu"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu size={24} />
+          </button>
+
           <div
             className="brand-lockup"
             onClick={() => onSelectTab('home')}
             role="button"
             tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectTab('home');
+              }
+            }}
           >
-            <div className="brand-badge">
-              <span className="brand-badge-letter">
-                <span>i</span>C
-              </span>
-            </div>
-            <div>
-              <div className="brand-text-title">
-                <span>i</span>CASE
-              </div>
-              <div className="brand-text-sub">YOUR PHONE, OUR CARE</div>
-            </div>
+            <ICaseArchLogo />
           </div>
 
           <nav className="nav-links" aria-label="Primary Navigation">
@@ -126,13 +197,102 @@ export default function Navbar({
               onClick={onOpenCart}
               aria-label="Open Cart"
             >
-              <ShoppingCart size={18} />
+              <ShoppingCart size={20} />
               <span className="cart-btn-label">Cart</span>
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Slide-Over Menu Drawer */}
+      {mobileMenuOpen && (
+        <div
+          className="overlay mobile-drawer-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Menu"
+        >
+          <aside className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-drawer-header">
+              <ICaseArchLogo darkBg showTagline />
+              <button
+                type="button"
+                className="mobile-drawer-close"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close Menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="mobile-drawer-body">
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'home' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('home')}
+              >
+                <Home size={18} /> Home
+              </button>
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'catalog' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('catalog')}
+              >
+                <ShoppingBag size={18} /> Shop Catalog
+              </button>
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'guards' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('guards')}
+              >
+                <Shield size={18} /> Tempered Glass, Lens &amp; Pouches
+              </button>
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'repair' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('repair')}
+              >
+                <Wrench size={18} /> Repair Services &amp; Pickup
+              </button>
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'track' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('track')}
+              >
+                <Search size={18} /> Track Order / Repair
+              </button>
+              <button
+                type="button"
+                className="mobile-drawer-link"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAccount();
+                }}
+              >
+                <User size={18} /> Account, Orders &amp; Wishlist
+              </button>
+              <button
+                type="button"
+                className={`mobile-drawer-link ${activeTab === 'admin' ? 'active' : ''}`}
+                onClick={() => handleMobileNav('admin')}
+              >
+                <ShieldCheck size={18} />
+                {isAdminLoggedIn ? 'Admin Panel (Unlocked)' : 'Admin Panel'}
+              </button>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mobile-drawer-link whatsapp"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <MessageCircle size={18} /> WhatsApp Support (+91 {supportPhone})
+              </a>
+            </div>
+          </aside>
+        </div>
+      )}
 
       <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
         <div className="mobile-bottom-nav-inner">

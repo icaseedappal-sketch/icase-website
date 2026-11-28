@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Zap,
   ShoppingBag,
+  ShoppingCart,
   Shield,
   Wrench,
   Search,
@@ -9,12 +10,12 @@ import {
   MessageCircle,
   Phone,
   Mail,
-  MapPin,
-  Clock,
   ShieldCheck,
   AlertCircle,
   Heart,
-  Award,
+  Headphones,
+  Star,
+  ArrowRight,
   X,
   Play
 } from 'lucide-react';
@@ -139,7 +140,6 @@ export default function HomeSection({
       .sort((a, b) => Number(a.popularityRank || 99) - Number(b.popularityRank || 99));
   }, [products, homeSearch]);
 
-  // Strict privacy filter: ONLY approved PRODUCT reviews ever display publicly
   const publicApprovedReviews = useMemo(
     () =>
       (Array.isArray(publicReviews) ? publicReviews : []).filter(
@@ -148,28 +148,30 @@ export default function HomeSection({
     [publicReviews]
   );
 
-  function renderProductCard(product) {
-    const discountPct =
-      product.originalPrice > product.price
-        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-        : 0;
+  function renderProductCard(product, keyPrefix = 'all') {
     const ratingSummary = computeProductRatingSummary(publicApprovedReviews, product);
+    const isWishlisted = wishlistIds.includes(product.id);
 
     return (
-      <article key={product.id} className="product-card">
+      <article key={`${keyPrefix}-${product.id}`} className="product-card icase-app-product-card">
         <div className="product-media" onClick={() => onSelectProduct(product)}>
           <img src={product.imageUrl} alt={product.name} loading="lazy" />
-          {discountPct > 0 && <span className="discount-badge">{discountPct}% OFF</span>}
+
           {oneHourEnabled && product.isOneHourEligible && (
-            <span className="express-badge">
-              <Zap size={11} /> 1-Hour Eligible
+            <span className="express-badge-top">
+              <Zap size={10} fill="currentColor" /> 1-Hour
             </span>
           )}
+
+          {product.isPopular && <span className="popular-badge-top">POPULAR</span>}
+
+          {!product.inStock && <span className="stock-pill-bottom">OUT OF STOCK</span>}
+
           {product.videoUrl && onOpenVideo && (
             <button
               type="button"
               className="media-video-pill"
-              style={{ position: 'absolute', bottom: 8, left: 8 }}
+              style={{ position: 'absolute', bottom: 8, right: 8 }}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenVideo(product.name, product.videoUrl);
@@ -178,63 +180,52 @@ export default function HomeSection({
               <Play size={10} fill="currentColor" /> Video
             </button>
           )}
-          {!product.inStock && <span className="stock-pill-out">Out of Stock</span>}
         </div>
+
         <div className="product-body">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            <div className="product-category" style={{ marginBottom: 0 }}>
-              {product.category}
-            </div>
+          <div className="product-meta-row">
+            <div className="product-category">{product.category}</div>
             {ratingSummary.reviewCount > 0 && (
               <span className="rating-badge">
                 ★ {ratingSummary.averageRating.toFixed(1)} ({ratingSummary.reviewCount})
               </span>
             )}
           </div>
+
           <h3 className="product-title" onClick={() => onSelectProduct(product)}>
             {product.name}
           </h3>
-          <p className="product-desc">{product.description}</p>
-          <div className="product-price-row">
-            <span className="product-price">{formatINR(product.price)}</span>
-            {product.originalPrice > product.price && (
-              <span className="product-mrp">{formatINR(product.originalPrice)}</span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="btn btn-red btn-sm"
-              style={{ flex: 1 }}
-              disabled={!product.inStock}
-              onClick={() => onAddToCart(product)}
-            >
-              {product.inStock ? 'Add to Cart' : 'Currently Out of Stock'}
-            </button>
-            {onToggleWishlist && (
+
+          <div className="product-bottom-row">
+            <div className="product-price-col">
+              <span className="product-price">{formatINR(product.price)}</span>
+              {product.originalPrice > product.price && (
+                <span className="product-mrp">{formatINR(product.originalPrice)}</span>
+              )}
+            </div>
+
+            <div className="product-action-cluster">
+              {onToggleWishlist && (
+                <button
+                  type="button"
+                  className={`wishlist-mini-btn ${isWishlisted ? 'active' : ''}`}
+                  onClick={() => onToggleWishlist(product.id)}
+                  title="Toggle Wishlist"
+                  aria-label="Toggle Wishlist"
+                >
+                  <Heart size={14} fill={isWishlisted ? '#E50914' : 'none'} />
+                </button>
+              )}
               <button
                 type="button"
-                className="btn btn-outline btn-sm"
-                style={{
-                  padding: '6px 10px',
-                  color: wishlistIds.includes(product.id) ? '#E50914' : '#64748B',
-                  borderColor: wishlistIds.includes(product.id) ? '#E50914' : 'var(--border)'
-                }}
-                onClick={() => onToggleWishlist(product.id)}
-                title="Toggle Wishlist"
+                className="add-compact-btn"
+                disabled={!product.inStock}
+                onClick={() => onAddToCart(product)}
               >
-                <Heart
-                  size={15}
-                  fill={wishlistIds.includes(product.id) ? '#E50914' : 'none'}
-                />
+                <ShoppingCart size={13} />
+                <span>{product.inStock ? 'Add' : 'Out'}</span>
               </button>
-            )}
+            </div>
           </div>
         </div>
       </article>
@@ -254,44 +245,40 @@ export default function HomeSection({
       )}
 
       <div className="home-top-stack">
-        {/* Hero Banner */}
+        {/* Hero Banner matching Android HomeScreen Hero */}
         <section className="hero-banner">
           <div className="hero-grid">
             <div>
-              <div className="hero-kicker">
-                <Zap size={14} />
-                <span>
-                  {oneHourEnabled
-                    ? 'Express 1-Hour Doorstep Delivery in Edappal'
-                    : 'Fast Local Home Delivery & Expert Mobile Care'}
-                </span>
-              </div>
               <h1 className="hero-title">
-                Mobile Accessories &amp; <span>Express Repair Service</span>
+                Mobile Accessories &amp;
+                <br />
+                <span>Repair Service</span>
               </h1>
               <p className="hero-subtitle">
-                Smart Choice... Better Care. Shop shockproof mobile covers, tempered glass, camera lens
-                protection, GaN fast chargers, and ANC audio—or book doorstep repair pickup in Edappal.
+                Quality Products. Reliable Service.
+                <span className="hero-desktop-extra">
+                  {' '}
+                  — Express 1-hour doorstep delivery &amp; repair pickup in Edappal, Malappuram.
+                </span>
               </p>
               <div className="hero-ctas">
-                <button className="btn btn-red" onClick={() => onNavigate('catalog')}>
-                  <ShoppingBag size={17} />
-                  Explore Shop Catalog
-                </button>
-                <button className="btn btn-outline" onClick={() => onNavigate('guards')}>
-                  <Shield size={17} />
-                  Tempered Glass &amp; Lens
-                </button>
-                <button className="btn btn-outline" onClick={() => onNavigate('repair')}>
-                  <Wrench size={17} />
-                  Book Repair Pickup
+                <button className="btn btn-gold" onClick={() => onNavigate('catalog')}>
+                  <span>Explore Shop</span>
+                  <ArrowRight size={16} />
                 </button>
                 <button
-                  className="btn btn-whatsapp"
-                  onClick={() => window.open(waSupportUrl, '_blank')}
+                  className="btn btn-hero-ghost hero-secondary-desktop"
+                  onClick={() => onNavigate('guards')}
                 >
-                  <MessageCircle size={17} />
-                  WhatsApp Support
+                  <Shield size={16} />
+                  <span>Tempered Glass &amp; Lens</span>
+                </button>
+                <button
+                  className="btn btn-hero-ghost hero-secondary-desktop"
+                  onClick={() => onNavigate('repair')}
+                >
+                  <Wrench size={16} />
+                  <span>Book Repair Pickup</span>
                 </button>
               </div>
             </div>
@@ -339,7 +326,7 @@ export default function HomeSection({
           <Search size={18} color="#64748B" />
           <input
             type="text"
-            placeholder="Search cases, chargers, tempered glass, earbuds..."
+            placeholder="Search cases, chargers, tempered glass..."
             value={homeSearch}
             onChange={(e) => setHomeSearch(e.target.value)}
           />
@@ -355,102 +342,76 @@ export default function HomeSection({
           )}
         </div>
 
-        {/* 6 Quick Action Tiles matching Mobile App Home */}
-        <section className="quick-actions-grid">
+        {/* 6 Quick Action Tiles matching exact Android HomeScreen colors & labels */}
+        <section className="quick-actions-grid" aria-label="Quick Actions">
           <button className="quick-tile" onClick={() => onNavigate('catalog')}>
-            <div className="quick-tile-icon" style={{ background: '#FFECEE', color: '#E50914' }}>
-              <ShoppingBag size={22} />
+            <div className="quick-tile-icon" style={{ background: '#FEF3C7', color: '#D97706' }}>
+              <ShoppingBag size={20} />
             </div>
             <div className="quick-tile-copy">
-              <div className="quick-tile-title">Shop Catalog</div>
-              <div className="quick-tile-sub">{products.length} synced products</div>
-            </div>
-          </button>
-
-          <button className="quick-tile" onClick={() => onNavigate('guards')}>
-            <div className="quick-tile-icon" style={{ background: '#EAF2FF', color: '#0066CC' }}>
-              <Shield size={22} />
-            </div>
-            <div className="quick-tile-copy">
-              <div className="quick-tile-title">Tempered Glass</div>
-              <div className="quick-tile-sub">Screen guards, lens &amp; pouches</div>
+              <div className="quick-tile-title">Shop</div>
+              <div className="quick-tile-sub">Browse &amp; Buy</div>
             </div>
           </button>
 
           <button className="quick-tile" onClick={() => onNavigate('repair')}>
-            <div className="quick-tile-icon" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-              <Wrench size={22} />
+            <div className="quick-tile-icon" style={{ background: '#E0E7FF', color: '#4338CA' }}>
+              <Wrench size={20} />
             </div>
             <div className="quick-tile-copy">
-              <div className="quick-tile-title">Repair &amp; Pickup</div>
-              <div className="quick-tile-sub">Book expert doorstep pickup</div>
+              <div className="quick-tile-title">Repair</div>
+              <div className="quick-tile-sub">Get Expert Service</div>
+            </div>
+          </button>
+
+          <button className="quick-tile" onClick={() => onNavigate('guards')}>
+            <div className="quick-tile-icon" style={{ background: '#FFECEE', color: '#E50914' }}>
+              <Shield size={20} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Tempered Glass</div>
+              <div className="quick-tile-sub">Screen Guards &amp; Lens</div>
             </div>
           </button>
 
           <button className="quick-tile" onClick={() => onNavigate('track')}>
-            <div className="quick-tile-icon" style={{ background: '#E8FDF2', color: '#10B981' }}>
-              <Search size={22} />
+            <div className="quick-tile-icon" style={{ background: '#DCFCE7', color: '#15803D' }}>
+              <Search size={20} />
             </div>
             <div className="quick-tile-copy">
               <div className="quick-tile-title">Track Order</div>
-              <div className="quick-tile-sub">Live status via Order / REP ID</div>
+              <div className="quick-tile-sub">Know Your Order</div>
             </div>
           </button>
 
           <button className="quick-tile" onClick={onOpenAccount}>
-            <div className="quick-tile-icon" style={{ background: '#F1F5F9', color: '#0B1728' }}>
-              <User size={22} />
+            <div className="quick-tile-icon" style={{ background: '#F1F5F9', color: '#0F172A' }}>
+              <User size={20} />
             </div>
             <div className="quick-tile-copy">
               <div className="quick-tile-title">Account</div>
-              <div className="quick-tile-sub">Orders, wishlist &amp; address</div>
+              <div className="quick-tile-sub">Profile &amp; Sync</div>
             </div>
           </button>
 
           <button className="quick-tile" onClick={() => window.open(waSupportUrl, '_blank')}>
-            <div className="quick-tile-icon" style={{ background: '#DCFCE7', color: '#15803D' }}>
-              <MessageCircle size={22} />
+            <div className="quick-tile-icon" style={{ background: '#E8F9EE', color: '#25D366' }}>
+              <MessageCircle size={20} />
             </div>
             <div className="quick-tile-copy">
               <div className="quick-tile-title">WhatsApp</div>
-              <div className="quick-tile-sub">+91 {supportPhone}</div>
+              <div className="quick-tile-sub">Order Now</div>
             </div>
           </button>
         </section>
       </div>
 
-      {/* Category Shortcuts */}
-      <section style={{ marginBottom: 28 }}>
-        <div className="section-header">
-          <h2 className="section-title">Browse by Category</h2>
-          <button className="section-link" onClick={() => onNavigate('catalog')}>
-            View Full Catalog →
-          </button>
-        </div>
-        <div className="category-chips">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              className="chip"
-              onClick={() => {
-                onSelectCategory(cat);
-                onNavigate('catalog');
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Tempered Glass & Camera Lens Sample Cards */}
-      <section style={{ marginBottom: 30 }}>
+      {/* Screen, Lens & Pouch Protection Cards + Tempered Glass Styles */}
+      <section style={{ marginBottom: 26 }}>
         <div className="section-header">
           <div>
-            <h2 className="section-title">🛡️ Tempered Glass &amp; Camera Lens Protection</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              Tap a protection card to pick your exact phone model and order directly
-            </p>
+            <h2 className="section-title">🛡️ Screen, Lens &amp; Pouch Protection</h2>
+            <p className="section-sub">Tap a card or glass style to choose your phone model</p>
           </div>
           <button
             className="section-link"
@@ -459,161 +420,128 @@ export default function HomeSection({
               else onNavigate('guards');
             }}
           >
-            Open Finder →
+            Explore All →
           </button>
         </div>
 
         <div className="guard-sample-grid">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             className="guard-sample-card"
             onClick={() => {
               if (onOpenGuardsSection) onOpenGuardsSection('glass');
               else onNavigate('guards');
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (onOpenGuardsSection) onOpenGuardsSection('glass');
+                else onNavigate('guards');
+              }
+            }}
           >
             <div className="guard-sample-thumb">
               <img src={temperedGlassSampleImg} alt="Tempered Glass Protector" loading="lazy" />
-              <span className="discount-badge">Starting {formatINR(glassStartingPrice)}</span>
+              <span className="guard-starting-badge">Starting {formatINR(glassStartingPrice)}</span>
             </div>
             <div className="guard-sample-body">
               <div>
-                <div className="compat-pill all" style={{ marginBottom: 6 }}>
+                <div className="guard-card-title">Tempered Glass</div>
+                <div className="compat-pill compat-blue">
                   Available for iPhone &amp; All Android Models
                 </div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
-                  Tempered Glass
-                </div>
-                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                  Privacy, Matte, Borderless, 360 Privacy &amp; 9H 5D full-coverage glass with free
-                  shop installation option.
+                <p className="guard-card-desc">
+                  Privacy, Matte, Borderless, 360 &amp; Normal 5D
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: 6
-                }}
-              >
-                <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
-                  From {formatINR(glassStartingPrice)}
-                </span>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
-                  Select Model →
-                </span>
-              </div>
+              <div className="guard-card-cta">Select Glass →</div>
             </div>
-          </button>
+          </div>
 
           {cameraSectionActive && (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               className="guard-sample-card"
               onClick={() => {
                 if (onOpenGuardsSection) onOpenGuardsSection('camera');
                 else onNavigate('guards');
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (onOpenGuardsSection) onOpenGuardsSection('camera');
+                  else onNavigate('guards');
+                }
+              }}
             >
               <div className="guard-sample-thumb">
                 <img src={cameraLensSampleImg} alt="Camera Lens Protector" loading="lazy" />
-                <span className="discount-badge" style={{ background: 'var(--icase-navy)' }}>
+                <span className="guard-starting-badge">
                   Starting {formatINR(cameraStartingPrice)}
                 </span>
               </div>
               <div className="guard-sample-body">
                 <div>
-                  <div className="compat-pill limited" style={{ marginBottom: 6 }}>
+                  <div className="guard-card-title">Camera Lens Protector</div>
+                  <div className="compat-pill compat-amber">
                     iPhone &amp; Samsung S Series Only
                   </div>
-                  <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
-                    Camera Lens Protector
-                  </div>
-                  <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                    9H Sapphire individual lens rings. Supports iPhone &amp; Samsung Galaxy S20–S25 /
-                    Ultra models only.
+                  <p className="guard-card-desc">
+                    9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone
                   </p>
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: 6
-                  }}
-                >
-                  <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
-                    From {formatINR(cameraStartingPrice)}
-                  </span>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
-                    Check Compatibility →
-                  </span>
-                </div>
+                <div className="guard-card-cta">Select Lens →</div>
               </div>
-            </button>
+            </div>
           )}
 
-          {/* 3rd Main Sample Card: Pouches & Back Cases */}
-          <button
-            type="button"
-            className="guard-sample-card"
+          <div
+            role="button"
+            tabIndex={0}
+            className={`guard-sample-card ${cameraSectionActive ? 'guard-sample-card-full-mobile' : ''}`}
             onClick={() => {
               if (onOpenGuardsPouch) onOpenGuardsPouch();
               else if (onOpenGuardsSection) onOpenGuardsSection('pouch');
               else onNavigate('guards');
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (onOpenGuardsPouch) onOpenGuardsPouch();
+                else onNavigate('guards');
+              }
+            }}
           >
             <div className="guard-sample-thumb">
               <img src={pouchSampleImg} alt="Pouches & Back Cases" loading="lazy" />
-              <span className="discount-badge" style={{ background: '#0F766E' }}>
+              <span className="guard-starting-badge">
                 Starting {formatINR(pouchStartingPrice)}
               </span>
             </div>
             <div className="guard-sample-body">
               <div>
-                <div className="compat-pill pouch" style={{ marginBottom: 6 }}>
+                <div className="guard-card-title">Pouches &amp; Back Cases</div>
+                <div className="compat-pill compat-green">
                   iPhone, Samsung S Series &amp; Other Android Models
                 </div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--icase-navy)', marginBottom: 4 }}>
-                  Pouches &amp; Back Cases
-                </div>
-                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                  MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick
-                  WhatsApp Android stock checks.
+                <p className="guard-card-desc">
+                  MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: 6
-                }}
-              >
-                <span style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-red)' }}>
-                  From {formatINR(pouchStartingPrice)}
-                </span>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--icase-navy)' }}>
-                  Select Pouch →
-                </span>
-              </div>
+              <div className="guard-card-cta">Select Pouch →</div>
             </div>
-          </button>
+          </div>
         </div>
 
-        {/* Dynamic Tempered Glass Types Quick-Select Examples */}
+        {/* Dynamic Tempered Glass Styles (Quick Select) */}
         {activeGlassTypes.length > 0 && (
-          <div style={{ marginTop: 18 }}>
+          <div style={{ marginTop: 16 }}>
             <div className="section-header" style={{ marginBottom: 8 }}>
-              <div>
-                <h3 style={{ fontSize: 15.5, fontWeight: 900, color: 'var(--icase-navy)' }}>
-                  Tempered Glass Types — Tap to Select Style
-                </h3>
-                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                  Synced live with store rates &amp; offers. Tap a style to jump straight to Tempered Glass.
-                </p>
-              </div>
+              <h3 style={{ fontSize: 15, fontWeight: 900, color: 'var(--icase-navy)' }}>
+                Tempered Glass Styles (Quick Select)
+              </h3>
             </div>
             <div className="glass-type-examples-grid">
               {activeGlassTypes.map((gt) => {
@@ -644,82 +572,35 @@ export default function HomeSection({
                       }
                     }}
                   >
-                    <img src={gtImg} alt={gt} className="glass-type-example-thumb" loading="lazy" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 6,
-                          marginBottom: 2
-                        }}
-                      >
-                        <strong
-                          style={{
-                            fontSize: 13.5,
-                            color: 'var(--icase-navy)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}
-                        >
-                          {gt}
-                        </strong>
-                        {pricing.offerBadge && (
-                          <span
-                            style={{
-                              padding: '1px 5px',
-                              borderRadius: 5,
-                              background: '#FDE047',
-                              color: '#0B1728',
-                              fontSize: 9.5,
-                              fontWeight: 900,
-                              flexShrink: 0
-                            }}
-                          >
-                            {pricing.offerBadge}
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11.5,
-                          color: 'var(--text-secondary)',
-                          lineHeight: 1.35,
-                          marginBottom: 5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
-                        }}
-                      >
-                        {note}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 13.5, fontWeight: 900, color: 'var(--icase-red)' }}>
-                            {formatINR(pricing.finalPrice)}
-                          </span>
+                    <div className="glass-style-top-row">
+                      <img src={gtImg} alt={gt} className="glass-type-example-thumb" loading="lazy" />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <strong className="glass-style-name">{gt}</strong>
+                        <div className="glass-style-price-row">
+                          <span className="glass-style-price">{formatINR(pricing.finalPrice)}</span>
                           {pricing.basePrice > pricing.finalPrice && (
-                            <span style={{ fontSize: 11, color: '#94A3B8', textDecoration: 'line-through' }}>
-                              {formatINR(pricing.basePrice)}
-                            </span>
+                            <span className="glass-style-mrp">{formatINR(pricing.basePrice)}</span>
                           )}
                         </div>
-                        {gtVideo && onOpenVideo && (
-                          <button
-                            type="button"
-                            className="media-video-pill"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenVideo(`${gt} Tempered Glass`, gtVideo);
-                            }}
-                          >
-                            <Play size={9} fill="currentColor" /> Video
-                          </button>
-                        )}
                       </div>
+                    </div>
+                    <div className="glass-style-note">{note}</div>
+                    <div className="glass-style-badges">
+                      {pricing.offerBadge && (
+                        <span className="glass-style-offer">{pricing.offerBadge}</span>
+                      )}
+                      {gtVideo && onOpenVideo && (
+                        <button
+                          type="button"
+                          className="media-video-pill"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenVideo(`${gt} Tempered Glass`, gtVideo);
+                          }}
+                        >
+                          <Play size={9} fill="currentColor" /> Video
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -729,15 +610,26 @@ export default function HomeSection({
         )}
       </section>
 
-      {/* Featured Pouches (Admin "Show on Home Page") */}
+      {/* Popular Products Showcase (Horizontal LazyRow on mobile, grid on desktop) */}
+      <section style={{ marginBottom: 26 }}>
+        <div className="section-header">
+          <h2 className="section-title">Popular Products</h2>
+          <button className="section-link" onClick={() => onNavigate('catalog')}>
+            See All →
+          </button>
+        </div>
+        <div className="products-carousel-row">
+          {featuredProducts.map((p) => renderProductCard(p, 'pop'))}
+        </div>
+      </section>
+
+      {/* Featured Pouches & Cases */}
       {homeFeaturedPouches.length > 0 && (
-        <section style={{ marginBottom: 32 }}>
+        <section style={{ marginBottom: 26 }}>
           <div className="section-header">
             <div>
-              <h2 className="section-title">✨ Featured Pouches &amp; Cases</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                Handpicked pouches featured from iCASE Store
-              </p>
+              <h2 className="section-title">Featured Pouches &amp; Cases</h2>
+              <p className="section-sub">Pick your phone brand &amp; case color</p>
             </div>
             <button
               className="section-link"
@@ -746,11 +638,11 @@ export default function HomeSection({
                 else onNavigate('guards');
               }}
             >
-              Choose Phone Model →
+              All Pouches →
             </button>
           </div>
 
-          <div className="pouch-grid">
+          <div className="pouches-carousel-row">
             {homeFeaturedPouches.map((pouch) => {
               const pricing = resolvePouchPrice(pouch);
               const activeColor = resolvePouchSelectedColor(
@@ -761,17 +653,17 @@ export default function HomeSection({
               const colors = Array.isArray(pouch.colorOptions) ? pouch.colorOptions : [];
 
               return (
-                <article key={pouch.id} className="product-card" style={{ padding: 0 }}>
+                <article key={pouch.id} className="product-card icase-app-product-card">
                   <div className="product-media">
                     <img src={thumbUrl} alt={pouch.name} loading="lazy" />
                     {pricing.hasOffer && pricing.offerBadge && (
-                      <span className="discount-badge">{pricing.offerBadge}</span>
+                      <span className="express-badge-top">{pricing.offerBadge}</span>
                     )}
                     {pouch.videoUrl && onOpenVideo && (
                       <button
                         type="button"
                         className="media-video-pill"
-                        style={{ position: 'absolute', bottom: 8, left: 8 }}
+                        style={{ position: 'absolute', bottom: 8, right: 8 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenVideo(pouch.name, pouch.videoUrl);
@@ -786,16 +678,15 @@ export default function HomeSection({
                       {(pouch.compatibleBrands || []).join(' • ')}
                     </div>
                     <h3 className="product-title">{pouch.name}</h3>
-                    {pouch.description && <p className="product-desc">{pouch.description}</p>}
-                    <div className="product-price-row">
+                    <div className="product-price-row" style={{ marginBottom: 8 }}>
                       <span className="product-price">{formatINR(pricing.finalPrice)}</span>
                       {pricing.hasOffer && pricing.basePrice > pricing.finalPrice && (
                         <span className="product-mrp">{formatINR(pricing.basePrice)}</span>
                       )}
                     </div>
                     {colors.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                        {colors.slice(0, 7).map((c) => {
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+                        {colors.slice(0, 6).map((c) => {
                           const selected =
                             activeColor?.name?.toLowerCase() === c.name.toLowerCase();
                           return (
@@ -810,8 +701,8 @@ export default function HomeSection({
                                 }))
                               }
                               style={{
-                                width: 24,
-                                height: 24,
+                                width: 22,
+                                height: 22,
                                 borderRadius: '50%',
                                 padding: 2,
                                 background: '#FFFFFF',
@@ -837,14 +728,13 @@ export default function HomeSection({
                     )}
                     <button
                       type="button"
-                      className="btn btn-navy btn-sm"
-                      style={{ width: '100%' }}
+                      className="guard-card-cta"
                       onClick={() => {
                         if (onOpenGuardsPouch) onOpenGuardsPouch();
                         else onNavigate('guards');
                       }}
                     >
-                      Select Model &amp; Buy →
+                      Choose Model &amp; Buy →
                     </button>
                   </div>
                 </article>
@@ -854,23 +744,12 @@ export default function HomeSection({
         </section>
       )}
 
-      {/* Popular Products Showcase */}
-      <section style={{ marginBottom: 32 }}>
-        <div className="section-header">
-          <h2 className="section-title">Popular Products</h2>
-          <button className="section-link" onClick={() => onNavigate('catalog')}>
-            See All Accessories →
-          </button>
-        </div>
-        <div className="products-grid">{featuredProducts.map(renderProductCard)}</div>
-      </section>
-
       {/* Top Brands Strip */}
-      <section style={{ marginBottom: 26 }}>
+      <section style={{ marginBottom: 24 }}>
         <div className="section-header">
-          <h2 className="section-title">Top Brands We Support</h2>
-          <button className="section-link" onClick={() => onNavigate('guards')}>
-            Glass &amp; Lens Finder →
+          <h2 className="section-title">Top Brands</h2>
+          <button className="section-link" onClick={() => onNavigate('catalog')}>
+            View All →
           </button>
         </div>
         <div className="top-brands-grid">
@@ -891,35 +770,55 @@ export default function HomeSection({
         </div>
       </section>
 
-      {/* Best Quality Best Price Trust Banner */}
-      <section className="quality-banner">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Award size={26} color="#FFB800" />
-          <div>
-            <div style={{ fontWeight: 900, fontSize: 16 }}>
-              Best Quality, Best Price — Genuine Accessories &amp; Certified Technicians
-            </div>
-            <div style={{ fontSize: 13, color: '#CBD5E1' }}>
-              Quality-tested MagSafe cases, 9H Tempered Glass, Camera Rings &amp; original GaN fast
-              chargers at Edappal&apos;s best prices.
-            </div>
+      {/* Best Quality / Best Price Navy Crown Banner matching Android HomeScreen */}
+      <section
+        className="quality-banner-card"
+        role="button"
+        tabIndex={0}
+        onClick={() => onNavigate('guards')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onNavigate('guards');
+          }
+        }}
+      >
+        <div>
+          <div className="quality-gold-title">Best Quality</div>
+          <div className="quality-white-title">Best Price</div>
+          <div className="quality-sub">
+            Genuine mobile accessories &amp; 6-month repair warranty in Edappal
           </div>
         </div>
-        <button className="btn btn-red btn-sm" onClick={() => onNavigate('guards')}>
-          Shop Screen Guards
-        </button>
+        <div className="quality-crown-circle" aria-hidden="true">
+          <Star size={24} color="#FFB800" fill="#FFB800" />
+        </div>
       </section>
 
-      {/* All Accessories Live-Filtered Grid */}
-      <section style={{ marginBottom: 32 }}>
-        <div className="section-header">
-          <h2 className="section-title">
-            All Accessories ({allMatchingProducts.length} items)
-          </h2>
+      {/* Category Shortcuts + All Accessories 2-Column Mobile Grid */}
+      <section style={{ marginBottom: 28 }}>
+        <div className="section-header" style={{ marginBottom: 10 }}>
+          <h2 className="section-title">All Accessories ({allMatchingProducts.length})</h2>
           <button className="section-link" onClick={() => onNavigate('catalog')}>
-            Filter by Brand &amp; Category →
+            Filter All →
           </button>
         </div>
+
+        <div className="category-chips" style={{ marginBottom: 14 }}>
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              className="chip"
+              onClick={() => {
+                onSelectCategory(cat);
+                onNavigate('catalog');
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
         {allMatchingProducts.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: 32 }}>
             <h3 style={{ color: 'var(--icase-navy)', marginBottom: 6 }}>
@@ -934,12 +833,14 @@ export default function HomeSection({
             </button>
           </div>
         ) : (
-          <div className="products-grid">{allMatchingProducts.map(renderProductCard)}</div>
+          <div className="products-grid">
+            {allMatchingProducts.map((p) => renderProductCard(p, 'all'))}
+          </div>
         )}
       </section>
 
       {/* Verified Customer Reviews (Strictly Approved PRODUCT Reviews Only) */}
-      <section className="card" style={{ marginBottom: 30 }}>
+      <section className="card" style={{ marginBottom: 26 }}>
         <div className="section-header">
           <div>
             <div
@@ -954,7 +855,7 @@ export default function HomeSection({
               ✓ Verified Purchase Feedback
             </div>
             <h2 className="section-title">Verified Customer Reviews</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            <p className="section-sub">
               Only customers with completed Order or Service IDs can submit reviews.
             </p>
           </div>
@@ -973,7 +874,7 @@ export default function HomeSection({
         {publicApprovedReviews.length === 0 ? (
           <div
             style={{
-              padding: 18,
+              padding: 16,
               borderRadius: 12,
               background: '#F8FAFC',
               border: '1px solid var(--border)',
@@ -1048,91 +949,91 @@ export default function HomeSection({
             style={{
               fontSize: 12,
               fontWeight: 800,
-              color: '#FDE047',
+              color: '#FFB800',
               letterSpacing: '0.06em',
               marginBottom: 6
             }}
           >
             EXPERT MOBILE CARE &amp; PICKUP
           </div>
-          <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>
             Cracked Screen, Battery Drain or Charging Issue?
           </h2>
-          <p style={{ color: '#CBD5E1', fontSize: 14.5 }}>
+          <p style={{ color: '#CBD5E1', fontSize: 14 }}>
             Schedule free doorstep pickup anywhere in Edappal. Repair diagnosis is free, and your
             live repair ticket syncs directly between our website, mobile app, and technician hub.
           </p>
         </div>
-        <button className="btn btn-red" onClick={() => onNavigate('repair')}>
-          <Wrench size={17} />
-          Book Repair &amp; Pickup Now
+        <button className="btn btn-gold" onClick={() => onNavigate('repair')}>
+          <Wrench size={16} />
+          <span>Book Repair &amp; Pickup</span>
         </button>
       </section>
 
-      {/* Customer Support & Store Contact Details */}
+      {/* Customer Support & Store Contact Card matching Android CustomerSupportCard */}
       <section className="support-card" id="contact-support">
-        <div className="section-header" style={{ marginBottom: 4 }}>
-          <h2 className="section-title">Customer Support &amp; Store Contact</h2>
+        <div className="support-header-row">
+          <div className="support-header-icon">
+            <Headphones size={22} color="#0066CC" />
+          </div>
+          <div>
+            <h2 className="support-card-title">Customer Support &amp; Store</h2>
+            <div className="support-card-meta">
+              {storeAddress} • {storeHours}
+            </div>
+          </div>
         </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-          Need help with an order, warranty, or urgent repair pickup? Reach our Edappal team
-          directly.
+        <p className="support-card-desc">
+          Need help with your order, warranty or product details? Reach out to our team:
         </p>
 
-        <div className="support-grid">
-          <div className="support-item">
-            <Phone size={20} color="#E50914" />
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700 }}>
-                SUPPORT PHONE
-              </div>
-              <a
-                href={`tel:+91${supportPhone.replace(/\D/g, '')}`}
-                style={{ fontWeight: 800, fontSize: 15, color: 'var(--icase-navy)' }}
-              >
-                +91 {supportPhone}
-              </a>
+        <div className="support-rows-stack">
+          <a
+            className="support-action-row phone"
+            href={`tel:+91${supportPhone.replace(/\D/g, '')}`}
+          >
+            <div className="support-row-circle" style={{ background: '#0066CC' }}>
+              <Phone size={18} color="#FFFFFF" />
             </div>
-          </div>
+            <div className="support-row-copy">
+              <div className="support-row-title">Phone Support</div>
+              <div className="support-row-val">+91 {supportPhone}</div>
+            </div>
+            <span className="support-row-cta" style={{ color: '#0066CC' }}>
+              CALL NOW
+            </span>
+          </a>
 
-          <div className="support-item">
-            <Mail size={20} color="#0066CC" />
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700 }}>
-                SUPPORT EMAIL
-              </div>
-              <a
-                href={`mailto:${supportEmail}`}
-                style={{ fontWeight: 800, fontSize: 15, color: 'var(--icase-navy)' }}
-              >
-                {supportEmail}
-              </a>
+          <a
+            className="support-action-row whatsapp"
+            href={waSupportUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <div className="support-row-circle" style={{ background: '#25D366' }}>
+              <MessageCircle size={18} color="#FFFFFF" />
             </div>
-          </div>
+            <div className="support-row-copy">
+              <div className="support-row-title">WhatsApp Support</div>
+              <div className="support-row-val">+91 {supportWhatsapp}</div>
+            </div>
+            <span className="support-row-cta" style={{ color: '#16A34A' }}>
+              CHAT
+            </span>
+          </a>
 
-          <div className="support-item">
-            <MapPin size={20} color="#10B981" />
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700 }}>
-                STORE ADDRESS
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--icase-navy)' }}>
-                {storeAddress}
-              </div>
+          <a className="support-action-row email" href={`mailto:${supportEmail}`}>
+            <div className="support-row-circle" style={{ background: '#E50914' }}>
+              <Mail size={18} color="#FFFFFF" />
             </div>
-          </div>
-
-          <div className="support-item">
-            <Clock size={20} color="#D97706" />
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700 }}>
-                WORKING HOURS
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--icase-navy)' }}>
-                {storeHours}
-              </div>
+            <div className="support-row-copy">
+              <div className="support-row-title">Official Gmail</div>
+              <div className="support-row-val">{supportEmail}</div>
             </div>
-          </div>
+            <span className="support-row-cta" style={{ color: '#E50914' }}>
+              EMAIL
+            </span>
+          </a>
         </div>
       </section>
     </div>

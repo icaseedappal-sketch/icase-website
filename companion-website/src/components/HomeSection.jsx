@@ -233,7 +233,7 @@ export default function HomeSection({
   }
 
   return (
-    <div>
+    <div className="home-screen-root">
       {!isStoreOnline && (
         <div className="store-alert-banner">
           <AlertCircle size={20} />
@@ -321,25 +321,27 @@ export default function HomeSection({
           </div>
         </section>
 
-        {/* Home Live Search Bar */}
+        {/* Home Live Search Bar (Sticky below header on mobile) */}
         <div className="home-search-wrap">
-          <Search size={18} color="#64748B" />
-          <input
-            type="text"
-            placeholder="Search cases, chargers, tempered glass..."
-            value={homeSearch}
-            onChange={(e) => setHomeSearch(e.target.value)}
-          />
-          {homeSearch && (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              style={{ padding: '4px 10px' }}
-              onClick={() => setHomeSearch('')}
-            >
-              <X size={14} /> Clear
-            </button>
-          )}
+          <div className="home-search-pill">
+            <Search size={18} color="#64748B" style={{ flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Search cases, chargers, tempered glass..."
+              value={homeSearch}
+              onChange={(e) => setHomeSearch(e.target.value)}
+            />
+            {homeSearch && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                style={{ padding: '4px 10px', flexShrink: 0 }}
+                onClick={() => setHomeSearch('')}
+              >
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 6 Quick Action Tiles matching exact Android HomeScreen colors & labels */}
@@ -446,7 +448,7 @@ export default function HomeSection({
               <span className="guard-starting-badge">Starting {formatINR(glassStartingPrice)}</span>
             </div>
             <div className="guard-sample-body">
-              <div>
+              <div className="guard-sample-top">
                 <div className="guard-card-title">Tempered Glass</div>
                 <div className="compat-pill compat-blue">
                   Available for iPhone &amp; All Android Models
@@ -483,7 +485,7 @@ export default function HomeSection({
                 </span>
               </div>
               <div className="guard-sample-body">
-                <div>
+                <div className="guard-sample-top">
                   <div className="guard-card-title">Camera Lens Protector</div>
                   <div className="compat-pill compat-amber">
                     iPhone &amp; Samsung S Series Only
@@ -500,7 +502,7 @@ export default function HomeSection({
           <div
             role="button"
             tabIndex={0}
-            className={`guard-sample-card ${cameraSectionActive ? 'guard-sample-card-full-mobile' : ''}`}
+            className="guard-sample-card"
             onClick={() => {
               if (onOpenGuardsPouch) onOpenGuardsPouch();
               else if (onOpenGuardsSection) onOpenGuardsSection('pouch');
@@ -521,7 +523,7 @@ export default function HomeSection({
               </span>
             </div>
             <div className="guard-sample-body">
-              <div>
+              <div className="guard-sample-top">
                 <div className="guard-card-title">Pouches &amp; Back Cases</div>
                 <div className="compat-pill compat-green">
                   iPhone, Samsung S Series &amp; Other Android Models
@@ -674,7 +676,7 @@ export default function HomeSection({
                     )}
                   </div>
                   <div className="product-body">
-                    <div className="product-category">
+                    <div className="home-pouch-brands">
                       {(pouch.compatibleBrands || []).join(' • ')}
                     </div>
                     <h3 className="product-title">{pouch.name}</h3>
@@ -684,48 +686,46 @@ export default function HomeSection({
                         <span className="product-mrp">{formatINR(pricing.basePrice)}</span>
                       )}
                     </div>
-                    {colors.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                        {colors.slice(0, 6).map((c) => {
-                          const selected =
-                            activeColor?.name?.toLowerCase() === c.name.toLowerCase();
-                          return (
-                            <button
-                              key={c.name}
-                              type="button"
-                              title={c.name}
-                              onClick={() =>
-                                setSelectedHomePouchColors((prev) => ({
-                                  ...prev,
-                                  [pouch.id]: c.name
-                                }))
-                              }
+                    <div className="home-pouch-swatches">
+                      {colors.slice(0, 6).map((c) => {
+                        const selected =
+                          activeColor?.name?.toLowerCase() === c.name.toLowerCase();
+                        return (
+                          <button
+                            key={c.name}
+                            type="button"
+                            title={c.name}
+                            onClick={() =>
+                              setSelectedHomePouchColors((prev) => ({
+                                ...prev,
+                                [pouch.id]: c.name
+                              }))
+                            }
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: '50%',
+                              padding: 2,
+                              background: '#FFFFFF',
+                              border: selected ? '2px solid #0A1128' : '1px solid #CBD5E1',
+                              cursor: 'pointer',
+                              display: 'grid',
+                              placeItems: 'center'
+                            }}
+                          >
+                            <span
                               style={{
-                                width: 22,
-                                height: 22,
+                                width: '100%',
+                                height: '100%',
                                 borderRadius: '50%',
-                                padding: 2,
-                                background: '#FFFFFF',
-                                border: selected ? '2px solid #0B1728' : '1px solid #CBD5E1',
-                                cursor: 'pointer',
-                                display: 'grid',
-                                placeItems: 'center'
+                                background: c.hex || '#1E293B',
+                                display: 'block'
                               }}
-                            >
-                              <span
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  borderRadius: '50%',
-                                  background: c.hex || '#1E293B',
-                                  display: 'block'
-                                }}
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                     <button
                       type="button"
                       className="guard-card-cta"

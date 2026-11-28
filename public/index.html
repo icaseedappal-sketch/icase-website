@@ -14,8 +14,8 @@
         extend: {
           colors: {
             icase: {
-              navy: '#0B1728',
-              dark: '#14243B',
+              navy: '#0A1128',
+              dark: '#142244',
               red: '#E50914',
               redLight: '#FFECEE',
               blue: '#0066CC',
@@ -39,6 +39,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <style>
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-x: clip;
+    }
     body {
       font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background-color: #F6F8FB;
@@ -64,18 +69,21 @@
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
+      align-items: stretch;
     }
 
     .icase-glass-styles-row {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
       gap: 10px;
+      align-items: stretch;
     }
 
     .icase-carousel-row {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 16px;
+      align-items: stretch;
     }
 
     @media (min-width: 769px) and (max-width: 1024px) {
@@ -102,26 +110,49 @@
     }
 
     @media (max-width: 768px) {
-      .icase-body { padding-bottom: 84px !important; }
+      .icase-body { padding-bottom: 0 !important; }
       .icase-top-utility { display: none !important; }
       .icase-desktop-nav { display: none !important; }
       .icase-desktop-account-btn { display: none !important; }
       .icase-cart-label { display: none !important; }
-      .icase-mobile-menu-btn { display: inline-flex !important; }
-      .icase-header-inner { height: 60px !important; }
+      .icase-mobile-menu-btn { display: inline-flex !important; width: 44px; height: 44px; justify-self: start; }
+      .icase-header-inner {
+        display: grid !important;
+        grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+        align-items: center !important;
+        gap: 6px !important;
+        height: 58px !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+      }
+      .icase-brand-btn {
+        justify-self: center;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .icase-brand-sub {
+        white-space: nowrap !important;
+        font-size: 7.5px !important;
+        letter-spacing: 0.12em !important;
+      }
+      .icase-header-actions {
+        justify-self: end;
+      }
       .icase-cart-btn {
-        padding: 8px !important;
+        padding: 0 !important;
         min-width: 44px;
         min-height: 44px;
+        width: 44px;
+        height: 44px;
         justify-content: center;
         background: transparent !important;
-        color: #0B1728 !important;
+        color: #0A1128 !important;
         box-shadow: none !important;
         position: relative;
       }
       .icase-cart-btn #header-cart-badge {
         position: absolute;
-        top: 2px;
+        top: 3px;
         right: 2px;
         background: #E50914 !important;
         color: #FFFFFF !important;
@@ -130,9 +161,32 @@
         font-size: 10px !important;
         border: 2px solid #FFFFFF;
       }
-      .icase-main { padding: 12px 14px 24px !important; }
-      .icase-home-top-stack { gap: 12px; }
-      .icase-home-top-stack .icase-home-search { order: 1; }
+      .icase-main {
+        padding: 12px 14px calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+        max-width: 100%;
+      }
+      #section-home {
+        gap: 14px !important;
+      }
+      .icase-home-top-stack {
+        display: contents !important;
+      }
+      #section-home > div:not(.icase-home-top-stack),
+      #section-home > button {
+        order: 4;
+      }
+      .icase-home-top-stack .icase-home-search {
+        order: 1;
+        position: sticky;
+        top: 58px;
+        z-index: 35;
+        margin: -12px -14px 2px;
+        padding: 8px 14px 10px;
+        background: rgba(255, 255, 255, 0.97);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid #E2E8F0;
+        box-shadow: 0 2px 10px rgba(10, 17, 40, 0.05);
+      }
       .icase-home-top-stack .icase-hero-card {
         order: 2;
         padding: 18px 16px !important;
@@ -148,35 +202,52 @@
       .icase-hero-secondary { display: none !important; }
       .icase-hero-title { font-size: 20px !important; line-height: 1.22 !important; }
       .icase-hero-sub { font-size: 12.5px !important; line-height: 1.4 !important; }
-      .icase-hero-ctas .icase-hero-primary { padding: 9px 16px !important; font-size: 12.5px !important; min-height: 40px !important; }
+      .icase-hero-ctas .icase-hero-primary { padding: 9px 16px !important; font-size: 12.5px !important; min-height: 42px !important; }
       .icase-quick-tile {
         padding: 11px 6px !important;
         gap: 6px !important;
         border-radius: 12px !important;
+        min-height: 92px;
       }
       .icase-quick-tile-copy { width: 100%; min-width: 0; }
-      .icase-guard-sample-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-      .icase-guard-full-mobile { grid-column: 1 / -1; }
-      .icase-guard-thumb { height: 114px !important; }
-      .icase-guard-body { padding: 10px !important; }
+      .icase-guard-sample-grid {
+        display: flex !important;
+        overflow-x: auto;
+        align-items: stretch;
+        gap: 12px !important;
+        padding: 2px 2px 6px;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .icase-guard-sample-grid::-webkit-scrollbar { display: none; }
+      .icase-guard-card {
+        flex: 0 0 228px;
+        height: auto;
+        scroll-snap-align: start;
+      }
+      .icase-guard-thumb { height: 124px !important; }
+      .icase-guard-body { padding: 11px !important; }
       .icase-glass-styles-row {
         display: flex !important;
         overflow-x: auto;
+        align-items: stretch;
         gap: 10px;
         padding-bottom: 4px;
         scrollbar-width: none;
       }
       .icase-glass-styles-row::-webkit-scrollbar { display: none; }
-      .icase-glass-style-card { flex: 0 0 184px; }
+      .icase-glass-style-card { flex: 0 0 186px; height: auto; }
       .icase-carousel-row {
         display: flex !important;
         overflow-x: auto;
+        align-items: stretch;
         gap: 10px;
         padding-bottom: 4px;
         scrollbar-width: none;
       }
       .icase-carousel-row::-webkit-scrollbar { display: none; }
-      .icase-carousel-row > article { flex: 0 0 166px; }
+      .icase-carousel-row > article { flex: 0 0 170px; height: auto; }
       #home-top-brands {
         display: flex !important;
         overflow-x: auto;
@@ -185,25 +256,53 @@
         scrollbar-width: none;
       }
       #home-top-brands::-webkit-scrollbar { display: none; }
-      #home-top-brands > button { flex: 0 0 auto; min-width: 88px; }
-      #home-all-products-grid {
+      #home-top-brands > button { flex: 0 0 auto; min-width: 88px; min-height: 44px; }
+      #home-all-products-grid,
+      #catalog-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 10px !important;
+        align-items: stretch;
+      }
+      .icase-footer {
+        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
       }
       .icase-mobile-bottom-nav {
         display: grid !important;
-        grid-template-columns: repeat(5, 1fr);
-        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 2px;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box;
+        left: 0;
+        right: 0;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
       }
-      .icase-toast { bottom: 84px !important; }
+      .mobile-nav-btn {
+        min-width: 0 !important;
+        width: 100% !important;
+        min-height: 48px !important;
+        overflow: hidden;
+      }
+      .mobile-nav-btn span {
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .icase-toast {
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 14px !important;
+        right: 14px !important;
+        max-width: none !important;
+      }
     }
-    @media (max-width: 360px) {
-      .icase-guard-sample-grid { grid-template-columns: 1fr !important; }
-      #home-all-products-grid { grid-template-columns: 1fr !important; }
+    @media (max-width: 340px) {
+      #home-all-products-grid,
+      #catalog-grid { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
-<body class="icase-body min-h-screen flex flex-col pb-20 antialiased selection:bg-icase-red selection:text-white">
+<body class="icase-body min-h-screen flex flex-col antialiased selection:bg-icase-red selection:text-white">
 
   <!-- Top Utility Contact & Live Sync Bar -->
   <div class="icase-top-utility bg-icase-navy text-slate-200 text-xs border-b border-white/10">
@@ -239,7 +338,7 @@
       </button>
 
       <!-- Official iCASE Curved-Arch Branding Logo -->
-      <button type="button" data-nav="home" class="flex items-center gap-3 text-left group focus:outline-none">
+      <button type="button" data-nav="home" class="icase-brand-btn flex items-center gap-3 text-left group focus:outline-none">
         <div class="relative flex flex-col items-center justify-center">
           <svg class="w-16 h-6 -mb-2.5" viewBox="0 0 80 30" fill="none" aria-hidden="true">
             <path d="M10 26 C16 4, 64 4, 70 26" stroke="#E50914" stroke-width="3.2" stroke-linecap="round" />
@@ -247,7 +346,7 @@
           <div class="text-xl sm:text-2xl font-extrabold tracking-tight leading-none">
             <span class="text-icase-red">i</span><span class="text-icase-navy">CASE</span>
           </div>
-          <div class="icase-brand-sub text-[8.5px] font-bold tracking-[0.14em] text-slate-500 uppercase mt-0.5">
+          <div class="icase-brand-sub text-[8.5px] font-bold tracking-[0.14em] text-slate-500 uppercase mt-0.5 whitespace-nowrap">
             YOUR PHONE, OUR CARE
           </div>
         </div>
@@ -276,7 +375,7 @@
       </nav>
 
       <!-- Header Actions -->
-      <div class="flex items-center gap-2">
+      <div class="icase-header-actions flex items-center gap-2">
         <button id="btn-open-account" type="button" class="icase-desktop-account-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-icase-navy text-xs sm:text-sm font-bold transition min-h-[40px]">
           <svg class="w-4 h-4 text-icase-blue shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
           <span id="header-account-label" class="max-w-[100px] truncate">Account</span>
@@ -329,10 +428,10 @@
     </div>
 
     <!-- ==================== SECTION: HOME ==================== -->
-    <section id="section-home" class="space-y-6">
+    <section id="section-home" class="flex flex-col gap-6">
       <div class="icase-home-top-stack">
         <!-- Hero Banner matching Android HomeScreen -->
-        <div class="icase-hero-card relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#0B1728] to-[#162544] text-white p-6 sm:p-9 shadow-xl">
+        <div class="icase-hero-card relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#0A1128] to-[#162544] text-white p-6 sm:p-9 shadow-xl">
           <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-icase-red/20 blur-3xl pointer-events-none"></div>
 
           <div class="relative grid lg:grid-cols-12 gap-8 items-center">
@@ -394,11 +493,13 @@
           </div>
         </div>
 
-        <!-- Home Search Bar -->
-        <div class="icase-home-search relative">
-          <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-          <input id="home-search-input" type="text" placeholder="Search cases, chargers, tempered glass..." class="w-full pl-11 pr-20 py-3 rounded-xl border border-slate-200 bg-white focus:border-icase-navy focus:outline-none text-sm font-medium shadow-sm" />
-          <button id="home-search-clear" type="button" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600">Clear</button>
+        <!-- Home Search Bar (Sticky below header on mobile) -->
+        <div class="icase-home-search">
+          <div class="relative flex items-center">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            <input id="home-search-input" type="text" placeholder="Search cases, chargers, tempered glass..." class="w-full min-w-0 pl-10 pr-20 py-2.5 sm:py-3 rounded-xl border border-slate-200 bg-slate-100 sm:bg-white focus:bg-white focus:border-icase-navy focus:outline-none text-sm font-medium min-h-[44px]" />
+            <button id="home-search-clear" type="button" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-white sm:bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 border border-slate-200 sm:border-0">Clear</button>
+          </div>
         </div>
 
         <!-- Quick Action Tiles matching exact Android HomeScreen colors & labels -->
@@ -653,7 +754,7 @@
         <span class="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider">Best Quality • Best Price</span>
       </div>
 
-      <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+      <div id="catalog-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 items-stretch"></div>
       <div id="catalog-empty" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center">
         <h3 class="text-lg font-extrabold text-icase-navy">No Matching Products</h3>
         <p class="text-sm text-slate-500 mt-1">Try switching categories or clearing your search text.</p>
@@ -887,7 +988,7 @@
   </main>
 
   <!-- Curved BrandFooterBanner matching Mobile App -->
-  <footer class="bg-icase-navy text-white rounded-t-3xl mt-4 pt-8 pb-7">
+  <footer class="icase-footer bg-icase-navy text-white rounded-t-3xl mt-4 pt-8 pb-7">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center text-center gap-5">
       <div class="flex flex-col items-center">
         <svg class="w-16 h-6 -mb-2.5" viewBox="0 0 80 30" fill="none" aria-hidden="true">
@@ -929,25 +1030,25 @@
   </footer>
 
   <!-- Mobile Bottom Navigation Bar (Fixed 5-Icon App Bar: Home, Shop, Repair, Pickup, Account) -->
-  <nav class="icase-mobile-bottom-nav fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-1 py-1.5 shadow-[0_-4px_16px_rgba(15,23,42,0.06)]" aria-label="Mobile Navigation">
-    <button type="button" data-nav="home" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+  <nav class="icase-mobile-bottom-nav fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-1 py-1.5 shadow-[0_-4px_16px_rgba(10,17,40,0.08)]" aria-label="Mobile Navigation">
+    <button type="button" data-nav="home" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] font-bold">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
       <span>Home</span>
     </button>
-    <button type="button" data-nav="catalog" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
+    <button type="button" data-nav="catalog" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] font-bold">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
       <span>Shop</span>
     </button>
-    <button type="button" data-nav="repair" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
+    <button type="button" data-nav="repair" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] font-bold">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
       <span>Repair</span>
     </button>
-    <button type="button" data-nav="track" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+    <button type="button" data-nav="track" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] font-bold">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
       <span>Pickup</span>
     </button>
-    <button id="mobile-nav-account" type="button" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+    <button id="mobile-nav-account" type="button" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] font-bold">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
       <span>Account</span>
     </button>
   </nav>

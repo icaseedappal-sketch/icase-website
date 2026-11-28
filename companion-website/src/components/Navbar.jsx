@@ -51,12 +51,13 @@ export function ICaseArchLogo({ darkBg = false, showTagline = true, compact = fa
         <div
           className="brand-text-sub"
           style={{
-            fontSize: compact ? 7.5 : 8.5,
+            fontSize: compact ? 7.5 : 8,
             fontWeight: 800,
-            letterSpacing: '0.14em',
+            letterSpacing: '0.12em',
             color: subColor,
             textTransform: 'uppercase',
-            marginTop: 1
+            marginTop: 1,
+            whiteSpace: 'nowrap'
           }}
         >
           YOUR PHONE, OUR CARE

@@ -429,8 +429,8 @@ function syncMobileBottomNavActive() {
     const isActive = state.accountOpen
       ? isAccountBtn
       : Boolean(btn.dataset.nav && btn.dataset.nav === state.activeTab);
-    btn.className = `mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] ${
-      isActive ? 'text-icase-red font-extrabold' : 'text-slate-500 font-semibold'
+    btn.className = `mobile-nav-btn min-w-0 min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-xl text-[10.5px] leading-tight transition ${
+      isActive ? 'bg-[#FFF1F2] text-icase-red font-extrabold' : 'text-slate-500 font-semibold'
     }`;
   });
 }
@@ -564,8 +564,8 @@ function renderProductCardHtml(product) {
   const ratingSummary = computeProductRatingSummary(state.publicProductReviews, product);
 
   return `
-    <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition group">
-      <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden cursor-pointer" data-open-product="${escapeHtml(product.id)}">
+    <article class="h-full bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition group">
+      <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden shrink-0 cursor-pointer" data-open-product="${escapeHtml(product.id)}">
         <img src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(product.name)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
         ${oneHourEnabled && product.isOneHourEligible ? `<span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-icase-red text-white text-[10px] font-extrabold shadow">⚡ 1-Hour</span>` : ''}
         ${product.isPopular ? `<span class="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-icase-navy text-white text-[9.5px] font-extrabold tracking-wide">POPULAR</span>` : ''}
@@ -577,9 +577,9 @@ function renderProductCardHtml(product) {
         }
       </div>
 
-      <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between gap-2">
-        <div>
-          <div class="flex items-center justify-between gap-1.5 mb-1">
+      <div class="p-2.5 sm:p-3 flex-1 flex flex-col gap-2">
+        <div class="flex flex-col">
+          <div class="flex items-center justify-between gap-1.5 mb-1 min-h-[20px]">
             <span class="text-[10.5px] font-bold text-icase-blue truncate">${escapeHtml(product.category)}</span>
             ${
               ratingSummary.reviewCount > 0
@@ -587,23 +587,23 @@ function renderProductCardHtml(product) {
                 : ''
             }
           </div>
-          <h3 data-open-product="${escapeHtml(product.id)}" class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] leading-snug line-clamp-2 cursor-pointer hover:text-icase-red transition">
+          <h3 data-open-product="${escapeHtml(product.id)}" class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] leading-snug line-clamp-2 min-h-[34px] cursor-pointer hover:text-icase-red transition">
             ${escapeHtml(product.name)}
           </h3>
         </div>
 
-        <div class="flex items-center justify-between gap-1.5 pt-1">
+        <div class="mt-auto flex items-center justify-between gap-1.5 pt-1 min-h-[38px]">
           <div class="flex flex-col leading-none">
             <span class="text-sm sm:text-base font-black text-icase-red">${formatINR(price)}</span>
             ${orig > price ? `<span class="text-[10.5px] text-slate-400 line-through mt-0.5">${formatINR(orig)}</span>` : ''}
           </div>
-          <div class="flex items-center gap-1">
-            <button type="button" data-toggle-wishlist="${escapeHtml(product.id)}" title="Toggle Wishlist" aria-label="Toggle Wishlist" class="w-7 h-7 rounded-lg border flex items-center justify-center text-xs transition ${
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" data-toggle-wishlist="${escapeHtml(product.id)}" title="Toggle Wishlist" aria-label="Toggle Wishlist" class="w-8 h-8 rounded-lg border flex items-center justify-center text-xs transition ${
               isWishlisted ? 'border-icase-red bg-icase-redLight text-icase-red' : 'border-slate-200 text-slate-400 hover:border-icase-red hover:text-icase-red'
             }">
               ${isWishlisted ? '♥' : '♡'}
             </button>
-            <button type="button" data-add-cart="${escapeHtml(product.id)}" ${!product.inStock ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition flex items-center gap-1 ${
+            <button type="button" data-add-cart="${escapeHtml(product.id)}" ${!product.inStock ? 'disabled' : ''} class="min-h-[34px] px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition flex items-center gap-1 ${
               product.inStock
                 ? 'bg-icase-red hover:bg-red-700 text-white'
                 : 'bg-slate-200 text-slate-500 cursor-not-allowed'
@@ -640,54 +640,54 @@ function renderHomeGuardSampleCards() {
         <button type="button" data-nav="guards" class="text-xs sm:text-sm font-bold text-icase-red hover:underline shrink-0">Explore All →</button>
       </div>
       <div class="icase-guard-sample-grid">
-        <div role="button" tabindex="0" data-home-guard-card="glass" class="group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+        <div role="button" tabindex="0" data-home-guard-card="glass" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
           <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
             <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
           </div>
-          <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
-            <div class="space-y-1">
-              <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Tempered Glass</h3>
-              <span class="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[9.5px] sm:text-[10.5px] font-bold">Available for iPhone &amp; All Android Models</span>
-              <p class="text-[11px] text-slate-500 line-clamp-2">Privacy, Matte, Borderless, 360 &amp; Normal 5D</p>
+          <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Tempered Glass</h3>
+              <span class="inline-flex items-center px-2 py-1 rounded-md bg-sky-100 text-sky-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">Available for iPhone &amp; All Android Models</span>
+              <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">Privacy, Matte, Borderless, 360 &amp; Normal 5D</p>
             </div>
-            <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Glass →</span>
+            <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Glass →</span>
           </div>
         </div>
 
         ${
           camEnabled
             ? `
-          <div role="button" tabindex="0" data-home-guard-card="camera" class="group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+          <div role="button" tabindex="0" data-home-guard-card="camera" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
             <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
               <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
               <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
             </div>
-            <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
-              <div class="space-y-1">
-                <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Camera Lens Protector</h3>
-                <span class="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9.5px] sm:text-[10.5px] font-bold">iPhone &amp; Samsung S Series Only</span>
-                <p class="text-[11px] text-slate-500 line-clamp-2">9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone</p>
+            <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
+              <div class="flex flex-col gap-1.5">
+                <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Camera Lens Protector</h3>
+                <span class="inline-flex items-center px-2 py-1 rounded-md bg-amber-100 text-amber-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">iPhone &amp; Samsung S Series Only</span>
+                <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">9H Sapphire Rings • Galaxy S20–S25 &amp; iPhone</p>
               </div>
-              <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Lens →</span>
+              <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Lens →</span>
             </div>
           </div>
         `
             : ''
         }
 
-        <div role="button" tabindex="0" data-home-guard-card="pouch" class="${camEnabled ? 'icase-guard-full-mobile ' : ''}group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
+        <div role="button" tabindex="0" data-home-guard-card="pouch" class="icase-guard-card h-full group text-left bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col cursor-pointer transition">
           <div class="icase-guard-thumb relative w-full h-36 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(pouchImg)}" alt="Pouches &amp; Back Cases Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
             <span class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
           </div>
-          <div class="icase-guard-body p-3 flex-1 flex flex-col justify-between gap-2 min-w-0">
-            <div class="space-y-1">
-              <h3 class="text-xs sm:text-[15px] font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
-              <span class="inline-block px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9.5px] sm:text-[10.5px] font-bold">iPhone, Samsung S Series &amp; Other Android Models</span>
-              <p class="text-[11px] text-slate-500 line-clamp-2">MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases</p>
+          <div class="icase-guard-body p-3 flex-1 flex flex-col gap-2 min-w-0">
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-sm sm:text-[15px] font-extrabold text-icase-navy leading-snug">Pouches &amp; Back Cases</h3>
+              <span class="inline-flex items-center px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 text-[10px] sm:text-[10.5px] font-bold leading-tight min-h-[34px]">iPhone, Samsung S &amp; Other Android</span>
+              <p class="text-[11.5px] text-slate-500 line-clamp-2 min-h-[32px] leading-snug">MagSafe Clear, Matte Armor &amp; Velvet Silicone Cases</p>
             </div>
-            <span class="w-full py-2 px-2.5 rounded-lg bg-icase-navy group-hover:bg-[#162944] text-white text-center text-[11px] sm:text-xs font-extrabold transition">Select Pouch →</span>
+            <span class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy group-hover:bg-icase-dark text-white flex items-center justify-center text-center text-xs font-extrabold transition">Select Pouch →</span>
           </div>
         </div>
       </div>
@@ -708,7 +708,7 @@ function renderHomeGuardSampleCards() {
                 const gtVid = resolveGlassTypeVideoUrl(gt, config);
                 const note = getGlassTypeHelperNote(gt, config);
                 return `
-                  <div role="button" tabindex="0" data-home-glass-type="${escapeHtml(gt)}" class="icase-glass-style-card bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-sm p-2.5 flex flex-col justify-between gap-1.5 cursor-pointer transition">
+                  <div role="button" tabindex="0" data-home-glass-type="${escapeHtml(gt)}" class="icase-glass-style-card h-full bg-white rounded-2xl border border-slate-200 hover:border-icase-navy hover:shadow-sm p-2.5 flex flex-col gap-2 cursor-pointer transition">
                     <div class="flex items-center gap-2.5">
                       <img src="${escapeHtml(gtImg)}" alt="${escapeHtml(gt)}" loading="lazy" class="w-11 h-11 rounded-xl object-cover border border-slate-200 bg-slate-100 shrink-0" />
                       <div class="min-w-0 flex-1">
@@ -719,12 +719,12 @@ function renderHomeGuardSampleCards() {
                         </div>
                       </div>
                     </div>
-                    <div class="text-[10.5px] text-slate-500 line-clamp-2 leading-tight">${escapeHtml(note)}</div>
-                    <div class="flex items-center justify-between gap-1.5 pt-0.5">
+                    <div class="text-[10.5px] text-slate-500 line-clamp-2 min-h-[30px] leading-tight">${escapeHtml(note)}</div>
+                    <div class="mt-auto flex items-center justify-between gap-1.5 pt-0.5 min-h-[22px]">
                       ${pricing.offerBadge ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold">${escapeHtml(pricing.offerBadge)}</span>` : '<span></span>'}
                       ${
                         gtVid
-                          ? `<button type="button" data-open-video="${escapeHtml(gtVid)}" data-video-title="${escapeHtml(`${gt} Tempered Glass`)}" class="px-2 py-0.5 rounded-full bg-slate-900 hover:bg-icase-red text-white text-[9.5px] font-extrabold transition shrink-0">▶ Video</button>`
+                          ? `<button type="button" data-open-video="${escapeHtml(gtVid)}" data-video-title="${escapeHtml(`${gt} Tempered Glass`)}" class="px-2 py-0.5 rounded-full bg-icase-navy hover:bg-icase-red text-white text-[9.5px] font-extrabold transition shrink-0">▶ Video</button>`
                           : ''
                       }
                     </div>
@@ -842,8 +842,8 @@ function renderHomeFeaturedPouches() {
             const thumbUrl = resolvePouchImageUrl(pouch, activeColor?.name || '');
             const colors = Array.isArray(pouch.colorOptions) ? pouch.colorOptions : [];
             return `
-              <article class="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition">
-                <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden">
+              <article class="h-full bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition">
+                <div class="relative h-36 sm:h-40 bg-slate-100 overflow-hidden shrink-0">
                   <img src="${escapeHtml(thumbUrl)}" alt="${escapeHtml(pouch.name)}" loading="lazy" class="w-full h-full object-cover" />
                   ${
                     pricing.hasOffer && pricing.offerBadge
@@ -856,19 +856,19 @@ function renderHomeFeaturedPouches() {
                       : ''
                   }
                 </div>
-                <div class="p-3 flex-1 flex flex-col justify-between gap-2">
-                  <div>
-                    <div class="text-[10.5px] font-bold text-icase-blue truncate">${escapeHtml((pouch.compatibleBrands || []).join(' • '))}</div>
-                    <h3 class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] line-clamp-2 mt-0.5">${escapeHtml(pouch.name)}</h3>
+                <div class="p-3 flex-1 flex flex-col gap-2">
+                  <div class="flex flex-col">
+                    <div class="text-[10.5px] font-bold text-icase-blue truncate min-h-[16px]">${escapeHtml((pouch.compatibleBrands || []).join(' • '))}</div>
+                    <h3 class="font-extrabold text-[#1E293B] text-xs sm:text-[13.5px] leading-snug line-clamp-2 min-h-[34px] mt-0.5">${escapeHtml(pouch.name)}</h3>
                   </div>
                   <div class="flex items-baseline gap-1.5">
                     <span class="text-sm sm:text-base font-black text-icase-red">${formatINR(pricing.finalPrice)}</span>
                     ${pricing.hasOffer && pricing.basePrice > pricing.finalPrice ? `<span class="text-[10.5px] text-slate-400 line-through">${formatINR(pricing.basePrice)}</span>` : ''}
                   </div>
-                  ${
-                    colors.length > 0
-                      ? `<div class="flex flex-wrap items-center gap-1.5">
-                          ${colors
+                  <div class="flex flex-wrap items-center gap-1.5 min-h-[24px]">
+                    ${
+                      colors.length > 0
+                        ? colors
                             .slice(0, 6)
                             .map((c) => {
                               const selected = activeColor?.name?.toLowerCase() === c.name.toLowerCase();
@@ -876,11 +876,11 @@ function renderHomeFeaturedPouches() {
                                 selected ? 'ring-2 ring-icase-navy border-icase-navy' : 'border-slate-300'
                               }"><span class="w-full h-full rounded-full block" style="background:${escapeHtml(c.hex || '#1E293B')}"></span></button>`;
                             })
-                            .join('')}
-                        </div>`
-                      : ''
-                  }
-                  <button type="button" data-home-pouch-open="${escapeHtml(pouch.id)}" class="w-full py-2 px-2.5 rounded-lg bg-icase-navy hover:bg-[#162944] text-white text-[11px] sm:text-xs font-extrabold transition">
+                            .join('')
+                        : ''
+                    }
+                  </div>
+                  <button type="button" data-home-pouch-open="${escapeHtml(pouch.id)}" class="mt-auto w-full min-h-[40px] py-2 px-2.5 rounded-[10px] bg-icase-navy hover:bg-icase-dark text-white text-xs font-extrabold transition">
                     Choose Model &amp; Buy →
                   </button>
                 </div>

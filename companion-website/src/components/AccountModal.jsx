@@ -7,7 +7,8 @@ import {
   Wrench,
   User,
   Navigation,
-  Trash2
+  Trash2,
+  ShieldCheck
 } from 'lucide-react';
 import {
   auth,
@@ -36,7 +37,8 @@ export default function AccountModal({
   onAddToCart,
   onLogout,
   onTrackId,
-  onOpenReview
+  onOpenReview,
+  onOpenAdmin
 }) {
   const [tab, setTab] = useState('PROFILE'); // 'PROFILE' | 'ORDERS' | 'REPAIRS' | 'WISHLIST'
   const [name, setName] = useState(profile.name || '');
@@ -304,6 +306,40 @@ export default function AccountModal({
                   )}
                 </div>
               </form>
+
+              {onOpenAdmin && (
+                <div
+                  style={{
+                    marginTop: 18,
+                    paddingTop: 14,
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--icase-navy)' }}>
+                      iCASE Store Management
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                      Manage products, glass rates, orders &amp; export default code
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-navy btn-sm"
+                    onClick={() => {
+                      onClose();
+                      onOpenAdmin();
+                    }}
+                  >
+                    <ShieldCheck size={15} /> Admin Panel
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

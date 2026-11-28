@@ -423,6 +423,18 @@ function showToast(msg) {
 }
 
 // ==================== NAVIGATION ====================
+function syncMobileBottomNavActive() {
+  document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
+    const isAccountBtn = btn.id === 'mobile-nav-account';
+    const isActive = state.accountOpen
+      ? isAccountBtn
+      : Boolean(btn.dataset.nav && btn.dataset.nav === state.activeTab);
+    btn.className = `mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold ${
+      isActive ? 'text-icase-red bg-icase-redLight' : 'text-slate-500'
+    }`;
+  });
+}
+
 function setActiveTab(tab, focusTarget = '') {
   state.activeTab = tab;
   state.guardsFocusTarget = tab === 'guards' ? String(focusTarget || '') : '';
@@ -439,12 +451,7 @@ function setActiveTab(tab, focusTarget = '') {
     }`;
   });
 
-  document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
-    const isActive = btn.dataset.nav === tab;
-    btn.className = `mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold ${
-      isActive ? 'text-icase-red bg-icase-redLight' : 'text-slate-500'
-    }`;
-  });
+  syncMobileBottomNavActive();
 
   if (tab === 'guards') {
     renderTemperedGlassFinder();
@@ -666,23 +673,23 @@ function renderHomeGuardSampleCards() {
         </div>
         <button type="button" data-nav="guards" class="text-sm font-bold text-icase-blue hover:underline shrink-0">Open Finder →</button>
       </div>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <button type="button" data-home-guard-card="glass" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-          <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+      <div class="icase-guard-sample-grid">
+        <button type="button" data-home-guard-card="glass" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+          <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(glassImg)}" alt="Tempered Glass Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-red text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
+            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-icase-red text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingGlass)}</span>
           </div>
-          <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
-            <div class="space-y-1.5">
+          <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+            <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-1.5">
-                <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-icase-green text-[10px] sm:text-[11px] font-extrabold">Available for iPhone &amp; All Android Models</span>
               </div>
-              <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Tempered Glass</h3>
-              <p class="text-xs text-slate-600">Privacy, Matte, Borderless, 360 Privacy &amp; Normal 5D edge-to-edge guards with shop installation.</p>
+              <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Tempered Glass</h3>
+              <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">Privacy, Matte, Borderless, 360 Privacy &amp; Normal 5D edge-to-edge guards with shop installation.</p>
             </div>
-            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
               <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingGlass)}</span>
-              <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
+              <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Model →</span>
             </div>
           </div>
         </button>
@@ -690,22 +697,22 @@ function renderHomeGuardSampleCards() {
         ${
           camEnabled
             ? `
-          <button type="button" data-home-guard-card="camera" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-            <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+          <button type="button" data-home-guard-card="camera" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+            <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
               <img src="${escapeHtml(lensImg)}" alt="Camera Lens Protector Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-              <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-icase-navy text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-icase-navy text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingLens)}</span>
             </div>
-            <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
-              <div class="space-y-1.5">
+            <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+              <div class="space-y-1">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  <span class="px-2.5 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
+                  <span class="px-2 py-0.5 rounded-full bg-icase-blueLight border border-icase-blue/30 text-icase-blue text-[10px] sm:text-[11px] font-extrabold">iPhone &amp; Samsung S Series Only</span>
                 </div>
-                <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Camera Lens Protector</h3>
-                <p class="text-xs text-slate-600">9H Sapphire individual lens rings for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
+                <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Camera Lens Protector</h3>
+                <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">9H Sapphire individual lens rings for iPhone &amp; Samsung Galaxy S20–S25 / Ultra models (combo discount supported).</p>
               </div>
-              <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingLens)}</span>
-                <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Model →</span>
+                <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Model →</span>
               </div>
             </div>
           </button>
@@ -713,22 +720,22 @@ function renderHomeGuardSampleCards() {
             : ''
         }
 
-        <button type="button" data-home-guard-card="pouch" class="group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
-          <div class="relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
+        <button type="button" data-home-guard-card="pouch" class="icase-guard-sample-card group text-left bg-white rounded-3xl border border-slate-200 hover:border-icase-navy hover:shadow-md overflow-hidden flex flex-col transition">
+          <div class="icase-guard-thumb relative w-full h-44 bg-slate-100 shrink-0 overflow-hidden">
             <img src="${escapeHtml(pouchImg)}" alt="Pouches &amp; Back Cases Sample" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-            <span class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-teal-700 text-white text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
+            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-teal-700 text-white text-[10px] sm:text-[11px] font-extrabold shadow">Starting ${formatINR(startingPouch)}</span>
           </div>
-          <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2.5">
-            <div class="space-y-1.5">
+          <div class="icase-guard-body p-4 sm:p-5 flex-1 flex flex-col justify-between gap-2 min-w-0">
+            <div class="space-y-1">
               <div class="flex flex-wrap items-center gap-1.5">
-                <span class="px-2.5 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-extrabold">iPhone, Samsung S Series &amp; Other Android Models</span>
+                <span class="px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-[10px] sm:text-[11px] font-extrabold">iPhone, Samsung S Series &amp; Other Android Models</span>
               </div>
-              <h3 class="text-base sm:text-lg font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
-              <p class="text-xs text-slate-600">MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick WhatsApp Android stock checks.</p>
+              <h3 class="text-sm sm:text-lg font-extrabold text-icase-navy">Pouches &amp; Back Cases</h3>
+              <p class="text-[11.5px] sm:text-xs text-slate-600 line-clamp-2">MagSafe Clear, Matte Armor &amp; Soft Silicone cases with colour picks and quick WhatsApp Android stock checks.</p>
             </div>
-            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
               <span class="text-sm sm:text-base font-black text-icase-red">From ${formatINR(startingPouch)}</span>
-              <span class="px-3 py-1.5 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-xs font-bold transition">Select Pouch →</span>
+              <span class="px-2.5 py-1 rounded-xl bg-icase-navy group-hover:bg-icase-red text-white text-[11px] sm:text-xs font-bold transition shrink-0">Select Pouch →</span>
             </div>
           </div>
         </button>
@@ -3640,12 +3647,14 @@ function openAccountModal() {
   state.accountOpen = true;
   state.accountStatus = '';
   state.accountError = '';
+  syncMobileBottomNavActive();
   renderAccountModal();
   document.getElementById('account-modal-overlay')?.classList.remove('hidden');
 }
 
 function closeAccountModal() {
   state.accountOpen = false;
+  syncMobileBottomNavActive();
   document.getElementById('account-modal-overlay')?.classList.add('hidden');
 }
 
@@ -3733,6 +3742,15 @@ function renderAccountModal() {
           Save &amp; Sync Profile
         </button>
       </form>
+      <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-extrabold text-icase-navy">iCASE Store Management</div>
+          <div class="text-[11px] text-slate-500">Manage products, glass rates, orders &amp; export default code</div>
+        </div>
+        <button id="acct-open-admin-btn" type="button" class="px-4 py-2 rounded-xl bg-icase-navy hover:bg-icase-dark text-white text-xs font-bold">
+          Admin Panel
+        </button>
+      </div>
     `;
   } else if (state.accountTab === 'ORDERS') {
     innerHtml =
@@ -3846,6 +3864,11 @@ function renderAccountModal() {
     saveJsonStorage(STORAGE_PROFILE_KEY, state.profile);
     updateHeaderAccountLabel();
     renderAccountModal();
+  });
+
+  document.getElementById('acct-open-admin-btn')?.addEventListener('click', () => {
+    closeAccountModal();
+    setActiveTab('admin');
   });
 
   document.getElementById('acct-gps-btn')?.addEventListener('click', async () => {
@@ -7258,6 +7281,7 @@ function bindGlobalEvents() {
   });
 
   document.getElementById('btn-open-account')?.addEventListener('click', openAccountModal);
+  document.getElementById('mobile-nav-account')?.addEventListener('click', openAccountModal);
   document.getElementById('account-modal-close')?.addEventListener('click', closeAccountModal);
   document.getElementById('account-modal-overlay')?.addEventListener('click', (e) => {
     if (e.target.id === 'account-modal-overlay') closeAccountModal();

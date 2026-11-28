@@ -594,6 +594,7 @@ export default function App() {
         cartCount={cartCount}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenAccount={() => setIsAccountOpen(true)}
+        isAccountOpen={isAccountOpen}
         profile={profile}
         settings={settings}
         isAdminLoggedIn={isAdminLoggedIn}
@@ -752,9 +753,27 @@ export default function App() {
             </span>
           </div>
 
-          <div style={{ fontSize: 13, color: '#CBD5E1' }}>
-            Support: <strong>+91 {settings.store_phone || '9961454059'}</strong> •{' '}
-            <strong>{settings.store_email || 'icaseedappal@gmail.com'}</strong>
+          <div style={{ fontSize: 13, color: '#CBD5E1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+            <span>
+              Support: <strong>+91 {settings.store_phone || '9961454059'}</strong> •{' '}
+              <strong>{settings.store_email || 'icaseedappal@gmail.com'}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => navigateTab('admin')}
+              style={{
+                background: 'rgba(255,255,255,0.12)',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 999,
+                padding: '4px 11px',
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Admin Panel
+            </button>
           </div>
         </div>
       </footer>
@@ -789,6 +808,7 @@ export default function App() {
         onOpenReview={(refId) =>
           setReviewModalState({ open: true, prefillId: refId || '' })
         }
+        onOpenAdmin={() => navigateTab('admin')}
       />
 
       <VerifiedReviewModal

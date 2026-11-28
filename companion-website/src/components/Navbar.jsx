@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   ShoppingCart,
   Phone,
-  Mail
+  Mail,
+  Bike
 } from 'lucide-react';
 
 export default function Navbar({
@@ -18,6 +19,7 @@ export default function Navbar({
   cartCount,
   onOpenCart,
   onOpenAccount,
+  isAccountOpen = false,
   profile,
   settings,
   isAdminLoggedIn
@@ -108,7 +110,10 @@ export default function Navbar({
           </nav>
 
           <div className="nav-actions">
-            <button className="btn btn-outline btn-sm" onClick={onOpenAccount}>
+            <button
+              className="btn btn-outline btn-sm desktop-account-btn"
+              onClick={onOpenAccount}
+            >
               <User size={15} />
               <span>
                 {profile?.isLoggedIn
@@ -116,9 +121,13 @@ export default function Navbar({
                   : 'Account / Login'}
               </span>
             </button>
-            <button className="btn btn-red btn-sm cart-btn" onClick={onOpenCart}>
-              <ShoppingCart size={16} />
-              <span>Cart</span>
+            <button
+              className="btn btn-red btn-sm cart-btn header-cart-btn"
+              onClick={onOpenCart}
+              aria-label="Open Cart"
+            >
+              <ShoppingCart size={18} />
+              <span className="cart-btn-label">Cart</span>
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </button>
           </div>
@@ -128,46 +137,44 @@ export default function Navbar({
       <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
         <div className="mobile-bottom-nav-inner">
           <button
-            className={`mobile-nav-item ${activeTab === 'home' ? 'active' : ''}`}
+            type="button"
+            className={`mobile-nav-item ${!isAccountOpen && activeTab === 'home' ? 'active' : ''}`}
             onClick={() => onSelectTab('home')}
           >
-            <Home size={18} />
+            <Home size={20} />
             <span>Home</span>
           </button>
           <button
-            className={`mobile-nav-item ${activeTab === 'catalog' ? 'active' : ''}`}
+            type="button"
+            className={`mobile-nav-item ${!isAccountOpen && activeTab === 'catalog' ? 'active' : ''}`}
             onClick={() => onSelectTab('catalog')}
           >
-            <ShoppingBag size={18} />
+            <ShoppingBag size={20} />
             <span>Shop</span>
           </button>
           <button
-            className={`mobile-nav-item ${activeTab === 'guards' ? 'active' : ''}`}
-            onClick={() => onSelectTab('guards')}
-          >
-            <Shield size={18} />
-            <span>Glass</span>
-          </button>
-          <button
-            className={`mobile-nav-item ${activeTab === 'repair' ? 'active' : ''}`}
+            type="button"
+            className={`mobile-nav-item ${!isAccountOpen && activeTab === 'repair' ? 'active' : ''}`}
             onClick={() => onSelectTab('repair')}
           >
-            <Wrench size={18} />
+            <Wrench size={20} />
             <span>Repair</span>
           </button>
           <button
-            className={`mobile-nav-item ${activeTab === 'track' ? 'active' : ''}`}
+            type="button"
+            className={`mobile-nav-item ${!isAccountOpen && activeTab === 'track' ? 'active' : ''}`}
             onClick={() => onSelectTab('track')}
           >
-            <Search size={18} />
-            <span>Track</span>
+            <Bike size={20} />
+            <span>Pickup</span>
           </button>
           <button
-            className={`mobile-nav-item ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => onSelectTab('admin')}
+            type="button"
+            className={`mobile-nav-item ${isAccountOpen ? 'active' : ''}`}
+            onClick={onOpenAccount}
           >
-            <ShieldCheck size={18} />
-            <span>Admin</span>
+            <User size={20} />
+            <span>Account</span>
           </button>
         </div>
       </nav>

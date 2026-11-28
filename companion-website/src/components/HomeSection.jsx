@@ -253,169 +253,171 @@ export default function HomeSection({
         </div>
       )}
 
-      {/* Hero Banner */}
-      <section className="hero-banner">
-        <div className="hero-grid">
-          <div>
-            <div className="hero-kicker">
-              <Zap size={14} />
-              <span>
-                {oneHourEnabled
-                  ? 'Express 1-Hour Doorstep Delivery in Edappal'
-                  : 'Fast Local Home Delivery & Expert Mobile Care'}
-              </span>
+      <div className="home-top-stack">
+        {/* Hero Banner */}
+        <section className="hero-banner">
+          <div className="hero-grid">
+            <div>
+              <div className="hero-kicker">
+                <Zap size={14} />
+                <span>
+                  {oneHourEnabled
+                    ? 'Express 1-Hour Doorstep Delivery in Edappal'
+                    : 'Fast Local Home Delivery & Expert Mobile Care'}
+                </span>
+              </div>
+              <h1 className="hero-title">
+                Mobile Accessories &amp; <span>Express Repair Service</span>
+              </h1>
+              <p className="hero-subtitle">
+                Smart Choice... Better Care. Shop shockproof mobile covers, tempered glass, camera lens
+                protection, GaN fast chargers, and ANC audio—or book doorstep repair pickup in Edappal.
+              </p>
+              <div className="hero-ctas">
+                <button className="btn btn-red" onClick={() => onNavigate('catalog')}>
+                  <ShoppingBag size={17} />
+                  Explore Shop Catalog
+                </button>
+                <button className="btn btn-outline" onClick={() => onNavigate('guards')}>
+                  <Shield size={17} />
+                  Tempered Glass &amp; Lens
+                </button>
+                <button className="btn btn-outline" onClick={() => onNavigate('repair')}>
+                  <Wrench size={17} />
+                  Book Repair Pickup
+                </button>
+                <button
+                  className="btn btn-whatsapp"
+                  onClick={() => window.open(waSupportUrl, '_blank')}
+                >
+                  <MessageCircle size={17} />
+                  WhatsApp Support
+                </button>
+              </div>
             </div>
-            <h1 className="hero-title">
-              Mobile Accessories &amp; <span>Express Repair Service</span>
-            </h1>
-            <p className="hero-subtitle">
-              Smart Choice... Better Care. Shop shockproof mobile covers, tempered glass, camera lens
-              protection, GaN fast chargers, and ANC audio—or book doorstep repair pickup in Edappal.
-            </p>
-            <div className="hero-ctas">
-              <button className="btn btn-red" onClick={() => onNavigate('catalog')}>
-                <ShoppingBag size={17} />
-                Explore Shop Catalog
-              </button>
-              <button className="btn btn-outline" onClick={() => onNavigate('guards')}>
-                <Shield size={17} />
-                Tempered Glass &amp; Lens
-              </button>
-              <button className="btn btn-outline" onClick={() => onNavigate('repair')}>
-                <Wrench size={17} />
-                Book Repair Pickup
-              </button>
-              <button
-                className="btn btn-whatsapp"
-                onClick={() => window.open(waSupportUrl, '_blank')}
-              >
-                <MessageCircle size={17} />
-                WhatsApp Support
-              </button>
-            </div>
-          </div>
 
-          <div className="hero-stats-card">
-            <div className="hero-stat-row">
-              <div className="hero-stat-icon">
-                <ShieldCheck size={19} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>Trusted Quality Accessories</div>
-                <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
-                  Original MagSafe cases, 9H glass &amp; certified GaN chargers
+            <div className="hero-stats-card">
+              <div className="hero-stat-row">
+                <div className="hero-stat-icon">
+                  <ShieldCheck size={19} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 15 }}>Trusted Quality Accessories</div>
+                  <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
+                    Original MagSafe cases, 9H glass &amp; certified GaN chargers
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="hero-stat-row">
-              <div className="hero-stat-icon">
-                <Zap size={19} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>1-Hour Local Express</div>
-                <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
-                  Direct doorstep delivery across Edappal &amp; nearby areas
+              <div className="hero-stat-row">
+                <div className="hero-stat-icon">
+                  <Zap size={19} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 15 }}>1-Hour Local Express</div>
+                  <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
+                    Direct doorstep delivery across Edappal &amp; nearby areas
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="hero-stat-row">
-              <div className="hero-stat-icon">
-                <Wrench size={19} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15 }}>Doorstep Repair &amp; Pickup</div>
-                <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
-                  Free repair diagnosis for display, battery &amp; charging issues
+              <div className="hero-stat-row">
+                <div className="hero-stat-icon">
+                  <Wrench size={19} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 15 }}>Doorstep Repair &amp; Pickup</div>
+                  <div style={{ fontSize: 12.5, color: '#CBD5E1' }}>
+                    Free repair diagnosis for display, battery &amp; charging issues
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Home Live Search Bar */}
+        <div className="home-search-wrap">
+          <Search size={18} color="#64748B" />
+          <input
+            type="text"
+            placeholder="Search cases, chargers, tempered glass, earbuds..."
+            value={homeSearch}
+            onChange={(e) => setHomeSearch(e.target.value)}
+          />
+          {homeSearch && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              style={{ padding: '4px 10px' }}
+              onClick={() => setHomeSearch('')}
+            >
+              <X size={14} /> Clear
+            </button>
+          )}
         </div>
-      </section>
 
-      {/* Home Live Search Bar */}
-      <div className="home-search-wrap">
-        <Search size={18} color="#64748B" />
-        <input
-          type="text"
-          placeholder="Search cases, chargers, tempered glass, earbuds..."
-          value={homeSearch}
-          onChange={(e) => setHomeSearch(e.target.value)}
-        />
-        {homeSearch && (
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            style={{ padding: '4px 10px' }}
-            onClick={() => setHomeSearch('')}
-          >
-            <X size={14} /> Clear
+        {/* 6 Quick Action Tiles matching Mobile App Home */}
+        <section className="quick-actions-grid">
+          <button className="quick-tile" onClick={() => onNavigate('catalog')}>
+            <div className="quick-tile-icon" style={{ background: '#FFECEE', color: '#E50914' }}>
+              <ShoppingBag size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Shop Catalog</div>
+              <div className="quick-tile-sub">{products.length} synced products</div>
+            </div>
           </button>
-        )}
+
+          <button className="quick-tile" onClick={() => onNavigate('guards')}>
+            <div className="quick-tile-icon" style={{ background: '#EAF2FF', color: '#0066CC' }}>
+              <Shield size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Tempered Glass</div>
+              <div className="quick-tile-sub">Screen guards, lens &amp; pouches</div>
+            </div>
+          </button>
+
+          <button className="quick-tile" onClick={() => onNavigate('repair')}>
+            <div className="quick-tile-icon" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+              <Wrench size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Repair &amp; Pickup</div>
+              <div className="quick-tile-sub">Book expert doorstep pickup</div>
+            </div>
+          </button>
+
+          <button className="quick-tile" onClick={() => onNavigate('track')}>
+            <div className="quick-tile-icon" style={{ background: '#E8FDF2', color: '#10B981' }}>
+              <Search size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Track Order</div>
+              <div className="quick-tile-sub">Live status via Order / REP ID</div>
+            </div>
+          </button>
+
+          <button className="quick-tile" onClick={onOpenAccount}>
+            <div className="quick-tile-icon" style={{ background: '#F1F5F9', color: '#0B1728' }}>
+              <User size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">Account</div>
+              <div className="quick-tile-sub">Orders, wishlist &amp; address</div>
+            </div>
+          </button>
+
+          <button className="quick-tile" onClick={() => window.open(waSupportUrl, '_blank')}>
+            <div className="quick-tile-icon" style={{ background: '#DCFCE7', color: '#15803D' }}>
+              <MessageCircle size={22} />
+            </div>
+            <div className="quick-tile-copy">
+              <div className="quick-tile-title">WhatsApp</div>
+              <div className="quick-tile-sub">+91 {supportPhone}</div>
+            </div>
+          </button>
+        </section>
       </div>
-
-      {/* 6 Quick Action Tiles matching Mobile App Home */}
-      <section className="quick-actions-grid">
-        <button className="quick-tile" onClick={() => onNavigate('catalog')}>
-          <div className="quick-tile-icon" style={{ background: '#FFECEE', color: '#E50914' }}>
-            <ShoppingBag size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">Shop Catalog</div>
-            <div className="quick-tile-sub">{products.length} synced products</div>
-          </div>
-        </button>
-
-        <button className="quick-tile" onClick={() => onNavigate('guards')}>
-          <div className="quick-tile-icon" style={{ background: '#EAF2FF', color: '#0066CC' }}>
-            <Shield size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">Tempered Glass</div>
-            <div className="quick-tile-sub">Screen guards, lens &amp; pouches</div>
-          </div>
-        </button>
-
-        <button className="quick-tile" onClick={() => onNavigate('repair')}>
-          <div className="quick-tile-icon" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-            <Wrench size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">Repair &amp; Pickup</div>
-            <div className="quick-tile-sub">Book expert doorstep pickup</div>
-          </div>
-        </button>
-
-        <button className="quick-tile" onClick={() => onNavigate('track')}>
-          <div className="quick-tile-icon" style={{ background: '#E8FDF2', color: '#10B981' }}>
-            <Search size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">Track Order</div>
-            <div className="quick-tile-sub">Live status via Order / REP ID</div>
-          </div>
-        </button>
-
-        <button className="quick-tile" onClick={onOpenAccount}>
-          <div className="quick-tile-icon" style={{ background: '#F1F5F9', color: '#0B1728' }}>
-            <User size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">Account</div>
-            <div className="quick-tile-sub">Orders, wishlist &amp; address</div>
-          </div>
-        </button>
-
-        <button className="quick-tile" onClick={() => window.open(waSupportUrl, '_blank')}>
-          <div className="quick-tile-icon" style={{ background: '#DCFCE7', color: '#15803D' }}>
-            <MessageCircle size={22} />
-          </div>
-          <div>
-            <div className="quick-tile-title">WhatsApp</div>
-            <div className="quick-tile-sub">+91 {supportPhone}</div>
-          </div>
-        </button>
-      </section>
 
       {/* Category Shortcuts */}
       <section style={{ marginBottom: 28 }}>

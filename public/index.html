@@ -51,12 +51,99 @@
       50% { opacity: 0.45; transform: scale(0.85); }
     }
     .sync-pulse { animation: pulseDot 2s ease-in-out infinite; }
+
+    /* Responsive Breakpoint Rules: <=768px Compact Mobile App UI vs >=769px Spacious Desktop */
+    .icase-mobile-bottom-nav { display: none; }
+    .icase-home-top-stack { display: flex; flex-direction: column; gap: 24px; }
+    .icase-home-top-stack .icase-hero-card { order: 1; }
+    .icase-home-top-stack .icase-home-search { order: 2; }
+    .icase-home-top-stack .icase-quick-grid { order: 3; }
+
+    .icase-guard-sample-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .icase-guard-sample-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .icase-desktop-nav .nav-btn {
+        padding: 7px 9px !important;
+        font-size: 12.5px !important;
+        white-space: nowrap;
+      }
+      .icase-brand-sub { display: none; }
+    }
+
+    @media (min-width: 769px) {
+      .icase-body { padding-bottom: 0 !important; }
+      .icase-top-utility { display: block !important; }
+      .icase-desktop-nav { display: flex !important; }
+      .icase-desktop-account-btn { display: inline-flex !important; }
+      .icase-cart-label { display: inline !important; }
+      .icase-mobile-bottom-nav { display: none !important; }
+      .icase-toast { bottom: 24px !important; }
+    }
+
+    @media (max-width: 768px) {
+      .icase-body { padding-bottom: 84px !important; }
+      .icase-top-utility { display: none !important; }
+      .icase-desktop-nav { display: none !important; }
+      .icase-desktop-account-btn { display: none !important; }
+      .icase-cart-label { display: none !important; }
+      .icase-header-inner { height: 56px !important; }
+      .icase-cart-btn { padding: 8px 11px !important; min-width: 44px; min-height: 44px; justify-content: center; }
+      .icase-main { padding: 12px 12px 24px !important; }
+      .icase-home-top-stack { gap: 12px; }
+      .icase-home-top-stack .icase-home-search { order: 1; }
+      .icase-home-top-stack .icase-hero-card {
+        order: 2;
+        padding: 18px 16px !important;
+        border-radius: 18px !important;
+      }
+      .icase-home-top-stack .icase-quick-grid {
+        order: 3;
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+      }
+      .icase-hero-snapshot { display: none !important; }
+      .icase-hero-kicker { padding: 4px 10px !important; font-size: 11px !important; }
+      .icase-hero-title { font-size: 21px !important; line-height: 1.18 !important; }
+      .icase-hero-sub { font-size: 12.5px !important; line-height: 1.45 !important; }
+      .icase-hero-ctas { gap: 8px !important; }
+      .icase-hero-ctas > * { padding: 8px 12px !important; font-size: 12px !important; min-height: 40px !important; }
+      .icase-quick-tile {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        padding: 11px 6px !important;
+        gap: 6px !important;
+        border-radius: 14px !important;
+      }
+      .icase-quick-tile-copy { width: 100%; min-width: 0; }
+      .icase-guard-sample-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+      .icase-guard-sample-card { flex-direction: row !important; align-items: stretch !important; border-radius: 16px !important; }
+      .icase-guard-thumb { width: 108px !important; height: auto !important; min-height: 128px !important; }
+      .icase-guard-body { padding: 11px 12px !important; }
+      .icase-mobile-bottom-nav {
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr);
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+      }
+      .icase-toast { bottom: 84px !important; }
+    }
+    @media (max-width: 400px) {
+      .icase-guard-thumb { width: 92px !important; }
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col pb-20 md:pb-0 antialiased selection:bg-icase-red selection:text-white">
+<body class="icase-body min-h-screen flex flex-col pb-20 antialiased selection:bg-icase-red selection:text-white">
 
   <!-- Top Utility Contact & Live Sync Bar -->
-  <div class="bg-icase-navy text-slate-200 text-xs border-b border-white/10">
+  <div class="icase-top-utility bg-icase-navy text-slate-200 text-xs border-b border-white/10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
         <a id="top-phone-link" href="tel:+919961454059" class="inline-flex items-center gap-1.5 hover:text-white transition font-medium">
@@ -82,7 +169,7 @@
 
   <!-- Main Sticky Header -->
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+    <div class="icase-header-inner max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
       <!-- Official iCASE Branding Logo -->
       <button type="button" data-nav="home" class="flex items-center gap-3 text-left group focus:outline-none">
         <div class="relative flex flex-col items-center justify-center">
@@ -92,7 +179,7 @@
           <div class="text-xl sm:text-2xl font-extrabold tracking-tight leading-none">
             <span class="text-icase-red">i</span><span class="text-icase-navy">CASE</span>
           </div>
-          <div class="text-[8.5px] font-bold tracking-[0.14em] text-slate-500 uppercase mt-0.5">
+          <div class="icase-brand-sub text-[8.5px] font-bold tracking-[0.14em] text-slate-500 uppercase mt-0.5">
             YOUR PHONE, OUR CARE
           </div>
         </div>
@@ -102,7 +189,7 @@
       </button>
 
       <!-- Desktop Navigation -->
-      <nav class="hidden md:flex items-center gap-1" aria-label="Primary Navigation">
+      <nav class="icase-desktop-nav hidden items-center gap-1" aria-label="Primary Navigation">
         <button type="button" data-nav="home" class="nav-btn px-3.5 py-2 rounded-xl text-sm font-bold transition flex items-center gap-1.5">
           Home
         </button>
@@ -125,14 +212,14 @@
 
       <!-- Header Actions -->
       <div class="flex items-center gap-2">
-        <button id="btn-open-account" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-icase-navy text-xs sm:text-sm font-bold transition min-h-[40px]">
+        <button id="btn-open-account" type="button" class="icase-desktop-account-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-icase-navy text-xs sm:text-sm font-bold transition min-h-[40px]">
           <svg class="w-4 h-4 text-icase-blue shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
           <span id="header-account-label" class="max-w-[100px] truncate">Account</span>
         </button>
 
-        <button id="btn-open-cart" type="button" class="relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-icase-red hover:bg-red-700 text-white text-xs sm:text-sm font-bold shadow-sm transition min-h-[40px]">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
-          <span>Cart</span>
+        <button id="btn-open-cart" type="button" aria-label="Open Cart" class="icase-cart-btn relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-icase-red hover:bg-red-700 text-white text-xs sm:text-sm font-bold shadow-sm transition min-h-[40px]">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"/></svg>
+          <span class="icase-cart-label">Cart</span>
           <span id="header-cart-badge" class="hidden min-w-[20px] h-5 px-1.5 rounded-full bg-white text-icase-red text-[11px] font-extrabold items-center justify-center">0</span>
         </button>
       </div>
@@ -140,7 +227,7 @@
   </header>
 
   <!-- Main Content Area -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+  <main class="icase-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
     <!-- Store Paused Alert -->
     <div id="store-paused-banner" class="hidden mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 text-sm font-semibold flex items-center gap-3">
@@ -150,142 +237,144 @@
 
     <!-- ==================== SECTION: HOME ==================== -->
     <section id="section-home" class="space-y-8">
-      <!-- Hero Banner -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#071220] via-icase-navy to-[#183052] text-white p-6 sm:p-10 shadow-xl">
-        <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-icase-red/15 blur-3xl pointer-events-none"></div>
-        <div class="absolute -left-16 -bottom-24 w-72 h-72 rounded-full bg-icase-blue/20 blur-3xl pointer-events-none"></div>
+      <div class="icase-home-top-stack">
+        <!-- Hero Banner -->
+        <div class="icase-hero-card relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#071220] via-icase-navy to-[#183052] text-white p-6 sm:p-10 shadow-xl">
+          <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-icase-red/15 blur-3xl pointer-events-none"></div>
+          <div class="absolute -left-16 -bottom-24 w-72 h-72 rounded-full bg-icase-blue/20 blur-3xl pointer-events-none"></div>
 
-        <div class="relative grid lg:grid-cols-12 gap-8 items-center">
-          <div class="lg:col-span-7 space-y-5">
-            <div class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-xs font-bold text-amber-300">
-              <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-              <span id="hero-express-kicker">Express 1-Hour Doorstep Delivery in Edappal</span>
-            </div>
-
-            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.12]">
-              iCASE (Edappal) — <span class="text-icase-red">Mobile Accessories</span> &amp; Expert Repair Care
-            </h1>
-
-            <p class="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
-              <strong class="text-white">YOUR PHONE, OUR CARE.</strong> Shop shockproof mobile pouches, 9H privacy tempered glass, GaN fast chargers, and ANC audio—or book doorstep repair pickup synced in real time with the iCASE mobile app &amp; admin hub.
-            </p>
-
-            <div class="flex flex-wrap gap-3 pt-1">
-              <button type="button" data-nav="catalog" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-red hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/30 transition min-h-[46px]">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
-                Explore Shop Catalog
-              </button>
-              <button type="button" data-nav="repair" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-icase-navy hover:bg-slate-100 font-bold text-sm transition min-h-[46px]">
-                <svg class="w-4 h-4 text-icase-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
-                Book Repair Pickup
-              </button>
-              <a id="hero-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-whatsapp hover:bg-emerald-600 text-white font-bold text-sm transition min-h-[46px]">
-                WhatsApp Support
-              </a>
-            </div>
-          </div>
-
-          <!-- Services Snapshot Card -->
-          <div class="lg:col-span-5 bg-white/10 backdrop-blur border border-white/15 rounded-2xl p-5 space-y-4">
-            <div class="flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-icase-red/20 text-red-300 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+          <div class="relative grid lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-7 space-y-4 sm:space-y-5">
+              <div class="icase-hero-kicker inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-3.5 py-1.5 text-xs font-bold text-amber-300">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                <span id="hero-express-kicker">Express 1-Hour Doorstep Delivery in Edappal</span>
               </div>
-              <div>
-                <h3 class="font-bold text-sm sm:text-base text-white">Premium Pouches &amp; Accessories</h3>
-                <p class="text-xs text-slate-300 mt-0.5">MagSafe shockproof cases, 9H privacy glass, 65W GaN chargers &amp; ANC audio.</p>
+
+              <h1 class="icase-hero-title text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-[1.12]">
+                iCASE (Edappal) — <span class="text-icase-red">Mobile Accessories</span> &amp; Expert Repair Care
+              </h1>
+
+              <p class="icase-hero-sub text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
+                <strong class="text-white">YOUR PHONE, OUR CARE.</strong> Shop shockproof mobile pouches, 9H privacy tempered glass, GaN fast chargers, and ANC audio—or book doorstep repair pickup synced in real time with the iCASE mobile app &amp; admin hub.
+              </p>
+
+              <div class="icase-hero-ctas flex flex-wrap gap-3 pt-1">
+                <button type="button" data-nav="catalog" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-red hover:bg-red-700 text-white font-bold text-sm shadow-lg shadow-red-900/30 transition min-h-[46px]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
+                  Explore Shop Catalog
+                </button>
+                <button type="button" data-nav="repair" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-icase-navy hover:bg-slate-100 font-bold text-sm transition min-h-[46px]">
+                  <svg class="w-4 h-4 text-icase-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
+                  Book Repair Pickup
+                </button>
+                <a id="hero-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-icase-whatsapp hover:bg-emerald-600 text-white font-bold text-sm transition min-h-[46px]">
+                  WhatsApp Support
+                </a>
               </div>
             </div>
-            <div class="flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+
+            <!-- Services Snapshot Card (Desktop) -->
+            <div class="icase-hero-snapshot lg:col-span-5 bg-white/10 backdrop-blur border border-white/15 rounded-2xl p-5 space-y-4">
+              <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-icase-red/20 text-red-300 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm sm:text-base text-white">Premium Pouches &amp; Accessories</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">MagSafe shockproof cases, 9H privacy glass, 65W GaN chargers &amp; ANC audio.</p>
+                </div>
               </div>
-              <div>
-                <h3 class="font-bold text-sm sm:text-base text-white">Express 1-Hour Local Delivery</h3>
-                <p class="text-xs text-slate-300 mt-0.5">Lightning-fast doorstep dispatch across Edappal &amp; nearby Malappuram areas.</p>
+              <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm sm:text-base text-white">Express 1-Hour Local Delivery</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Lightning-fast doorstep dispatch across Edappal &amp; nearby Malappuram areas.</p>
+                </div>
               </div>
-            </div>
-            <div class="flex items-start gap-3.5">
-              <div class="w-10 h-10 rounded-xl bg-sky-400/20 text-sky-300 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
-              </div>
-              <div>
-                <h3 class="font-bold text-sm sm:text-base text-white">Doorstep Chip-Level &amp; Glass Repair</h3>
-                <p class="text-xs text-slate-300 mt-0.5">Free inspection for display, battery, charging &amp; water damage with live tracking.</p>
+              <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-sky-400/20 text-sky-300 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm sm:text-base text-white">Doorstep Chip-Level &amp; Glass Repair</h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Free inspection for display, battery, charging &amp; water damage with live tracking.</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Home Search Bar -->
-      <div class="relative">
-        <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-        <input id="home-search-input" type="text" placeholder="Search for products (pouches, tempered glass, chargers, audio)..." class="w-full pl-11 pr-20 py-3.5 rounded-2xl border border-slate-200 bg-white focus:border-icase-blue focus:outline-none text-sm font-medium shadow-sm" />
-        <button id="home-search-clear" type="button" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600">Clear</button>
-      </div>
+        <!-- Home Search Bar -->
+        <div class="icase-home-search relative">
+          <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+          <input id="home-search-input" type="text" placeholder="Search for products (pouches, tempered glass, chargers, audio)..." class="w-full pl-11 pr-20 py-3 rounded-2xl border border-slate-200 bg-white focus:border-icase-blue focus:outline-none text-sm font-medium shadow-sm" />
+          <button id="home-search-clear" type="button" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600">Clear</button>
+        </div>
 
-      <!-- Quick Action Tiles (6 Cards matching Android HomeScreen) -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <button type="button" data-nav="catalog" class="bg-white border border-slate-200 hover:border-icase-navy/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-icase-blueLight text-icase-blue flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Shop</div>
-            <div id="home-product-count" class="text-[11px] text-slate-500 truncate">Browse all</div>
-          </div>
-        </button>
+        <!-- Quick Action Tiles (3-Column Grid on Mobile App, 6 Columns on Wide Desktop) -->
+        <div class="icase-quick-grid grid grid-cols-3 lg:grid-cols-6 gap-3">
+          <button type="button" data-nav="catalog" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-navy/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-icase-blueLight text-icase-blue flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Shop</div>
+              <div id="home-product-count" class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Browse all</div>
+            </div>
+          </button>
 
-        <button type="button" data-nav="repair" class="bg-white border border-slate-200 hover:border-icase-blue/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63"/></svg>
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Repair</div>
-            <div class="text-[11px] text-slate-500 truncate">Doorstep care</div>
-          </div>
-        </button>
+          <button type="button" data-nav="repair" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-blue/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63"/></svg>
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Repair</div>
+              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Doorstep care</div>
+            </div>
+          </button>
 
-        <button type="button" data-nav="guards" class="bg-white border border-slate-200 hover:border-icase-red/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-icase-redLight text-icase-red flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Tempered Glass</div>
-            <div class="text-[11px] text-slate-500 truncate">Glass &amp; Lens</div>
-          </div>
-        </button>
+          <button type="button" data-nav="guards" class="icase-quick-tile bg-white border border-slate-200 hover:border-icase-red/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-icase-redLight text-icase-red flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Tempered Glass</div>
+              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Glass &amp; Lens</div>
+            </div>
+          </button>
 
-        <button type="button" data-nav="track" class="bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-icase-green flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Track Order</div>
-            <div class="text-[11px] text-slate-500 truncate">Live ORD / REP</div>
-          </div>
-        </button>
+          <button type="button" data-nav="track" class="icase-quick-tile bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-icase-green flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Track Order</div>
+              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Live ORD / REP</div>
+            </div>
+          </button>
 
-        <button id="quick-account-btn" type="button" class="bg-white border border-slate-200 hover:border-indigo-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Account</div>
-            <div class="text-[11px] text-slate-500 truncate">Orders &amp; saved</div>
-          </div>
-        </button>
+          <button id="quick-account-btn" type="button" class="icase-quick-tile bg-white border border-slate-200 hover:border-indigo-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">Account</div>
+              <div class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">Orders &amp; saved</div>
+            </div>
+          </button>
 
-        <a id="quick-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-icase-whatsapp flex items-center justify-center shrink-0 font-black text-base">
-            💬
-          </div>
-          <div class="min-w-0">
-            <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">WhatsApp</div>
-            <div id="quick-whatsapp-text" class="text-[11px] text-slate-500 truncate">+91 9961454059</div>
-          </div>
-        </a>
+          <a id="quick-whatsapp-link" href="https://api.whatsapp.com/send?phone=919961454059" target="_blank" rel="noreferrer" class="icase-quick-tile bg-white border border-slate-200 hover:border-emerald-500/50 hover:shadow-md rounded-2xl p-3.5 flex items-center gap-3 text-left transition">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-icase-whatsapp flex items-center justify-center shrink-0 font-black text-base">
+              💬
+            </div>
+            <div class="icase-quick-tile-copy min-w-0">
+              <div class="font-extrabold text-icase-navy text-xs sm:text-sm truncate">WhatsApp</div>
+              <div id="quick-whatsapp-text" class="text-[10.5px] sm:text-[11px] text-slate-500 truncate">+91 9961454059</div>
+            </div>
+          </a>
+        </div>
       </div>
 
       <!-- Browse Categories -->
@@ -732,29 +821,39 @@
         <span class="inline-flex items-center gap-1.5 text-rose-400">★ Quality Accessories</span>
       </div>
 
-      <div class="text-xs sm:text-sm md:text-right space-y-1">
+      <div class="text-xs sm:text-sm md:text-right space-y-1.5">
         <div>Support: <a id="footer-phone-link" href="tel:+919961454059" class="text-white font-bold hover:underline">+91 9961454059</a></div>
         <div>Email: <a id="footer-email-link" href="mailto:icaseedappal@gmail.com" class="text-white font-bold hover:underline">icaseedappal@gmail.com</a></div>
+        <div>
+          <button type="button" data-nav="admin" class="inline-flex items-center px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/15 transition">
+            Admin Panel
+          </button>
+        </div>
       </div>
     </div>
   </footer>
 
-  <!-- Mobile Bottom Navigation Bar (App-Like Ergonomics) -->
-  <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_16px_rgba(15,23,42,0.06)]" aria-label="Mobile Navigation">
-    <button type="button" data-nav="home" class="mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold">
+  <!-- Mobile Bottom Navigation Bar (Fixed 5-Icon App Bar: Home, Shop, Repair, Pickup, Account) -->
+  <nav class="icase-mobile-bottom-nav fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-1 py-1.5 shadow-[0_-4px_16px_rgba(15,23,42,0.06)]" aria-label="Mobile Navigation">
+    <button type="button" data-nav="home" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
       <span>Home</span>
     </button>
-    <button type="button" data-nav="catalog" class="mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold">
+    <button type="button" data-nav="catalog" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z"/></svg>
       <span>Shop</span>
     </button>
-    <button type="button" data-nav="repair" class="mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold">
+    <button type="button" data-nav="repair" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
       <span>Repair</span>
     </button>
-    <button type="button" data-nav="track" class="mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold">
-      <span>Track</span>
+    <button type="button" data-nav="track" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+      <span>Pickup</span>
     </button>
-    <button type="button" data-nav="admin" class="mobile-nav-btn flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[11px] font-bold">
-      <span>Admin</span>
+    <button id="mobile-nav-account" type="button" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg text-[11px] font-bold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+      <span>Account</span>
     </button>
   </nav>
 
@@ -854,7 +953,7 @@
   </div>
 
   <!-- Toast Notification -->
-  <div id="toast-banner" class="hidden fixed bottom-24 md:bottom-6 right-4 sm:right-6 z-50 max-w-sm bg-icase-navy text-white px-4 py-3 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2.5 border border-white/15">
+  <div id="toast-banner" class="icase-toast hidden fixed bottom-24 right-4 sm:right-6 z-50 max-w-sm bg-icase-navy text-white px-4 py-3 rounded-2xl shadow-xl text-sm font-bold flex items-center gap-2.5 border border-white/15">
     <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
     <span id="toast-message"></span>
   </div>
